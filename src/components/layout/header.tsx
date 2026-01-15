@@ -17,6 +17,7 @@ const navigation = [
   { name: 'Home', href: '/' },
   { name: 'Explore', href: '/explore' },
   { name: 'Community', href: '/community' },
+  { name: 'News', href: '/news' },
   { name: 'AI Search', href: '/search' },
 ]
 
