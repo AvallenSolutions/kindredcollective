@@ -157,6 +157,50 @@
   }
 
   .animate-marquee {
-    animation: marquee 20s linear infinite;
+    animation: marquee 30s linear infinite;
+  }
+
+  /* Neo-brutalist shadow utilities */
+  .neo-shadow {
+    box-shadow: 4px 4px 0px 0px #000000;
+  }
+  .neo-shadow-lg {
+    box-shadow: 8px 8px 0px 0px #000000;
+  }
+  .neo-shadow-hover:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px 0px #000000;
+  }
+  .neo-border {
+    border: 2px solid #000000;
+  }
+
+  /* Grid pattern background */
+  .bg-grid-pattern {
+    background-image: radial-gradient(#000 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: 0.1;
+  }
+
+  /* Grayscale hover effect */
+  .grayscale-hover {
+    @apply grayscale transition-all duration-500;
+  }
+  .grayscale-hover:hover,
+  .group:hover .grayscale-hover {
+    @apply grayscale-0;
+  }
+
+  /* Custom scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-left: 2px solid black;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #000;
+    border: 2px solid #f1f1f1;
   }
 }
