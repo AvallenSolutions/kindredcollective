@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { Menu, X, User, LogOut, Zap } from 'lucide-react'
+import { Menu, X, User, LogOut, Zap, Shield } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
@@ -19,8 +19,13 @@ const navigation = [
   { name: 'Community', href: '/community', badge: null },
 ]
 
+const adminNavigation = [
+  { name: 'Admin', href: '/admin', badge: null },
+]
+
 export function Header({ user }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const isAdmin = user?.role === 'ADMIN'
 
   return (
     <header className="fixed w-full z-50 top-0 bg-white border-b-2 border-black">
@@ -47,6 +52,16 @@ export function Header({ user }: HeaderProps) {
                   {item.badge}
                 </span>
               )}
+            </Link>
+          ))}
+          {isAdmin && adminNavigation.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className="text-sm font-bold uppercase tracking-wide hover:underline decoration-2 underline-offset-4 flex items-center gap-1 text-magenta"
+            >
+              <Shield className="w-4 h-4" />
+              {item.name}
             </Link>
           ))}
         </div>
@@ -90,7 +105,7 @@ export function Header({ user }: HeaderProps) {
       <div
         className={cn(
           'md:hidden overflow-hidden transition-all duration-300 ease-in-out bg-white border-b-2 border-black',
-          mobileMenuOpen ? 'max-h-96' : 'max-h-0 border-b-0'
+          mobileMenuOpen ? 'max-h-[500px]' : 'max-h-0 border-b-0'
         )}
       >
         <div className="px-6 py-4 space-y-2">
@@ -109,13 +124,32 @@ export function Header({ user }: HeaderProps) {
               )}
             </Link>
           ))}
+          {isAdmin && adminNavigation.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className="block py-3 px-4 font-display text-base font-bold uppercase tracking-wide text-magenta hover:bg-magenta hover:text-white transition-colors border-2 border-magenta"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <Shield className="w-4 h-4 inline mr-2" />
+              {item.name}
+            </Link>
+          ))}
           <div className="pt-4 space-y-2">
             {user ? (
-              <Link href="/dashboard" className="block">
-                <Button variant="outline" size="md" className="w-full">
-                  Dashboard
-                </Button>
-              </Link>
+              <>
+                <Link href="/dashboard" className="block">
+                  <Button variant="outline" size="md" className="w-full">
+                    Dashboard
+                  </Button>
+                </Link>
+                <form action="/api/auth/signout" method="post">
+                  <Button variant="ghost" size="md" type="submit" className="w-full flex items-center justify-center gap-2">
+                    <LogOut className="w-4 h-4" />
+                    Log out
+                  </Button>
+                </form>
+              </>
             ) : (
               <>
                 <Link href="/login" className="block">

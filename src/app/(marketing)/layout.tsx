@@ -1,15 +1,25 @@
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
+import { getSession } from '@/lib/auth/session'
 
-export default function MarketingLayout({
+export default async function MarketingLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const session = await getSession()
+
+  const user = session.user
+    ? {
+        email: session.user.email,
+        role: session.user.role,
+      }
+    : null
+
   return (
     <div className="flex min-h-screen flex-col">
-      <Header />
-      <main className="flex-1">{children}</main>
+      <Header user={user} />
+      <main className="flex-1 pt-20">{children}</main>
       <Footer />
     </div>
   )
