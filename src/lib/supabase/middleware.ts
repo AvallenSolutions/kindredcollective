@@ -37,23 +37,40 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  const pathname = request.nextUrl.pathname
+
   // Protected routes - redirect to login if not authenticated
-  const protectedPaths = ['/dashboard', '/profile', '/settings']
+  const protectedPaths = ['/dashboard', '/profile', '/settings', '/admin']
   const isProtectedPath = protectedPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
+    pathname.startsWith(path)
   )
 
   if (isProtectedPath && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    url.searchParams.set('redirect', request.nextUrl.pathname)
+    url.searchParams.set('redirect', pathname)
     return NextResponse.redirect(url)
+  }
+
+  // Admin routes - check if user has admin role
+  if (pathname.startsWith('/admin') && user) {
+    const { data: dbUser } = await supabase
+      .from('User')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (!dbUser || dbUser.role !== 'ADMIN') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return NextResponse.redirect(url)
+    }
   }
 
   // Redirect logged-in users away from auth pages
   const authPaths = ['/login', '/signup']
   const isAuthPath = authPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
+    pathname.startsWith(path)
   )
 
   if (isAuthPath && user) {

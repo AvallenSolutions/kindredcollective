@@ -66,31 +66,50 @@ function SignupForm() {
     setError(null)
     setLoading(true)
 
-    const supabase = createClient()
-
-    // Create auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        data: {
-          role: selectedRole.toUpperCase(),
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          company_name: formData.companyName,
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      },
-    })
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          role: selectedRole.toUpperCase(),
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          companyName: formData.companyName,
+        }),
+      })
 
-    if (authError) {
-      setError(authError.message)
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to create account')
+        setLoading(false)
+        return
+      }
+
+      // Sign in the user after successful signup
+      const supabase = createClient()
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      })
+
+      if (signInError) {
+        // User created but needs to verify email
+        router.push('/login?message=verify_email')
+        return
+      }
+
+      // Redirect to dashboard
+      router.push('/dashboard?welcome=true')
+      router.refresh()
+    } catch {
+      setError('An unexpected error occurred')
       setLoading(false)
-      return
     }
-
-    // Redirect to onboarding or dashboard
-    router.push('/dashboard?welcome=true')
-    router.refresh()
   }
 
   const handleOAuthSignup = async (provider: 'google' | 'linkedin_oidc') => {
