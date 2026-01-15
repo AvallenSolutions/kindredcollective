@@ -2,6 +2,18 @@
 -- Run this in Supabase SQL Editor AFTER creating the schema
 -- This implements role-based access control for Admin, Brand (User), and Supplier roles
 
+-- Helper function to get current user ID from JWT (avoiding auth schema)
+CREATE OR REPLACE FUNCTION public.current_user_id()
+RETURNS TEXT
+LANGUAGE SQL
+STABLE
+AS $$
+  SELECT COALESCE(
+    current_setting('request.jwt.claim.sub', true),
+    (current_setting('request.jwt.claims', true)::json->>'sub')
+  )
+$$;
+
 -- =============================================
 -- USER TABLE POLICIES
 -- =============================================
@@ -16,14 +28,14 @@ CREATE POLICY "Admin full access to users" ON "User"
   USING (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   );
@@ -33,21 +45,21 @@ DROP POLICY IF EXISTS "Users can view own record" ON "User";
 CREATE POLICY "Users can view own record" ON "User"
   FOR SELECT
   TO authenticated
-  USING (id = auth.uid()::text);
+  USING (id = public.current_user_id());
 
 DROP POLICY IF EXISTS "Users can update own record" ON "User";
 CREATE POLICY "Users can update own record" ON "User"
   FOR UPDATE
   TO authenticated
-  USING (id = auth.uid()::text)
-  WITH CHECK (id = auth.uid()::text);
+  USING (id = public.current_user_id())
+  WITH CHECK (id = public.current_user_id());
 
 -- Allow users to insert their own record (for signup)
 DROP POLICY IF EXISTS "Users can insert own record" ON "User";
 CREATE POLICY "Users can insert own record" ON "User"
   FOR INSERT
   TO authenticated
-  WITH CHECK (id = auth.uid()::text);
+  WITH CHECK (id = public.current_user_id());
 
 -- =============================================
 -- SUPPLIER TABLE POLICIES
@@ -70,14 +82,14 @@ CREATE POLICY "Admin full access to suppliers" ON "Supplier"
   USING (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   );
@@ -87,25 +99,25 @@ DROP POLICY IF EXISTS "Suppliers can view own profile" ON "Supplier";
 CREATE POLICY "Suppliers can view own profile" ON "Supplier"
   FOR SELECT
   TO authenticated
-  USING ("userId" = auth.uid()::text);
+  USING ("userId" = public.current_user_id());
 
 DROP POLICY IF EXISTS "Suppliers can update own profile" ON "Supplier";
 CREATE POLICY "Suppliers can update own profile" ON "Supplier"
   FOR UPDATE
   TO authenticated
   USING (
-    "userId" = auth.uid()::text AND
+    "userId" = public.current_user_id() AND
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'SUPPLIER'
     )
   )
   WITH CHECK (
-    "userId" = auth.uid()::text AND
+    "userId" = public.current_user_id() AND
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'SUPPLIER'
     )
   );
@@ -115,10 +127,10 @@ CREATE POLICY "Suppliers can insert own profile" ON "Supplier"
   FOR INSERT
   TO authenticated
   WITH CHECK (
-    "userId" = auth.uid()::text AND
+    "userId" = public.current_user_id() AND
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'SUPPLIER'
     )
   );
@@ -128,10 +140,10 @@ CREATE POLICY "Suppliers can delete own profile" ON "Supplier"
   FOR DELETE
   TO authenticated
   USING (
-    "userId" = auth.uid()::text AND
+    "userId" = public.current_user_id() AND
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'SUPPLIER'
     )
   );
@@ -157,14 +169,14 @@ CREATE POLICY "Admin full access to brands" ON "Brand"
   USING (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   );
@@ -174,25 +186,25 @@ DROP POLICY IF EXISTS "Brands can view own profile" ON "Brand";
 CREATE POLICY "Brands can view own profile" ON "Brand"
   FOR SELECT
   TO authenticated
-  USING ("userId" = auth.uid()::text);
+  USING ("userId" = public.current_user_id());
 
 DROP POLICY IF EXISTS "Brands can update own profile" ON "Brand";
 CREATE POLICY "Brands can update own profile" ON "Brand"
   FOR UPDATE
   TO authenticated
   USING (
-    "userId" = auth.uid()::text AND
+    "userId" = public.current_user_id() AND
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'BRAND'
     )
   )
   WITH CHECK (
-    "userId" = auth.uid()::text AND
+    "userId" = public.current_user_id() AND
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'BRAND'
     )
   );
@@ -202,10 +214,10 @@ CREATE POLICY "Brands can insert own profile" ON "Brand"
   FOR INSERT
   TO authenticated
   WITH CHECK (
-    "userId" = auth.uid()::text AND
+    "userId" = public.current_user_id() AND
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'BRAND'
     )
   );
@@ -215,10 +227,10 @@ CREATE POLICY "Brands can delete own profile" ON "Brand"
   FOR DELETE
   TO authenticated
   USING (
-    "userId" = auth.uid()::text AND
+    "userId" = public.current_user_id() AND
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'BRAND'
     )
   );
@@ -244,14 +256,14 @@ CREATE POLICY "Admin full access to offers" ON "Offer"
   USING (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   );
@@ -265,7 +277,7 @@ CREATE POLICY "Suppliers can view own offers" ON "Offer"
     EXISTS (
       SELECT 1 FROM "Supplier" s
       WHERE s.id = "Offer"."supplierId"
-      AND s."userId" = auth.uid()::text
+      AND s."userId" = public.current_user_id()
     )
   );
 
@@ -276,13 +288,13 @@ CREATE POLICY "Suppliers can insert offers" ON "Offer"
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'SUPPLIER'
     ) AND
     EXISTS (
       SELECT 1 FROM "Supplier" s
       WHERE s.id = "supplierId"
-      AND s."userId" = auth.uid()::text
+      AND s."userId" = public.current_user_id()
     )
   );
 
@@ -293,25 +305,25 @@ CREATE POLICY "Suppliers can update own offers" ON "Offer"
   USING (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'SUPPLIER'
     ) AND
     EXISTS (
       SELECT 1 FROM "Supplier" s
       WHERE s.id = "Offer"."supplierId"
-      AND s."userId" = auth.uid()::text
+      AND s."userId" = public.current_user_id()
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'SUPPLIER'
     ) AND
     EXISTS (
       SELECT 1 FROM "Supplier" s
       WHERE s.id = "Offer"."supplierId"
-      AND s."userId" = auth.uid()::text
+      AND s."userId" = public.current_user_id()
     )
   );
 
@@ -322,13 +334,13 @@ CREATE POLICY "Suppliers can delete own offers" ON "Offer"
   USING (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'SUPPLIER'
     ) AND
     EXISTS (
       SELECT 1 FROM "Supplier" s
       WHERE s.id = "Offer"."supplierId"
-      AND s."userId" = auth.uid()::text
+      AND s."userId" = public.current_user_id()
     )
   );
 
@@ -353,14 +365,14 @@ CREATE POLICY "Admin full access to events" ON "Event"
   USING (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   );
@@ -370,17 +382,17 @@ DROP POLICY IF EXISTS "Users can view own events" ON "Event";
 CREATE POLICY "Users can view own events" ON "Event"
   FOR SELECT
   TO authenticated
-  USING ("createdById" = auth.uid()::text);
+  USING ("createdById" = public.current_user_id());
 
 DROP POLICY IF EXISTS "Users can insert events" ON "Event";
 CREATE POLICY "Users can insert events" ON "Event"
   FOR INSERT
   TO authenticated
   WITH CHECK (
-    "createdById" = auth.uid()::text AND
+    "createdById" = public.current_user_id() AND
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role IN ('BRAND', 'ADMIN')
     )
   );
@@ -389,14 +401,14 @@ DROP POLICY IF EXISTS "Users can update own events" ON "Event";
 CREATE POLICY "Users can update own events" ON "Event"
   FOR UPDATE
   TO authenticated
-  USING ("createdById" = auth.uid()::text)
-  WITH CHECK ("createdById" = auth.uid()::text);
+  USING ("createdById" = public.current_user_id())
+  WITH CHECK ("createdById" = public.current_user_id());
 
 DROP POLICY IF EXISTS "Users can delete own events" ON "Event";
 CREATE POLICY "Users can delete own events" ON "Event"
   FOR DELETE
   TO authenticated
-  USING ("createdById" = auth.uid()::text);
+  USING ("createdById" = public.current_user_id());
 
 -- =============================================
 -- MEMBER TABLE POLICIES
@@ -419,14 +431,14 @@ CREATE POLICY "Admin full access to members" ON "Member"
   USING (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   );
@@ -436,26 +448,26 @@ DROP POLICY IF EXISTS "Users can view own member profile" ON "Member";
 CREATE POLICY "Users can view own member profile" ON "Member"
   FOR SELECT
   TO authenticated
-  USING ("userId" = auth.uid()::text);
+  USING ("userId" = public.current_user_id());
 
 DROP POLICY IF EXISTS "Users can update own member profile" ON "Member";
 CREATE POLICY "Users can update own member profile" ON "Member"
   FOR UPDATE
   TO authenticated
-  USING ("userId" = auth.uid()::text)
-  WITH CHECK ("userId" = auth.uid()::text);
+  USING ("userId" = public.current_user_id())
+  WITH CHECK ("userId" = public.current_user_id());
 
 DROP POLICY IF EXISTS "Users can insert own member profile" ON "Member";
 CREATE POLICY "Users can insert own member profile" ON "Member"
   FOR INSERT
   TO authenticated
-  WITH CHECK ("userId" = auth.uid()::text);
+  WITH CHECK ("userId" = public.current_user_id());
 
 DROP POLICY IF EXISTS "Users can delete own member profile" ON "Member";
 CREATE POLICY "Users can delete own member profile" ON "Member"
   FOR DELETE
   TO authenticated
-  USING ("userId" = auth.uid()::text);
+  USING ("userId" = public.current_user_id());
 
 -- =============================================
 -- SUPPLIER REVIEW POLICIES
@@ -478,14 +490,14 @@ CREATE POLICY "Admin full access to reviews" ON "SupplierReview"
   USING (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   );
@@ -495,20 +507,20 @@ DROP POLICY IF EXISTS "Users can insert reviews" ON "SupplierReview";
 CREATE POLICY "Users can insert reviews" ON "SupplierReview"
   FOR INSERT
   TO authenticated
-  WITH CHECK ("userId" = auth.uid()::text);
+  WITH CHECK ("userId" = public.current_user_id());
 
 DROP POLICY IF EXISTS "Users can update own reviews" ON "SupplierReview";
 CREATE POLICY "Users can update own reviews" ON "SupplierReview"
   FOR UPDATE
   TO authenticated
-  USING ("userId" = auth.uid()::text)
-  WITH CHECK ("userId" = auth.uid()::text);
+  USING ("userId" = public.current_user_id())
+  WITH CHECK ("userId" = public.current_user_id());
 
 DROP POLICY IF EXISTS "Users can delete own reviews" ON "SupplierReview";
 CREATE POLICY "Users can delete own reviews" ON "SupplierReview"
   FOR DELETE
   TO authenticated
-  USING ("userId" = auth.uid()::text);
+  USING ("userId" = public.current_user_id());
 
 -- =============================================
 -- EVENT RSVP POLICIES
@@ -524,14 +536,14 @@ CREATE POLICY "Admin full access to rsvps" ON "EventRsvp"
   USING (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   );
@@ -541,26 +553,26 @@ DROP POLICY IF EXISTS "Users can view own rsvps" ON "EventRsvp";
 CREATE POLICY "Users can view own rsvps" ON "EventRsvp"
   FOR SELECT
   TO authenticated
-  USING ("userId" = auth.uid()::text);
+  USING ("userId" = public.current_user_id());
 
 DROP POLICY IF EXISTS "Users can insert rsvps" ON "EventRsvp";
 CREATE POLICY "Users can insert rsvps" ON "EventRsvp"
   FOR INSERT
   TO authenticated
-  WITH CHECK ("userId" = auth.uid()::text);
+  WITH CHECK ("userId" = public.current_user_id());
 
 DROP POLICY IF EXISTS "Users can update own rsvps" ON "EventRsvp";
 CREATE POLICY "Users can update own rsvps" ON "EventRsvp"
   FOR UPDATE
   TO authenticated
-  USING ("userId" = auth.uid()::text)
-  WITH CHECK ("userId" = auth.uid()::text);
+  USING ("userId" = public.current_user_id())
+  WITH CHECK ("userId" = public.current_user_id());
 
 DROP POLICY IF EXISTS "Users can delete own rsvps" ON "EventRsvp";
 CREATE POLICY "Users can delete own rsvps" ON "EventRsvp"
   FOR DELETE
   TO authenticated
-  USING ("userId" = auth.uid()::text);
+  USING ("userId" = public.current_user_id());
 
 -- Event creators can view RSVPs for their events
 DROP POLICY IF EXISTS "Event creators can view rsvps" ON "EventRsvp";
@@ -571,7 +583,7 @@ CREATE POLICY "Event creators can view rsvps" ON "EventRsvp"
     EXISTS (
       SELECT 1 FROM "Event" e
       WHERE e.id = "EventRsvp"."eventId"
-      AND e."createdById" = auth.uid()::text
+      AND e."createdById" = public.current_user_id()
     )
   );
 
@@ -585,8 +597,8 @@ DROP POLICY IF EXISTS "Users manage own saved suppliers" ON "SavedSupplier";
 CREATE POLICY "Users manage own saved suppliers" ON "SavedSupplier"
   FOR ALL
   TO authenticated
-  USING ("userId" = auth.uid()::text)
-  WITH CHECK ("userId" = auth.uid()::text);
+  USING ("userId" = public.current_user_id())
+  WITH CHECK ("userId" = public.current_user_id());
 
 ALTER TABLE "SavedBrand" ENABLE ROW LEVEL SECURITY;
 
@@ -594,8 +606,8 @@ DROP POLICY IF EXISTS "Users manage own saved brands" ON "SavedBrand";
 CREATE POLICY "Users manage own saved brands" ON "SavedBrand"
   FOR ALL
   TO authenticated
-  USING ("userId" = auth.uid()::text)
-  WITH CHECK ("userId" = auth.uid()::text);
+  USING ("userId" = public.current_user_id())
+  WITH CHECK ("userId" = public.current_user_id());
 
 -- =============================================
 -- OFFER CLAIM POLICIES
@@ -611,14 +623,14 @@ CREATE POLICY "Admin full access to claims" ON "OfferClaim"
   USING (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   );
@@ -628,8 +640,8 @@ DROP POLICY IF EXISTS "Users manage own claims" ON "OfferClaim";
 CREATE POLICY "Users manage own claims" ON "OfferClaim"
   FOR ALL
   TO authenticated
-  USING ("userId" = auth.uid()::text)
-  WITH CHECK ("userId" = auth.uid()::text);
+  USING ("userId" = public.current_user_id())
+  WITH CHECK ("userId" = public.current_user_id());
 
 -- Suppliers can view claims on their offers
 DROP POLICY IF EXISTS "Suppliers view claims on own offers" ON "OfferClaim";
@@ -641,7 +653,7 @@ CREATE POLICY "Suppliers view claims on own offers" ON "OfferClaim"
       SELECT 1 FROM "Offer" o
       JOIN "Supplier" s ON s.id = o."supplierId"
       WHERE o.id = "OfferClaim"."offerId"
-      AND s."userId" = auth.uid()::text
+      AND s."userId" = public.current_user_id()
     )
   );
 
@@ -659,14 +671,14 @@ CREATE POLICY "Admin full access to supplier claims" ON "SupplierClaim"
   USING (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   );
@@ -676,8 +688,8 @@ DROP POLICY IF EXISTS "Users manage own supplier claims" ON "SupplierClaim";
 CREATE POLICY "Users manage own supplier claims" ON "SupplierClaim"
   FOR ALL
   TO authenticated
-  USING ("userId" = auth.uid()::text)
-  WITH CHECK ("userId" = auth.uid()::text);
+  USING ("userId" = public.current_user_id())
+  WITH CHECK ("userId" = public.current_user_id());
 
 -- =============================================
 -- IMAGE TABLE POLICIES
@@ -707,14 +719,14 @@ CREATE POLICY "Brands manage own images" ON "BrandImage"
     EXISTS (
       SELECT 1 FROM "Brand" b
       WHERE b.id = "BrandImage"."brandId"
-      AND b."userId" = auth.uid()::text
+      AND b."userId" = public.current_user_id()
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "Brand" b
       WHERE b.id = "BrandImage"."brandId"
-      AND b."userId" = auth.uid()::text
+      AND b."userId" = public.current_user_id()
     )
   );
 
@@ -742,14 +754,14 @@ CREATE POLICY "Suppliers manage own images" ON "SupplierImage"
     EXISTS (
       SELECT 1 FROM "Supplier" s
       WHERE s.id = "SupplierImage"."supplierId"
-      AND s."userId" = auth.uid()::text
+      AND s."userId" = public.current_user_id()
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "Supplier" s
       WHERE s.id = "SupplierImage"."supplierId"
-      AND s."userId" = auth.uid()::text
+      AND s."userId" = public.current_user_id()
     )
   );
 
@@ -770,14 +782,14 @@ CREATE POLICY "Admin manage news sources" ON "NewsSource"
   USING (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   );
@@ -792,14 +804,14 @@ CREATE POLICY "Admin manage news articles" ON "NewsArticle"
   USING (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   )
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   );
@@ -820,7 +832,7 @@ CREATE POLICY "Admin read search queries" ON "SearchQuery"
   USING (
     EXISTS (
       SELECT 1 FROM "User" u
-      WHERE u.id = auth.uid()::text
+      WHERE u.id = public.current_user_id()
       AND u.role = 'ADMIN'
     )
   );
