@@ -68,7 +68,7 @@ export default function DashboardPage() {
     enquiries: 23,
   }
 
-  const stats = userType === 'brand' ? brandStats : supplierStats
+  // Use brandStats/supplierStats directly in conditionals for type safety
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -149,7 +149,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-display font-bold">
-                        {stats.savedSuppliers}
+                        {brandStats.savedSuppliers}
                       </p>
                       <p className="text-xs text-gray-500">Saved Suppliers</p>
                     </div>
@@ -164,7 +164,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-display font-bold">
-                        {stats.eventsAttending}
+                        {brandStats.eventsAttending}
                       </p>
                       <p className="text-xs text-gray-500">Events Attending</p>
                     </div>
@@ -179,7 +179,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-display font-bold">
-                        {stats.offersClaimed}
+                        {brandStats.offersClaimed}
                       </p>
                       <p className="text-xs text-gray-500">Offers Claimed</p>
                     </div>
@@ -194,7 +194,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-display font-bold">
-                        {stats.profileViews}
+                        {brandStats.profileViews}
                       </p>
                       <p className="text-xs text-gray-500">Profile Views</p>
                     </div>
@@ -212,7 +212,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-display font-bold">
-                        {stats.profileViews.toLocaleString()}
+                        {supplierStats.profileViews.toLocaleString()}
                       </p>
                       <p className="text-xs text-gray-500">Profile Views</p>
                     </div>
@@ -227,7 +227,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-display font-bold">
-                        {stats.activeOffers}
+                        {supplierStats.activeOffers}
                       </p>
                       <p className="text-xs text-gray-500">Active Offers</p>
                     </div>
@@ -242,7 +242,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-display font-bold">
-                        {stats.offerClaims}
+                        {supplierStats.offerClaims}
                       </p>
                       <p className="text-xs text-gray-500">Offer Claims</p>
                     </div>
@@ -257,7 +257,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-2xl font-display font-bold">
-                        {stats.enquiries}
+                        {supplierStats.enquiries}
                       </p>
                       <p className="text-xs text-gray-500">Enquiries</p>
                     </div>

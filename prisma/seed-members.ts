@@ -1,4 +1,12 @@
-export const members = [
+export const members: Array<{
+  firstName: string
+  lastName: string
+  jobTitle: string
+  company: string
+  companyType: 'BRAND' | 'SUPPLIER'
+  bio: string
+  location: string
+}> = [
   {
     firstName: 'Sarah',
     lastName: 'Mitchell',

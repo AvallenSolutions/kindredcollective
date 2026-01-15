@@ -112,9 +112,9 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
                 <Mail className="w-4 h-4 mr-2" />
                 Contact Supplier
               </Button>
-              {supplier.websiteUrl && (
+              {(supplier as any).websiteUrl && (
                 <a
-                  href={supplier.websiteUrl}
+                  href={(supplier as any).websiteUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center justify-center text-sm hover:underline"
@@ -208,7 +208,7 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
                   </div>
 
                   {/* Lead Time */}
-                  {supplier.leadTimeDays && (
+                  {(supplier as any).leadTimeDays && (
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 bg-lime/20 border-2 border-lime flex items-center justify-center flex-shrink-0">
                         <Clock className="w-5 h-5 text-lime-700" />
@@ -217,7 +217,7 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
                         <p className="font-display text-sm font-bold uppercase tracking-wide text-gray-500">
                           Lead Time
                         </p>
-                        <p className="font-bold">{supplier.leadTimeDays} days</p>
+                        <p className="font-bold">{(supplier as any).leadTimeDays} days</p>
                       </div>
                     </div>
                   )}
@@ -251,27 +251,27 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
                     <Mail className="w-4 h-4 mr-2" />
                     Send Message
                   </Button>
-                  {supplier.contactEmail && (
+                  {(supplier as any).contactEmail && (
                     <a
-                      href={`mailto:${supplier.contactEmail}`}
+                      href={`mailto:${(supplier as any).contactEmail}`}
                       className="flex items-center gap-2 text-sm text-gray-600 hover:text-cyan"
                     >
                       <Mail className="w-4 h-4" />
-                      {supplier.contactEmail}
+                      {(supplier as any).contactEmail}
                     </a>
                   )}
-                  {supplier.contactPhone && (
+                  {(supplier as any).contactPhone && (
                     <a
-                      href={`tel:${supplier.contactPhone}`}
+                      href={`tel:${(supplier as any).contactPhone}`}
                       className="flex items-center gap-2 text-sm text-gray-600 hover:text-cyan"
                     >
                       <Phone className="w-4 h-4" />
-                      {supplier.contactPhone}
+                      {(supplier as any).contactPhone}
                     </a>
                   )}
-                  {supplier.linkedinUrl && (
+                  {(supplier as any).linkedinUrl && (
                     <a
-                      href={supplier.linkedinUrl}
+                      href={(supplier as any).linkedinUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 text-sm text-gray-600 hover:text-cyan"

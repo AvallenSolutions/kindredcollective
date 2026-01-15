@@ -13,11 +13,11 @@ interface OfferCardProps {
     title: string
     description: string | null
     type: OfferType
-    discountValue: number | null
-    code: string | null
+    discountValue?: number | null
+    code?: string | null
     supplierName: string
     supplierSlug: string
-    endDate: Date | null
+    endDate?: Date | null
     forBrandsOnly: boolean
   }
 }

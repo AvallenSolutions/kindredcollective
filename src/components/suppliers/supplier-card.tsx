@@ -17,9 +17,9 @@ interface SupplierCardProps {
     services: string[]
     location: string | null
     country: string | null
-    certifications: Certification[]
+    certifications?: Certification[]
     isVerified: boolean
-    moqMin: number | null
+    moqMin?: number | null
   }
 }
 
@@ -128,7 +128,7 @@ export function SupplierCard({ supplier }: SupplierCardProps) {
             </div>
 
             {/* Certifications */}
-            {supplier.certifications.length > 0 && (
+            {supplier.certifications && supplier.certifications.length > 0 && (
               <div className="flex gap-1 mt-3">
                 {supplier.certifications.map((cert) => (
                   <Badge key={cert} variant="lime" className="text-[10px]">

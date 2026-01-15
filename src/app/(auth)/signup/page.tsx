@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Building2, Wine, ArrowRight, Check } from 'lucide-react'
+import { Building2, Wine, ArrowRight, Check, Loader2 } from 'lucide-react'
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Badge } from '@/components/ui'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
@@ -37,7 +37,7 @@ const roleInfo = {
   },
 }
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialRole = searchParams.get('role') as UserRole | null
@@ -318,5 +318,24 @@ export default function SignupPage() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+function SignupLoading() {
+  return (
+    <div className="w-full max-w-md px-4 flex items-center justify-center">
+      <div className="text-center">
+        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-cyan" />
+        <p className="text-gray-600">Loading...</p>
+      </div>
+    </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<SignupLoading />}>
+      <SignupForm />
+    </Suspense>
   )
 }
