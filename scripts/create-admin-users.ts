@@ -1,121 +1,63 @@
 import { createClient } from '@supabase/supabase-js'
 
-// This script creates admin users for testing
 // Run with: npx tsx scripts/create-admin-users.ts
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+if (!supabaseUrl || !supabaseServiceKey || supabaseServiceKey === 'paste-your-service-role-key-here') {
+  console.error('\n❌ Missing SUPABASE_SERVICE_ROLE_KEY in .env.local')
+  console.error('   Get it from: Supabase Dashboard → Settings → API → service_role\n')
   process.exit(1)
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
+  auth: { autoRefreshToken: false, persistSession: false },
 })
 
 const adminUsers = [
-  {
-    email: 'jack@theduppyshare.com',
-    password: 'duppyshare123',
-    firstName: 'Jack',
-    lastName: 'Admin',
-  },
-  {
-    email: 'tim@avallen.solutions',
-    password: 'RonZacapa23',
-    firstName: 'Tim',
-    lastName: 'Admin',
-  },
+  { email: 'jack@theduppyshare.com', password: 'duppyshare123', name: 'Jack' },
+  { email: 'tim@avallen.solutions', password: 'RonZacapa23', name: 'Tim' },
 ]
 
-async function createAdminUsers() {
-  for (const user of adminUsers) {
-    console.log(`Creating admin user: ${user.email}...`)
+async function main() {
+  console.log('\n🚀 Creating admin users...\n')
 
-    // Create auth user
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+  for (const user of adminUsers) {
+    console.log(`Processing ${user.email}...`)
+
+    // Delete existing auth user if exists
+    const { data: existingUsers } = await supabase.auth.admin.listUsers()
+    const existing = existingUsers?.users?.find(u => u.email === user.email)
+
+    if (existing) {
+      console.log(`  Deleting existing auth user...`)
+
+      // Delete database records first
+      await supabase.from('Member').delete().eq('userId', existing.id)
+      await supabase.from('User').delete().eq('id', existing.id)
+
+      // Delete auth user
+      await supabase.auth.admin.deleteUser(existing.id)
+    }
+
+    // Create fresh auth user
+    const { data, error } = await supabase.auth.admin.createUser({
       email: user.email,
       password: user.password,
       email_confirm: true,
     })
 
-    if (authError) {
-      if (authError.message.includes('already been registered')) {
-        console.log(`  User ${user.email} already exists in auth, checking database...`)
-
-        // Get the existing user
-        const { data: existingUsers } = await supabase.auth.admin.listUsers()
-        const existingUser = existingUsers?.users?.find(u => u.email === user.email)
-
-        if (existingUser) {
-          // Check if User record exists
-          const { data: dbUser } = await supabase
-            .from('User')
-            .select('id, role')
-            .eq('id', existingUser.id)
-            .single()
-
-          if (dbUser) {
-            if (dbUser.role !== 'ADMIN') {
-              // Update to admin
-              await supabase
-                .from('User')
-                .update({ role: 'ADMIN' })
-                .eq('id', existingUser.id)
-              console.log(`  Updated ${user.email} to ADMIN role`)
-            } else {
-              console.log(`  ${user.email} is already an ADMIN`)
-            }
-          } else {
-            // Create User record
-            await supabase.from('User').insert({
-              id: existingUser.id,
-              email: user.email,
-              role: 'ADMIN',
-              emailVerified: new Date().toISOString(),
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            })
-            console.log(`  Created User record for ${user.email}`)
-          }
-
-          // Check/create Member profile
-          const { data: member } = await supabase
-            .from('Member')
-            .select('id')
-            .eq('userId', existingUser.id)
-            .single()
-
-          if (!member) {
-            await supabase.from('Member').insert({
-              id: crypto.randomUUID(),
-              userId: existingUser.id,
-              firstName: user.firstName,
-              lastName: user.lastName,
-              isPublic: false,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            })
-            console.log(`  Created Member profile for ${user.email}`)
-          }
-        }
-        continue
-      }
-      console.error(`  Error creating auth user: ${authError.message}`)
+    if (error) {
+      console.error(`  ❌ Failed: ${error.message}`)
       continue
     }
 
-    const userId = authData.user.id
-    console.log(`  Created auth user with ID: ${userId}`)
+    console.log(`  ✓ Auth user created: ${data.user.id}`)
 
-    // Create User record in database
+    // Create User record
     const { error: userError } = await supabase.from('User').insert({
-      id: userId,
+      id: data.user.id,
       email: user.email,
       role: 'ADMIN',
       emailVerified: new Date().toISOString(),
@@ -124,32 +66,32 @@ async function createAdminUsers() {
     })
 
     if (userError) {
-      console.error(`  Error creating User record: ${userError.message}`)
+      console.error(`  ❌ User record failed: ${userError.message}`)
     } else {
-      console.log(`  Created User record with ADMIN role`)
+      console.log(`  ✓ User record created with ADMIN role`)
     }
 
     // Create Member profile
     const { error: memberError } = await supabase.from('Member').insert({
       id: crypto.randomUUID(),
-      userId: userId,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      userId: data.user.id,
+      firstName: user.name,
+      lastName: 'Admin',
       isPublic: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
 
     if (memberError) {
-      console.error(`  Error creating Member profile: ${memberError.message}`)
+      console.error(`  ❌ Member profile failed: ${memberError.message}`)
     } else {
-      console.log(`  Created Member profile`)
+      console.log(`  ✓ Member profile created`)
     }
 
-    console.log(`  ✓ Admin user ${user.email} created successfully!`)
+    console.log(`  ✅ ${user.email} ready!\n`)
   }
 
-  console.log('\nDone! Admin users created.')
+  console.log('Done! Try logging in now.\n')
 }
 
-createAdminUsers().catch(console.error)
+main().catch(console.error)
