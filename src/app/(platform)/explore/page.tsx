@@ -5,21 +5,46 @@ import { createClient } from '@/lib/supabase/server'
 import { SUPPLIER_CATEGORY_LABELS } from '@/types/database'
 import type { SupplierCategory } from '@prisma/client'
 
+// Fallback suppliers data when Supabase is not available
+const fallbackSuppliers = [
+  { id: '1', companyName: 'SAVERGLASS', slug: 'saverglass', tagline: 'Manufacturer and decorator of high-quality glass bottles', description: 'World-leading manufacturer of premium glass bottles for spirits, wine, and beverages.', category: 'PACKAGING' as SupplierCategory, services: ['Glass Bottles', 'Bespoke Design', 'Premium Packaging'], location: 'France', country: 'France', logoUrl: 'https://kindredcollective.co.uk/cdn/shop/files/SaverGlass.png', isVerified: true, isPublic: true },
+  { id: '2', companyName: 'London City Bond Ltd', slug: 'london-city-bond-ltd', tagline: 'Bonded warehouse storage and distribution across the UK', description: 'Comprehensive bonded warehouse storage and distribution services for the drinks industry.', category: 'LOGISTICS' as SupplierCategory, services: ['Bonded Warehouse', 'D2C Fulfillment', 'Trade Distribution'], location: 'London', country: 'United Kingdom', logoUrl: 'https://kindredcollective.co.uk/cdn/shop/files/Picture2.png', isVerified: true, isPublic: true },
+  { id: '3', companyName: 'Aitch Creates', slug: 'aitch-creates', tagline: 'Strategic branding and design for ambitious drinks brands', description: 'Design agency specializing in branding for beverage companies.', category: 'DESIGN' as SupplierCategory, services: ['Strategic Branding', 'Pack Design', 'Brand Identity'], location: 'United Kingdom', country: 'United Kingdom', logoUrl: 'https://kindredcollective.co.uk/cdn/shop/files/OkjqV1ve.png', isVerified: true, isPublic: true },
+  { id: '4', companyName: 'Graceful Monkey', slug: 'graceful-monkey', tagline: 'Studio creating Digital Content & Experiences', description: 'Creative studio specializing in digital content creation.', category: 'PHOTOGRAPHY' as SupplierCategory, services: ['Video Production', 'Photography', 'Digital Experiences'], location: 'London', country: 'United Kingdom', logoUrl: 'https://kindredcollective.co.uk/cdn/shop/files/GracefulMonkey.jpg', isVerified: true, isPublic: true },
+  { id: '5', companyName: 'Buddy Creative', slug: 'buddy-creative', tagline: 'Brand and packaging design agency specialising in food & drink', description: 'Award-winning brand and packaging design agency.', category: 'DESIGN' as SupplierCategory, services: ['Brand Identity', 'Packaging Design', 'Label Design'], location: 'Manchester', country: 'United Kingdom', logoUrl: 'https://kindredcollective.co.uk/cdn/shop/files/BuddyCreative.jpg', isVerified: true, isPublic: true },
+  { id: '6', companyName: 'BB Comms', slug: 'bb-comms', tagline: 'Spirits specialist PR, events and marketing consultancy', description: 'Award-winning PR, events and marketing consultancy.', category: 'PR' as SupplierCategory, services: ['Public Relations', 'Events', 'Marketing Strategy'], location: 'London', country: 'United Kingdom', logoUrl: 'https://kindredcollective.co.uk/cdn/shop/files/BBComms.png', isVerified: true, isPublic: true },
+  { id: '7', companyName: 'AM Distilling LTD', slug: 'am-distilling', tagline: 'Contract Bottlers/Contract Blenders/Bulk Spirits', description: 'Full-service contract distilling, blending, and bottling facility.', category: 'CO_PACKING' as SupplierCategory, services: ['Contract Distilling', 'Contract Bottling', 'Blending'], location: 'Scotland', country: 'United Kingdom', logoUrl: 'https://kindredcollective.co.uk/cdn/shop/files/BlackBridgeDistillery.png', isVerified: true, isPublic: true },
+  { id: '8', companyName: 'Berlin Packaging', slug: 'berlin-packaging', tagline: 'Global packaging in glass, plastic, metal', description: 'Global packaging supplier offering bottles, jars, and containers.', category: 'PACKAGING' as SupplierCategory, services: ['Glass Packaging', 'Plastic Containers', 'Metal Packaging'], location: 'Europe', country: 'Germany', logoUrl: 'https://kindredcollective.co.uk/cdn/shop/files/brunierben_logo.png', isVerified: true, isPublic: true },
+  { id: '9', companyName: 'Scale Drinks', slug: 'scale-drinks', tagline: 'Export agency for global expansion', description: 'Export agency helping drinks brands expand globally.', category: 'DISTRIBUTION' as SupplierCategory, services: ['Export Strategy', 'Distributor Network', 'Market Entry'], location: 'London', country: 'United Kingdom', logoUrl: 'https://kindredcollective.co.uk/cdn/shop/files/Picture16.png', isVerified: true, isPublic: true },
+  { id: '10', companyName: 'Addition', slug: 'addition', tagline: 'Accounting and CFO platform for FMCG/e-commerce', description: 'Modern accounting and CFO services platform.', category: 'FINANCE' as SupplierCategory, services: ['Accounting', 'CFO Services', 'Financial Reporting'], location: 'London', country: 'United Kingdom', logoUrl: 'https://kindredcollective.co.uk/cdn/shop/files/Picture3_5ed61f04-3cfa-41cc-a016-a1f21d4857e2.png', isVerified: true, isPublic: true },
+  { id: '11', companyName: 'Verallia', slug: 'verallia', tagline: 'UK-made glass bottles, bespoke and stock', description: 'Major glass manufacturer with UK production facilities.', category: 'PACKAGING' as SupplierCategory, services: ['Glass Bottles', 'Bespoke Manufacturing', 'Stock Solutions'], location: 'United Kingdom', country: 'United Kingdom', logoUrl: 'https://kindredcollective.co.uk/cdn/shop/files/verallia.png', isVerified: true, isPublic: true },
+  { id: '12', companyName: 'Tortuga', slug: 'tortuga', tagline: 'UK distribution and back-office logistics', description: 'Full-service distribution and logistics partner.', category: 'DISTRIBUTION' as SupplierCategory, services: ['UK Distribution', 'Logistics', 'Order Fulfillment'], location: 'United Kingdom', country: 'United Kingdom', logoUrl: 'https://kindredcollective.co.uk/cdn/shop/files/220b10b9-8c41-430f-843b-30da6f01fd93_b78dffd6-412e-4f58-a8db-e063b92e65a8.png', isVerified: true, isPublic: true },
+]
+
 async function getSuppliers() {
-  const supabase = await createClient()
+  try {
+    const supabase = await createClient()
 
-  const { data: suppliers, error } = await supabase
-    .from('Supplier')
-    .select('*')
-    .eq('isPublic', true)
-    .order('createdAt', { ascending: false })
+    const { data: suppliers, error } = await supabase
+      .from('Supplier')
+      .select('*')
+      .eq('isPublic', true)
+      .order('createdAt', { ascending: false })
 
-  if (error) {
-    console.error('Error fetching suppliers:', error)
-    return []
+    if (error) {
+      console.error('Error fetching suppliers:', error)
+      return fallbackSuppliers
+    }
+
+    if (!suppliers || suppliers.length === 0) {
+      return fallbackSuppliers
+    }
+
+    return suppliers
+  } catch (err) {
+    console.error('Failed to connect to Supabase:', err)
+    return fallbackSuppliers
   }
-
-  return suppliers || []
 }
 
 export default async function ExplorePage() {
