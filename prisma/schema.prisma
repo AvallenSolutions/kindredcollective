@@ -39,6 +39,12 @@ enum SupplierCategory {
   LEGAL
   FINANCE
   DISTRIBUTION
+  RECRUITMENT
+  SOFTWARE
+  SUSTAINABILITY
+  PR
+  PHOTOGRAPHY
+  WEB_DEVELOPMENT
   OTHER
 }
 
@@ -92,6 +98,13 @@ enum RsvpStatus {
   NOT_GOING
 }
 
+enum ClaimStatus {
+  UNCLAIMED
+  PENDING
+  CLAIMED
+  REJECTED
+}
+
 // ============= USERS & AUTH =============
 
 model User {
@@ -103,13 +116,15 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // Relations
-  brand          Brand?
-  supplier       Supplier?
-  member         Member?
-  eventRsvps     EventRsvp[]
-  savedSuppliers SavedSupplier[]
-  savedBrands    SavedBrand[]
-  offerClaims    OfferClaim[]
+  brand           Brand?
+  supplier        Supplier?
+  member          Member?
+  eventRsvps      EventRsvp[]
+  savedSuppliers  SavedSupplier[]
+  savedBrands     SavedBrand[]
+  offerClaims     OfferClaim[]
+  supplierClaims  SupplierClaim[]
+  reviews         SupplierReview[]
 
   @@index([email])
   @@index([role])
@@ -162,9 +177,10 @@ model Brand {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   images  BrandImage[]
   savedBy SavedBrand[]
+  reviews SupplierReview[]
 
   @@index([slug])
   @@index([category])
@@ -186,42 +202,50 @@ model BrandImage {
 // ============= SUPPLIERS =============
 
 model Supplier {
-  id             String           @id @default(cuid())
-  userId         String           @unique
-  companyName    String
-  slug           String           @unique
-  tagline        String?
-  description    String?          @db.Text
-  logoUrl        String?
-  heroImageUrl   String?
-  websiteUrl     String?
-  linkedinUrl    String?
-  category       SupplierCategory
-  subcategories  String[]
-  services       String[]
-  certifications Certification[]
-  moqMin         Int?
-  moqMax         Int?
-  leadTimeDays   Int?
-  location       String?
-  country        String?
-  serviceRegions String[]
-  contactEmail   String?
-  contactPhone   String?
-  isVerified     Boolean          @default(false)
-  isPublic       Boolean          @default(true)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  id              String           @id @default(cuid())
+  userId          String?          @unique  // Nullable for unclaimed profiles
+  companyName     String
+  slug            String           @unique
+  tagline         String?
+  description     String?          @db.Text
+  logoUrl         String?
+  heroImageUrl    String?
+  websiteUrl      String?
+  linkedinUrl     String?
+  instagramUrl    String?
+  portfolioUrl    String?
+  category        SupplierCategory
+  subcategories   String[]
+  services        String[]
+  certifications  Certification[]
+  moqMin          Int?
+  moqMax          Int?
+  leadTimeDays    Int?
+  location        String?
+  country         String?
+  serviceRegions  String[]
+  contactName     String?
+  contactEmail    String?
+  contactPhone    String?
+  isVerified      Boolean          @default(false)
+  isPublic        Boolean          @default(true)
+  claimStatus     ClaimStatus      @default(UNCLAIMED)
+  viewCount       Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  offers         Offer[]
-  savedBy        SavedSupplier[]
+  user            User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  offers          Offer[]
+  savedBy         SavedSupplier[]
   portfolioImages SupplierImage[]
+  reviews         SupplierReview[]
+  claims          SupplierClaim[]
 
   @@index([slug])
   @@index([category])
   @@index([location])
   @@index([companyName])
+  @@index([claimStatus])
 }
 
 model SupplierImage {
@@ -233,6 +257,56 @@ model SupplierImage {
   createdAt  DateTime @default(now())
 
   supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+}
+
+// ============= SUPPLIER REVIEWS =============
+
+model SupplierReview {
+  id              String   @id @default(cuid())
+  supplierId      String
+  brandId         String?  // Optional - can be from non-registered reviewers
+  userId          String?  // The user who submitted the review
+  reviewerName    String
+  reviewerCompany String?
+  rating          Int      // 1-5 stars
+  title           String?
+  content         String   @db.Text
+  wouldRecommend  Boolean  @default(true)
+  serviceRating   Int?     // 1-5
+  valueRating     Int?     // 1-5
+  isVerified      Boolean  @default(false)
+  isPublic        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  brand    Brand?   @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([supplierId])
+  @@index([rating])
+}
+
+// ============= SUPPLIER CLAIMS =============
+
+model SupplierClaim {
+  id              String      @id @default(cuid())
+  supplierId      String
+  userId          String
+  status          ClaimStatus @default(PENDING)
+  companyEmail    String      // Email used to verify ownership
+  verificationCode String?
+  notes           String?     @db.Text
+  processedAt     DateTime?
+  processedBy     String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([supplierId, userId])
+  @@index([status])
 }
 
 // ============= OFFERS & DISCOUNTS =============

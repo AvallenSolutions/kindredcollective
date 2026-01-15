@@ -73,6 +73,12 @@ export const SUPPLIER_CATEGORY_LABELS: Record<SupplierCategory, string> = {
   LEGAL: 'Legal',
   FINANCE: 'Finance',
   DISTRIBUTION: 'Distribution',
+  RECRUITMENT: 'Recruitment',
+  SOFTWARE: 'Software & Tech',
+  SUSTAINABILITY: 'Sustainability',
+  PR: 'PR & Communications',
+  PHOTOGRAPHY: 'Photography & Video',
+  WEB_DEVELOPMENT: 'Web Development',
   OTHER: 'Other',
 }
 

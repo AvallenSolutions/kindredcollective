@@ -33,6 +33,12 @@ const categoryColors: Record<SupplierCategory, string> = {
   LEGAL: 'bg-gray-500',
   FINANCE: 'bg-green-500',
   DISTRIBUTION: 'bg-indigo-500',
+  RECRUITMENT: 'bg-amber-500',
+  SOFTWARE: 'bg-sky-500',
+  SUSTAINABILITY: 'bg-emerald-500',
+  PR: 'bg-rose-500',
+  PHOTOGRAPHY: 'bg-violet-500',
+  WEB_DEVELOPMENT: 'bg-fuchsia-500',
   OTHER: 'bg-gray-400',
 }
 
