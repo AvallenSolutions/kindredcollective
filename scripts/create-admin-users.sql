@@ -8,7 +8,7 @@
 
 -- Clean up any existing records for these users
 DELETE FROM "Member" WHERE "userId" IN (
-  SELECT id FROM auth.users WHERE email IN ('jack@theduppyshare.com', 'tim@avallen.solutions')
+  SELECT id::text FROM auth.users WHERE email IN ('jack@theduppyshare.com', 'tim@avallen.solutions')
 );
 
 DELETE FROM "User" WHERE email IN ('jack@theduppyshare.com', 'tim@avallen.solutions');
@@ -16,7 +16,7 @@ DELETE FROM "User" WHERE email IN ('jack@theduppyshare.com', 'tim@avallen.soluti
 -- Create User records with ADMIN role for Jack
 INSERT INTO "User" (id, email, role, "emailVerified", "createdAt", "updatedAt")
 SELECT
-  id,
+  id::text,
   email,
   'ADMIN'::"UserRole",
   NOW(),
@@ -29,7 +29,7 @@ ON CONFLICT (id) DO UPDATE SET role = 'ADMIN'::"UserRole", "updatedAt" = NOW();
 -- Create User records with ADMIN role for Tim
 INSERT INTO "User" (id, email, role, "emailVerified", "createdAt", "updatedAt")
 SELECT
-  id,
+  id::text,
   email,
   'ADMIN'::"UserRole",
   NOW(),
@@ -42,8 +42,8 @@ ON CONFLICT (id) DO UPDATE SET role = 'ADMIN'::"UserRole", "updatedAt" = NOW();
 -- Create Member profile for Jack
 INSERT INTO "Member" (id, "userId", "firstName", "lastName", "isPublic", "createdAt", "updatedAt")
 SELECT
-  gen_random_uuid(),
-  id,
+  gen_random_uuid()::text,
+  id::text,
   'Jack',
   'Admin',
   false,
@@ -56,8 +56,8 @@ ON CONFLICT ("userId") DO NOTHING;
 -- Create Member profile for Tim
 INSERT INTO "Member" (id, "userId", "firstName", "lastName", "isPublic", "createdAt", "updatedAt")
 SELECT
-  gen_random_uuid(),
-  id,
+  gen_random_uuid()::text,
+  id::text,
   'Tim',
   'Admin',
   false,
