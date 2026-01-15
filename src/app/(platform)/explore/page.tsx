@@ -5,6 +5,10 @@ import { createClient } from '@/lib/supabase/server'
 import { SUPPLIER_CATEGORY_LABELS } from '@/types/database'
 import type { SupplierCategory } from '@prisma/client'
 
+// Force dynamic rendering to always fetch fresh data from Supabase
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 // Fallback suppliers data when Supabase is not available
 const fallbackSuppliers = [
   { id: '1', companyName: 'SAVERGLASS', slug: 'saverglass', tagline: 'Manufacturer and decorator of high-quality glass bottles', description: 'World-leading manufacturer of premium glass bottles for spirits, wine, and beverages.', category: 'PACKAGING' as SupplierCategory, services: ['Glass Bottles', 'Bespoke Design', 'Premium Packaging'], location: 'France', country: 'France', logoUrl: 'https://kindredcollective.co.uk/cdn/shop/files/SaverGlass.png', isVerified: true, isPublic: true },
@@ -25,11 +29,11 @@ async function getSuppliers() {
   try {
     const supabase = await createClient()
 
+    // Query suppliers from database - fetch all and filter client-side
+    // to avoid case-sensitivity issues with PostgreSQL quoted identifiers
     const { data: suppliers, error } = await supabase
       .from('Supplier')
-      .select('*')
-      .eq('isPublic', true)
-      .order('createdAt', { ascending: false })
+      .select('id, companyName, slug, tagline, description, logoUrl, category, services, location, country, isVerified, isPublic, createdAt')
 
     if (error) {
       console.error('Error fetching suppliers:', error)
@@ -37,10 +41,17 @@ async function getSuppliers() {
     }
 
     if (!suppliers || suppliers.length === 0) {
+      console.log('No suppliers found in database, using fallback')
       return fallbackSuppliers
     }
 
-    return suppliers
+    // Filter for public suppliers and sort by createdAt
+    const publicSuppliers = suppliers
+      .filter((s) => s.isPublic !== false)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+    console.log(`Found ${publicSuppliers.length} public suppliers in database`)
+    return publicSuppliers
   } catch (err) {
     console.error('Failed to connect to Supabase:', err)
     return fallbackSuppliers
