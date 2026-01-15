@@ -1,0 +1,397 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============= ENUMS =============
+
+enum UserRole {
+  BRAND
+  SUPPLIER
+  ADMIN
+}
+
+enum DrinkCategory {
+  SPIRITS
+  BEER
+  WINE
+  RTD
+  NO_LO
+  CIDER
+  OTHER
+}
+
+enum SupplierCategory {
+  PACKAGING
+  INGREDIENTS
+  LOGISTICS
+  CO_PACKING
+  DESIGN
+  MARKETING
+  EQUIPMENT
+  CONSULTING
+  LEGAL
+  FINANCE
+  DISTRIBUTION
+  OTHER
+}
+
+enum Certification {
+  ORGANIC
+  B_CORP
+  FAIRTRADE
+  VEGAN
+  GLUTEN_FREE
+  PLASTIC_FREE
+  CARBON_NEUTRAL
+  OTHER
+}
+
+enum EventType {
+  TRADE_SHOW
+  MEETUP
+  WORKSHOP
+  WEBINAR
+  NETWORKING
+  LAUNCH
+  PARTY
+  OTHER
+}
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
+}
+
+enum OfferType {
+  PERCENTAGE_DISCOUNT
+  FIXED_DISCOUNT
+  FREE_TRIAL
+  BUNDLE
+  OTHER
+}
+
+enum OfferStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  PAUSED
+}
+
+enum RsvpStatus {
+  GOING
+  INTERESTED
+  NOT_GOING
+}
+
+// ============= USERS & AUTH =============
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified DateTime?
+  role          UserRole
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  brand          Brand?
+  supplier       Supplier?
+  member         Member?
+  eventRsvps     EventRsvp[]
+  savedSuppliers SavedSupplier[]
+  savedBrands    SavedBrand[]
+  offerClaims    OfferClaim[]
+
+  @@index([email])
+  @@index([role])
+}
+
+// ============= MEMBER PROFILES =============
+
+model Member {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  firstName   String
+  lastName    String
+  jobTitle    String?
+  bio         String?  @db.Text
+  avatarUrl   String?
+  linkedinUrl String?
+  phone       String?
+  isPublic    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([firstName, lastName])
+}
+
+// ============= BRANDS =============
+
+model Brand {
+  id            String        @id @default(cuid())
+  userId        String        @unique
+  name          String
+  slug          String        @unique
+  tagline       String?
+  description   String?       @db.Text
+  story         String?       @db.Text
+  logoUrl       String?
+  heroImageUrl  String?
+  websiteUrl    String?
+  instagramUrl  String?
+  linkedinUrl   String?
+  twitterUrl    String?
+  category      DrinkCategory
+  subcategories String[]
+  yearFounded   Int?
+  location      String?
+  country       String?
+  isVerified    Boolean       @default(false)
+  isPublic      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images  BrandImage[]
+  savedBy SavedBrand[]
+
+  @@index([slug])
+  @@index([category])
+  @@index([location])
+  @@index([name])
+}
+
+model BrandImage {
+  id        String   @id @default(cuid())
+  brandId   String
+  url       String
+  alt       String?
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+}
+
+// ============= SUPPLIERS =============
+
+model Supplier {
+  id             String           @id @default(cuid())
+  userId         String           @unique
+  companyName    String
+  slug           String           @unique
+  tagline        String?
+  description    String?          @db.Text
+  logoUrl        String?
+  heroImageUrl   String?
+  websiteUrl     String?
+  linkedinUrl    String?
+  category       SupplierCategory
+  subcategories  String[]
+  services       String[]
+  certifications Certification[]
+  moqMin         Int?
+  moqMax         Int?
+  leadTimeDays   Int?
+  location       String?
+  country        String?
+  serviceRegions String[]
+  contactEmail   String?
+  contactPhone   String?
+  isVerified     Boolean          @default(false)
+  isPublic       Boolean          @default(true)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offers         Offer[]
+  savedBy        SavedSupplier[]
+  portfolioImages SupplierImage[]
+
+  @@index([slug])
+  @@index([category])
+  @@index([location])
+  @@index([companyName])
+}
+
+model SupplierImage {
+  id         String   @id @default(cuid())
+  supplierId String
+  url        String
+  alt        String?
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+}
+
+// ============= OFFERS & DISCOUNTS =============
+
+model Offer {
+  id              String      @id @default(cuid())
+  supplierId      String
+  title           String
+  description     String?     @db.Text
+  type            OfferType
+  discountValue   Decimal?
+  code            String?
+  termsConditions String?     @db.Text
+  status          OfferStatus @default(DRAFT)
+  startDate       DateTime?
+  endDate         DateTime?
+  forBrandsOnly   Boolean     @default(false)
+  minOrderValue   Decimal?
+  imageUrl        String?
+  viewCount       Int         @default(0)
+  claimCount      Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  supplier Supplier     @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  claims   OfferClaim[]
+
+  @@index([status])
+  @@index([supplierId])
+  @@index([endDate])
+}
+
+model OfferClaim {
+  id        String   @id @default(cuid())
+  offerId   String
+  userId    String
+  claimedAt DateTime @default(now())
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([offerId, userId])
+}
+
+// ============= EVENTS =============
+
+model Event {
+  id              String      @id @default(cuid())
+  title           String
+  slug            String      @unique
+  description     String?     @db.Text
+  type            EventType
+  status          EventStatus @default(DRAFT)
+  startDate       DateTime
+  endDate         DateTime?
+  timezone        String      @default("Europe/London")
+  isVirtual       Boolean     @default(false)
+  venueName       String?
+  address         String?
+  city            String?
+  country         String?
+  virtualUrl      String?
+  imageUrl        String?
+  capacity        Int?
+  isFree          Boolean     @default(true)
+  price           Decimal?
+  registrationUrl String?
+  showAttendees   Boolean     @default(true)
+  isFeatured      Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  createdById     String?
+
+  rsvps EventRsvp[]
+
+  @@index([startDate])
+  @@index([status])
+  @@index([type])
+}
+
+model EventRsvp {
+  id        String     @id @default(cuid())
+  eventId   String
+  userId    String
+  status    RsvpStatus
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+// ============= SAVED/BOOKMARKS =============
+
+model SavedSupplier {
+  id         String   @id @default(cuid())
+  userId     String
+  supplierId String
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, supplierId])
+}
+
+model SavedBrand {
+  id        String   @id @default(cuid())
+  userId    String
+  brandId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, brandId])
+}
+
+// ============= NEWS/RSS =============
+
+model NewsSource {
+  id        String        @id @default(cuid())
+  name      String
+  feedUrl   String        @unique
+  siteUrl   String?
+  isActive  Boolean       @default(true)
+  createdAt DateTime      @default(now())
+
+  articles NewsArticle[]
+}
+
+model NewsArticle {
+  id          String     @id @default(cuid())
+  sourceId    String
+  title       String
+  url         String     @unique
+  description String?    @db.Text
+  imageUrl    String?
+  publishedAt DateTime
+  fetchedAt   DateTime   @default(now())
+
+  source NewsSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@index([publishedAt])
+}
+
+// ============= SEARCH ANALYTICS =============
+
+model SearchQuery {
+  id           String   @id @default(cuid())
+  query        String
+  userId       String?
+  resultCount  Int
+  processingMs Int
+  usedAI       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([query])
+}

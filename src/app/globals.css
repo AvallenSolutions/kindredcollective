@@ -145,4 +145,18 @@
   .focus-brutal {
     @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2;
   }
+
+  /* Marquee animation */
+  @keyframes marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-marquee {
+    animation: marquee 20s linear infinite;
+  }
 }
