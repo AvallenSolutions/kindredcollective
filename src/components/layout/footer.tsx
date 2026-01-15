@@ -3,8 +3,8 @@ import { Twitter, Instagram, Linkedin, Zap } from 'lucide-react'
 
 const footerNavigation = {
   platform: [
-    { name: 'AI Search', href: '/search' },
     { name: 'Browse Suppliers', href: '/explore' },
+    { name: 'Events', href: '/events' },
     { name: 'Offers', href: '/offers' },
   ],
   company: [

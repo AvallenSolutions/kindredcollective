@@ -15,7 +15,7 @@ interface HeaderProps {
 
 const navigation = [
   { name: 'Explore', href: '/explore', badge: null },
-  { name: 'AI Search', href: '/search', badge: 'NEW' },
+  { name: 'Events', href: '/events', badge: 'NEW' },
   { name: 'Community', href: '/community', badge: null },
 ]
 

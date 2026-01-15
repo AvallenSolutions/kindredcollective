@@ -174,13 +174,13 @@ export default function CommunityPage() {
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link
-                  href="/community/events"
+                  href="/events"
                   className="px-8 py-3 bg-black text-cyan border-2 border-black font-bold uppercase hover:bg-white hover:text-black transition-colors neo-shadow neo-shadow-hover"
                 >
                   Get Tickets &rarr;
                 </Link>
                 <Link
-                  href="/community/events"
+                  href="/events"
                   className="px-8 py-3 bg-transparent text-black border-2 border-black font-bold uppercase hover:bg-white transition-colors"
                 >
                   View Details
@@ -326,7 +326,7 @@ export default function CommunityPage() {
           <div className="flex justify-between items-center mb-8">
             <h2 className="text-4xl font-display font-bold uppercase">Upcoming Events</h2>
             <Link
-              href="/community/events"
+              href="/events"
               className="text-sm font-bold uppercase border-b-2 border-black hover:bg-cyan hover:text-black transition-colors px-2"
             >
               View Calendar
