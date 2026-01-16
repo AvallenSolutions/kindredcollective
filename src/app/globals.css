@@ -1,0 +1,206 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    /* Neo-Brutalist CSS Variables */
+    --color-cyan: #00D9FF;
+    --color-coral: #FF5D5D;
+    --color-lime: #CCFF00;
+    --color-blue: #3B82F6;
+    --color-black: #000000;
+    --color-white: #FFFFFF;
+
+    --border-width: 3px;
+    --shadow-offset: 4px;
+
+    --font-display: 'Space Grotesk', system-ui, sans-serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+  }
+
+  html {
+    font-family: var(--font-body);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-white text-black antialiased;
+  }
+
+  /* Neo-Brutalist selection */
+  ::selection {
+    @apply bg-cyan text-black;
+  }
+
+  /* Headings use display font */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply font-bold tracking-tight;
+  }
+}
+
+@layer components {
+  /* Neo-Brutalist Card */
+  .card-brutal {
+    @apply bg-white border-3 border-black shadow-brutal transition-all duration-200;
+  }
+
+  .card-brutal:hover {
+    @apply shadow-brutal-lg -translate-y-1;
+  }
+
+  /* Neo-Brutalist Button Base */
+  .btn-brutal {
+    @apply inline-flex items-center justify-center font-display font-bold uppercase tracking-wide
+           border-3 border-black shadow-brutal
+           transition-all duration-150 ease-out
+           hover:shadow-brutal-md hover:-translate-y-0.5
+           active:shadow-brutal-sm active:translate-y-0.5
+           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-brutal disabled:hover:translate-y-0;
+  }
+
+  /* Button Variants */
+  .btn-primary {
+    @apply btn-brutal bg-cyan text-black;
+  }
+
+  .btn-secondary {
+    @apply btn-brutal bg-coral text-white;
+  }
+
+  .btn-accent {
+    @apply btn-brutal bg-lime text-black;
+  }
+
+  .btn-outline {
+    @apply btn-brutal bg-white text-black hover:bg-black hover:text-white;
+  }
+
+  /* Neo-Brutalist Input */
+  .input-brutal {
+    @apply w-full px-4 py-3 font-body text-base
+           bg-white border-3 border-black
+           focus:outline-none focus:ring-2 focus:ring-cyan focus:ring-offset-2
+           placeholder:text-gray-500;
+  }
+
+  /* Neo-Brutalist Badge */
+  .badge-brutal {
+    @apply inline-flex items-center px-3 py-1 font-display text-xs font-bold uppercase tracking-wider
+           border-2 border-black;
+  }
+
+  /* Tag styles */
+  .tag-cyan {
+    @apply badge-brutal bg-cyan text-black;
+  }
+
+  .tag-coral {
+    @apply badge-brutal bg-coral text-white;
+  }
+
+  .tag-lime {
+    @apply badge-brutal bg-lime text-black;
+  }
+
+  /* Section container */
+  .section-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Neo-Brutalist divider */
+  .divider-brutal {
+    @apply w-full h-1 bg-black;
+  }
+}
+
+@layer utilities {
+  /* Text stroke for outline text effect */
+  .text-stroke {
+    -webkit-text-stroke: 2px black;
+    text-stroke: 2px black;
+    color: transparent;
+  }
+
+  /* Uppercase with letter spacing */
+  .uppercase-wide {
+    @apply uppercase tracking-wider;
+  }
+
+  /* Hide scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Focus visible outline */
+  .focus-brutal {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2;
+  }
+
+  /* Marquee animation */
+  @keyframes marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-marquee {
+    animation: marquee 30s linear infinite;
+  }
+
+  /* Neo-brutalist shadow utilities */
+  .neo-shadow {
+    box-shadow: 4px 4px 0px 0px #000000;
+  }
+  .neo-shadow-lg {
+    box-shadow: 8px 8px 0px 0px #000000;
+  }
+  .neo-shadow-hover:hover {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0px 0px #000000;
+  }
+  .neo-border {
+    border: 2px solid #000000;
+  }
+
+  /* Grid pattern background */
+  .bg-grid-pattern {
+    background-image: radial-gradient(#000 1px, transparent 1px);
+    background-size: 24px 24px;
+    opacity: 0.1;
+  }
+
+  /* Grayscale hover effect */
+  .grayscale-hover {
+    @apply grayscale transition-all duration-500;
+  }
+  .grayscale-hover:hover,
+  .group:hover .grayscale-hover {
+    @apply grayscale-0;
+  }
+
+  /* Custom scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-left: 2px solid black;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #000;
+    border: 2px solid #f1f1f1;
+  }
+}
