@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { getSession } from '@/lib/auth/session'
-import { createClient } from '@/lib/supabase/server'
-import { Shield, Users, Building2, Store, Calendar, Gift } from 'lucide-react'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { Shield, Users, Building2, Store, Calendar, Gift, Plus, Settings } from 'lucide-react'
 
 export default async function AdminPage() {
   const session = await getSession()
@@ -10,7 +11,8 @@ export default async function AdminPage() {
     redirect('/dashboard')
   }
 
-  const supabase = await createClient()
+  // Use admin client to bypass RLS
+  const supabase = createAdminClient()
 
   // Fetch counts for dashboard stats
   const [usersResult, brandsResult, suppliersResult, eventsResult, offersResult] = await Promise.all([
@@ -22,11 +24,11 @@ export default async function AdminPage() {
   ])
 
   const stats = [
-    { name: 'Total Users', value: usersResult.count || 0, icon: Users, color: 'bg-cyan' },
-    { name: 'Brands', value: brandsResult.count || 0, icon: Building2, color: 'bg-yellow' },
-    { name: 'Suppliers', value: suppliersResult.count || 0, icon: Store, color: 'bg-magenta' },
-    { name: 'Events', value: eventsResult.count || 0, icon: Calendar, color: 'bg-green-400' },
-    { name: 'Offers', value: offersResult.count || 0, icon: Gift, color: 'bg-orange-400' },
+    { name: 'Total Users', value: usersResult.count || 0, icon: Users, color: 'bg-cyan', href: '/admin/users' },
+    { name: 'Brands', value: brandsResult.count || 0, icon: Building2, color: 'bg-yellow', href: '/admin/brands' },
+    { name: 'Suppliers', value: suppliersResult.count || 0, icon: Store, color: 'bg-magenta', href: '/admin/suppliers' },
+    { name: 'Events', value: eventsResult.count || 0, icon: Calendar, color: 'bg-green-400', href: '/admin/events' },
+    { name: 'Offers', value: offersResult.count || 0, icon: Gift, color: 'bg-orange-400', href: '/admin/offers' },
   ]
 
   // Fetch recent users
@@ -49,12 +51,35 @@ export default async function AdminPage() {
         </div>
       </div>
 
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-3 mb-8">
+        <Link
+          href="/admin/users/new"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-cyan border-2 border-black font-bold uppercase text-sm neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+        >
+          <Plus className="w-4 h-4" /> Add User
+        </Link>
+        <Link
+          href="/admin/suppliers/new"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-magenta text-white border-2 border-black font-bold uppercase text-sm neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+        >
+          <Plus className="w-4 h-4" /> Add Supplier
+        </Link>
+        <Link
+          href="/admin/events/new"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-yellow border-2 border-black font-bold uppercase text-sm neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+        >
+          <Plus className="w-4 h-4" /> Add Event
+        </Link>
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         {stats.map((stat) => (
-          <div
+          <Link
             key={stat.name}
-            className="bg-white border-2 border-black p-4 neo-shadow"
+            href={stat.href}
+            className="bg-white border-2 border-black p-4 neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
           >
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 ${stat.color} flex items-center justify-center border-2 border-black`}>
@@ -65,7 +90,7 @@ export default async function AdminPage() {
                 <p className="text-xs text-gray-600 uppercase tracking-wide">{stat.name}</p>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 

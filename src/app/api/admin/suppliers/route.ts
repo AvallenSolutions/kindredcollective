@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/auth'
 import {
   successResponse,
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     return unauthorizedResponse('Admin access required')
   }
 
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { searchParams } = new URL(request.url)
 
   const page = parseInt(searchParams.get('page') || '1')
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     return unauthorizedResponse('Admin access required')
   }
 
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const body = await request.json()
 
   const {
