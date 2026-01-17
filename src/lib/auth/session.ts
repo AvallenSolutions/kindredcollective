@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { AuthSession, SessionUser, hasPermission, isAdmin, isBrand, isSupplier } from './types'
 import type { UserRole } from '@prisma/client'
 
@@ -21,8 +22,10 @@ export async function getSession(): Promise<AuthSession> {
     }
   }
 
-  // Get user with role from our User table
-  const { data: dbUser, error } = await supabase
+  // Use admin client to bypass RLS when fetching user role
+  // This is necessary because RLS policies can create circular dependencies
+  const adminClient = createAdminClient()
+  const { data: dbUser, error } = await adminClient
     .from('User')
     .select('id, email, role')
     .eq('id', authUser.id)
@@ -146,9 +149,10 @@ export async function getUserBrand(userId: string) {
  * Get user's member profile (if they have one)
  */
 export async function getUserMember(userId: string) {
-  const supabase = await createClient()
+  // Use admin client to bypass RLS
+  const adminClient = createAdminClient()
 
-  const { data: member, error } = await supabase
+  const { data: member, error } = await adminClient
     .from('Member')
     .select('*')
     .eq('userId', userId)

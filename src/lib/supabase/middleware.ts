@@ -1,7 +1,22 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { NextResponse, type NextRequest } from 'next/server'
 
 type CookieToSet = { name: string; value: string; options: CookieOptions }
+
+// Create admin client for bypassing RLS in middleware
+function createAdminClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  )
+}
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -54,7 +69,9 @@ export async function updateSession(request: NextRequest) {
 
   // Admin routes - check if user has admin role
   if (pathname.startsWith('/admin') && user) {
-    const { data: dbUser } = await supabase
+    // Use admin client to bypass RLS when checking user role
+    const adminClient = createAdminClient()
+    const { data: dbUser } = await adminClient
       .from('User')
       .select('role')
       .eq('id', user.id)
