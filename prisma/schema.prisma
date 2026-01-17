@@ -125,6 +125,7 @@ model User {
   offerClaims     OfferClaim[]
   supplierClaims  SupplierClaim[]
   reviews         SupplierReview[]
+  organisationMembers OrganisationMember[]
 
   @@index([email])
   @@index([role])
@@ -181,6 +182,8 @@ model Brand {
   images  BrandImage[]
   savedBy SavedBrand[]
   reviews SupplierReview[]
+  organisation Organisation?
+  workRelationships WorkRelationship[]
 
   @@index([slug])
   @@index([category])
@@ -240,6 +243,8 @@ model Supplier {
   portfolioImages SupplierImage[]
   reviews         SupplierReview[]
   claims          SupplierClaim[]
+  organisation    Organisation?
+  workRelationships WorkRelationship[]
 
   @@index([slug])
   @@index([category])
@@ -468,4 +473,78 @@ model SearchQuery {
 
   @@index([createdAt])
   @@index([query])
+}
+
+// ============= ORGANISATIONS =============
+
+model Organisation {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  type      UserRole // BRAND or SUPPLIER
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members OrganisationMember[]
+  invites OrganisationInvite[]
+
+  // Link to brand or supplier
+  brandId    String?   @unique
+  brand      Brand?    @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  supplierId String?   @unique
+  supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  @@index([slug])
+  @@index([type])
+}
+
+model OrganisationMember {
+  id             String   @id @default(cuid())
+  organisationId String
+  userId         String
+  isOwner        Boolean  @default(false)
+  joinedAt       DateTime @default(now())
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, userId])
+  @@index([userId])
+}
+
+model OrganisationInvite {
+  id             String    @id @default(cuid())
+  organisationId String
+  email          String
+  token          String    @unique
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  createdById    String
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([email])
+}
+
+// ============= WORK RELATIONSHIPS (VERIFICATION) =============
+
+model WorkRelationship {
+  id               String    @id @default(cuid())
+  brandId          String
+  supplierId       String
+  brandVerified    Boolean   @default(false)
+  supplierVerified Boolean   @default(false)
+  projectDate      DateTime?
+  projectDescription String? @db.Text
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  brand    Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, supplierId])
+  @@index([brandId])
+  @@index([supplierId])
 }
