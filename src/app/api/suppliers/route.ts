@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     .select('category')
     .eq('isPublic', true)
 
-  const categories = [...new Set(categoriesData?.map(s => s.category) || [])]
+  const categories = Array.from(new Set(categoriesData?.map(s => s.category) || []))
 
   return successResponse({
     suppliers,

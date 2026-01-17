@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
     .select('type')
     .eq('status', 'ACTIVE')
 
-  const types = [...new Set(typesData?.map(o => o.type) || [])]
+  const types = Array.from(new Set(typesData?.map(o => o.type) || []))
 
   return successResponse({
     offers,

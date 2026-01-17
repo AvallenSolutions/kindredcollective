@@ -49,8 +49,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Brand not found')
   }
 
-  // Get the member info if available
-  const member = brand.user?.member || null
+  // Get the member info if available (Supabase returns nested relations as arrays)
+  const user = Array.isArray(brand.user) ? brand.user[0] : brand.user
+  const memberData = user?.member
+  const member = Array.isArray(memberData) ? memberData[0] : memberData
 
   return successResponse({
     ...brand,

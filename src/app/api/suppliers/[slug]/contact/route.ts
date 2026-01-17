@@ -6,14 +6,13 @@ import {
   errorResponse,
   unauthorizedResponse,
   notFoundResponse,
-  serverErrorResponse,
 } from '@/lib/api/response'
 
 interface RouteParams {
-  params: Promise<{ id: string }>
+  params: Promise<{ slug: string }>
 }
 
-// POST /api/suppliers/[id]/contact - Send inquiry to supplier
+// POST /api/suppliers/[slug]/contact - Send inquiry to supplier
 export async function POST(request: NextRequest, { params }: RouteParams) {
   let user
   try {
@@ -22,7 +21,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return unauthorizedResponse()
   }
 
-  const { id } = await params
+  const { slug } = await params
   const supabase = await createClient()
   const body = await request.json()
 
@@ -48,7 +47,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { data: supplier } = await supabase
     .from('Supplier')
     .select('id, companyName, contactEmail, contactName, isPublic')
-    .eq('id', id)
+    .eq('slug', slug)
     .single()
 
   if (!supplier) {
@@ -90,7 +89,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   // In production, this would trigger an email to the supplier
 
   const inquiryData = {
-    supplierId: id,
+    supplierId: supplier.id,
     supplierName: supplier.companyName,
     supplierEmail: supplier.contactEmail,
     senderUserId: user.id,

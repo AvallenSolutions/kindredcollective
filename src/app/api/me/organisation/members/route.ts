@@ -52,22 +52,27 @@ export async function GET() {
     return serverErrorResponse('Failed to fetch members')
   }
 
-  // Process members
-  const processedMembers = (members || []).map(member => ({
-    id: member.id,
-    isOwner: member.isOwner,
-    joinedAt: member.joinedAt,
-    userId: member.user?.id,
-    email: member.user?.email,
-    role: member.user?.role,
-    firstName: member.user?.member?.firstName || null,
-    lastName: member.user?.member?.lastName || null,
-    fullName: member.user?.member
-      ? `${member.user.member.firstName} ${member.user.member.lastName}`
-      : member.user?.email?.split('@')[0] || 'Unknown',
-    avatarUrl: member.user?.member?.avatarUrl || null,
-    jobTitle: member.user?.member?.jobTitle || null,
-  }))
+  // Process members - Supabase returns nested relations as arrays
+  const processedMembers = (members || []).map((member: any) => {
+    const user = Array.isArray(member.user) ? member.user[0] : member.user
+    const memberProfile = user?.member
+    const profile = Array.isArray(memberProfile) ? memberProfile[0] : memberProfile
+    return {
+      id: member.id,
+      isOwner: member.isOwner,
+      joinedAt: member.joinedAt,
+      userId: user?.id,
+      email: user?.email,
+      role: user?.role,
+      firstName: profile?.firstName || null,
+      lastName: profile?.lastName || null,
+      fullName: profile
+        ? `${profile.firstName} ${profile.lastName}`
+        : user?.email?.split('@')[0] || 'Unknown',
+      avatarUrl: profile?.avatarUrl || null,
+      jobTitle: profile?.jobTitle || null,
+    }
+  })
 
   return successResponse({
     members: processedMembers,

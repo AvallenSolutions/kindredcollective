@@ -51,15 +51,20 @@ export async function GET(request: NextRequest) {
     return serverErrorResponse('Failed to fetch members')
   }
 
-  // Filter by role if specified
+  // Filter by role if specified - Supabase returns nested relations as arrays
   let filteredMembers = members || []
   if (role && (role === 'BRAND' || role === 'SUPPLIER')) {
-    filteredMembers = filteredMembers.filter(m => m.user?.role === role)
+    filteredMembers = filteredMembers.filter((m: any) => {
+      const user = Array.isArray(m.user) ? m.user[0] : m.user
+      return user?.role === role
+    })
   }
 
   // Process members to flatten the structure
-  const processedMembers = filteredMembers.map(member => {
-    const user = member.user
+  const processedMembers = filteredMembers.map((member: any) => {
+    const user = Array.isArray(member.user) ? member.user[0] : member.user
+    const brand = user?.brand ? (Array.isArray(user.brand) ? user.brand[0] : user.brand) : null
+    const supplier = user?.supplier ? (Array.isArray(user.supplier) ? user.supplier[0] : user.supplier) : null
     return {
       id: member.id,
       firstName: member.firstName,
@@ -70,10 +75,10 @@ export async function GET(request: NextRequest) {
       avatarUrl: member.avatarUrl,
       linkedinUrl: member.linkedinUrl,
       role: user?.role || null,
-      company: user?.brand
-        ? { type: 'brand', ...user.brand }
-        : user?.supplier
-          ? { type: 'supplier', ...user.supplier }
+      company: brand
+        ? { type: 'brand', ...brand }
+        : supplier
+          ? { type: 'supplier', ...supplier }
           : null,
       createdAt: member.createdAt,
     }

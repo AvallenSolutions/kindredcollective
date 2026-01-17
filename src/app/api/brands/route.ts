@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
     .select('category')
     .eq('isPublic', true)
 
-  const categories = [...new Set(categoriesData?.map(b => b.category) || [])]
+  const categories = Array.from(new Set(categoriesData?.map(b => b.category) || []))
 
   return successResponse({
     brands,

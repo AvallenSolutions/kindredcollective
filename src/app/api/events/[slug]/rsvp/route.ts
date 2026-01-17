@@ -10,10 +10,20 @@ import {
 } from '@/lib/api/response'
 
 interface RouteParams {
-  params: Promise<{ id: string }>
+  params: Promise<{ slug: string }>
 }
 
-// GET /api/events/[id]/rsvp - Get user's RSVP status for an event
+// Helper to get event by slug
+async function getEventBySlug(supabase: Awaited<ReturnType<typeof createClient>>, slug: string) {
+  const { data: event } = await supabase
+    .from('Event')
+    .select('id, status, startDate, capacity')
+    .eq('slug', slug)
+    .single()
+  return event
+}
+
+// GET /api/events/[slug]/rsvp - Get user's RSVP status for an event
 export async function GET(request: NextRequest, { params }: RouteParams) {
   let user
   try {
@@ -22,13 +32,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return unauthorizedResponse()
   }
 
-  const { id } = await params
+  const { slug } = await params
   const supabase = await createClient()
+
+  const event = await getEventBySlug(supabase, slug)
+  if (!event) {
+    return notFoundResponse('Event not found')
+  }
 
   const { data: rsvp, error } = await supabase
     .from('EventRsvp')
     .select('id, status, createdAt, updatedAt')
-    .eq('eventId', id)
+    .eq('eventId', event.id)
     .eq('userId', user.id)
     .single()
 
@@ -43,7 +58,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   })
 }
 
-// POST /api/events/[id]/rsvp - Create RSVP
+// POST /api/events/[slug]/rsvp - Create RSVP
 export async function POST(request: NextRequest, { params }: RouteParams) {
   let user
   try {
@@ -52,7 +67,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return unauthorizedResponse()
   }
 
-  const { id } = await params
+  const { slug } = await params
   const supabase = await createClient()
   const body = await request.json()
 
@@ -63,11 +78,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   // Check if event exists and is published
-  const { data: event } = await supabase
-    .from('Event')
-    .select('id, status, startDate, capacity')
-    .eq('id', id)
-    .single()
+  const event = await getEventBySlug(supabase, slug)
 
   if (!event) {
     return notFoundResponse('Event not found')
@@ -85,7 +96,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { data: existing } = await supabase
     .from('EventRsvp')
     .select('id')
-    .eq('eventId', id)
+    .eq('eventId', event.id)
     .eq('userId', user.id)
     .single()
 
@@ -98,7 +109,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const { data: goingRsvps } = await supabase
       .from('EventRsvp')
       .select('id')
-      .eq('eventId', id)
+      .eq('eventId', event.id)
       .eq('status', 'GOING')
 
     if ((goingRsvps?.length || 0) >= event.capacity) {
@@ -109,7 +120,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { data: rsvp, error } = await supabase
     .from('EventRsvp')
     .insert({
-      eventId: id,
+      eventId: event.id,
       userId: user.id,
       status,
       createdAt: new Date().toISOString(),
@@ -126,7 +137,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   return successResponse(rsvp, 201)
 }
 
-// PATCH /api/events/[id]/rsvp - Update RSVP status
+// PATCH /api/events/[slug]/rsvp - Update RSVP status
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   let user
   try {
@@ -135,7 +146,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return unauthorizedResponse()
   }
 
-  const { id } = await params
+  const { slug } = await params
   const supabase = await createClient()
   const body = await request.json()
 
@@ -146,11 +157,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 
   // Check if event exists
-  const { data: event } = await supabase
-    .from('Event')
-    .select('id, startDate, capacity')
-    .eq('id', id)
-    .single()
+  const event = await getEventBySlug(supabase, slug)
 
   if (!event) {
     return notFoundResponse('Event not found')
@@ -165,7 +172,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const { data: goingRsvps } = await supabase
       .from('EventRsvp')
       .select('id, userId')
-      .eq('eventId', id)
+      .eq('eventId', event.id)
       .eq('status', 'GOING')
 
     // Exclude current user from count
@@ -181,7 +188,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       status,
       updatedAt: new Date().toISOString(),
     })
-    .eq('eventId', id)
+    .eq('eventId', event.id)
     .eq('userId', user.id)
     .select()
     .single()
@@ -198,7 +205,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   return successResponse(rsvp)
 }
 
-// DELETE /api/events/[id]/rsvp - Remove RSVP
+// DELETE /api/events/[slug]/rsvp - Remove RSVP
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   let user
   try {
@@ -207,13 +214,18 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return unauthorizedResponse()
   }
 
-  const { id } = await params
+  const { slug } = await params
   const supabase = await createClient()
+
+  const event = await getEventBySlug(supabase, slug)
+  if (!event) {
+    return notFoundResponse('Event not found')
+  }
 
   const { error } = await supabase
     .from('EventRsvp')
     .delete()
-    .eq('eventId', id)
+    .eq('eventId', event.id)
     .eq('userId', user.id)
 
   if (error) {

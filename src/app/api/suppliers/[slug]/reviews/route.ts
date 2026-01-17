@@ -11,12 +11,22 @@ import {
 } from '@/lib/api/response'
 
 interface RouteParams {
-  params: Promise<{ id: string }>
+  params: Promise<{ slug: string }>
 }
 
-// GET /api/suppliers/[id]/reviews - List public reviews for a supplier
+// Helper to get supplier by slug
+async function getSupplierBySlug(supabase: Awaited<ReturnType<typeof createClient>>, slug: string) {
+  const { data: supplier } = await supabase
+    .from('Supplier')
+    .select('id, isPublic')
+    .eq('slug', slug)
+    .single()
+  return supplier
+}
+
+// GET /api/suppliers/[slug]/reviews - List public reviews for a supplier
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { id } = await params
+  const { slug } = await params
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
 
@@ -24,11 +34,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const limit = parseInt(searchParams.get('limit') || '10')
 
   // Check if supplier exists
-  const { data: supplier } = await supabase
-    .from('Supplier')
-    .select('id, isPublic')
-    .eq('id', id)
-    .single()
+  const supplier = await getSupplierBySlug(supabase, slug)
 
   if (!supplier) {
     return notFoundResponse('Supplier not found')
@@ -51,7 +57,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       createdAt,
       brand:Brand(id, name, slug, logoUrl)
     `, { count: 'exact' })
-    .eq('supplierId', id)
+    .eq('supplierId', supplier.id)
     .eq('isPublic', true)
     .order('createdAt', { ascending: false })
     .range((page - 1) * limit, page * limit - 1)
@@ -65,7 +71,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const { data: allReviews } = await supabase
     .from('SupplierReview')
     .select('rating, serviceRating, valueRating, wouldRecommend')
-    .eq('supplierId', id)
+    .eq('supplierId', supplier.id)
     .eq('isPublic', true)
 
   const stats = {
@@ -96,7 +102,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   })
 }
 
-// POST /api/suppliers/[id]/reviews - Submit a review (BRAND users only)
+// POST /api/suppliers/[slug]/reviews - Submit a review (BRAND users only)
 export async function POST(request: NextRequest, { params }: RouteParams) {
   let user
   try {
@@ -110,7 +116,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return errorResponse('Only brand users can submit reviews', 403)
   }
 
-  const { id } = await params
+  const { slug } = await params
   const supabase = await createClient()
   const body = await request.json()
 
@@ -142,11 +148,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   // Check if supplier exists
-  const { data: supplier } = await supabase
-    .from('Supplier')
-    .select('id, isPublic')
-    .eq('id', id)
-    .single()
+  const supplier = await getSupplierBySlug(supabase, slug)
 
   if (!supplier) {
     return notFoundResponse('Supplier not found')
@@ -172,7 +174,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { data: review, error } = await supabase
     .from('SupplierReview')
     .insert({
-      supplierId: id,
+      supplierId: supplier.id,
       brandId: userBrand?.id || null,
       userId: user.id,
       reviewerName,

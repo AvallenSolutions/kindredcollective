@@ -52,11 +52,16 @@ export async function GET() {
 
   // Add expired status to each claim
   const now = new Date()
-  const processedClaims = (claims || []).map(claim => ({
-    ...claim,
-    isExpired: claim.offer?.endDate ? new Date(claim.offer.endDate) < now : false,
-    isActive: claim.offer?.status === 'ACTIVE' && (!claim.offer?.endDate || new Date(claim.offer.endDate) >= now),
-  }))
+  const processedClaims = (claims || []).map((claim: any) => {
+    // Supabase returns nested relations as arrays
+    const offer = Array.isArray(claim.offer) ? claim.offer[0] : claim.offer
+    return {
+      ...claim,
+      offer,
+      isExpired: offer?.endDate ? new Date(offer.endDate) < now : false,
+      isActive: offer?.status === 'ACTIVE' && (!offer?.endDate || new Date(offer.endDate) >= now),
+    }
+  })
 
   return successResponse({
     claims: processedClaims,

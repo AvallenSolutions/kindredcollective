@@ -47,10 +47,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Verification not found')
   }
 
+  // Supabase returns nested relations as arrays
+  const brand = Array.isArray(relationship.brand) ? relationship.brand[0] : relationship.brand
+  const supplier = Array.isArray(relationship.supplier) ? relationship.supplier[0] : relationship.supplier
+
   // Verify user has access
   const hasAccess =
-    (session.isBrand && relationship.brand?.userId === user.id) ||
-    (session.isSupplier && relationship.supplier?.userId === user.id)
+    (session.isBrand && brand?.userId === user.id) ||
+    (session.isSupplier && supplier?.userId === user.id)
 
   if (!hasAccess) {
     return notFoundResponse('Verification not found')
@@ -97,9 +101,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Verification not found')
   }
 
+  // Supabase returns nested relations as arrays
+  const brandData = Array.isArray(relationship.brand) ? relationship.brand[0] : relationship.brand
+  const supplierData = Array.isArray(relationship.supplier) ? relationship.supplier[0] : relationship.supplier
+
   // Determine which side the user is on
-  const isBrandSide = session.isBrand && relationship.brand?.userId === user.id
-  const isSupplierSide = session.isSupplier && relationship.supplier?.userId === user.id
+  const isBrandSide = session.isBrand && brandData?.userId === user.id
+  const isSupplierSide = session.isSupplier && supplierData?.userId === user.id
 
   if (!isBrandSide && !isSupplierSide) {
     return notFoundResponse('Verification not found')
@@ -187,10 +195,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Verification not found')
   }
 
+  // Supabase returns nested relations as arrays
+  const delBrand = Array.isArray(relationship.brand) ? relationship.brand[0] : relationship.brand
+  const delSupplier = Array.isArray(relationship.supplier) ? relationship.supplier[0] : relationship.supplier
+
   // Verify user has access
   const hasAccess =
-    (session.isBrand && relationship.brand?.userId === user.id) ||
-    (session.isSupplier && relationship.supplier?.userId === user.id)
+    (session.isBrand && delBrand?.userId === user.id) ||
+    (session.isSupplier && delSupplier?.userId === user.id)
 
   if (!hasAccess) {
     return notFoundResponse('Verification not found')

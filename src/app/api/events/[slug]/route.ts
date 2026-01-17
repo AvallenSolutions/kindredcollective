@@ -76,16 +76,24 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   if (event.showAttendees) {
     attendees = rsvps
-      .filter((r: { status: string; user?: { member?: unknown } }) =>
-        (r.status === 'GOING' || r.status === 'INTERESTED') && r.user?.member
-      )
-      .map((r: { status: string; user: { member: { firstName: string; lastName: string; avatarUrl: string | null; jobTitle: string | null } } }) => ({
-        firstName: r.user.member.firstName,
-        lastName: r.user.member.lastName,
-        avatarUrl: r.user.member.avatarUrl,
-        jobTitle: r.user.member.jobTitle,
-        status: r.status,
-      }))
+      .filter((r: any) => {
+        const user = Array.isArray(r.user) ? r.user[0] : r.user
+        const member = user?.member
+        const memberData = Array.isArray(member) ? member[0] : member
+        return (r.status === 'GOING' || r.status === 'INTERESTED') && memberData
+      })
+      .map((r: any) => {
+        const user = Array.isArray(r.user) ? r.user[0] : r.user
+        const member = user?.member
+        const memberData = Array.isArray(member) ? member[0] : member
+        return {
+          firstName: memberData.firstName,
+          lastName: memberData.lastName,
+          avatarUrl: memberData.avatarUrl,
+          jobTitle: memberData.jobTitle,
+          status: r.status,
+        }
+      })
   }
 
   // Calculate spots remaining

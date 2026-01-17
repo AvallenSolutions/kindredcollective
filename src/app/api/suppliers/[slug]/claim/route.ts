@@ -11,7 +11,7 @@ import {
 } from '@/lib/api/response'
 
 interface RouteParams {
-  params: Promise<{ id: string }>
+  params: Promise<{ slug: string }>
 }
 
 // Generate a random 6-digit verification code
@@ -19,7 +19,17 @@ function generateVerificationCode(): string {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
-// POST /api/suppliers/[id]/claim - Initiate claim for an unclaimed supplier profile
+// Helper to get supplier by slug
+async function getSupplierBySlug(supabase: Awaited<ReturnType<typeof createClient>>, slug: string) {
+  const { data: supplier } = await supabase
+    .from('Supplier')
+    .select('id, companyName, claimStatus, contactEmail, userId')
+    .eq('slug', slug)
+    .single()
+  return supplier
+}
+
+// POST /api/suppliers/[slug]/claim - Initiate claim for an unclaimed supplier profile
 export async function POST(request: NextRequest, { params }: RouteParams) {
   let user
   try {
@@ -33,7 +43,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return errorResponse('Only supplier users can claim supplier profiles', 403)
   }
 
-  const { id } = await params
+  const { slug } = await params
   const supabase = await createClient()
   const body = await request.json()
 
@@ -44,11 +54,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   // Check if supplier exists
-  const { data: supplier } = await supabase
-    .from('Supplier')
-    .select('id, companyName, claimStatus, contactEmail, userId')
-    .eq('id', id)
-    .single()
+  const supplier = await getSupplierBySlug(supabase, slug)
 
   if (!supplier) {
     return notFoundResponse('Supplier not found')
@@ -63,7 +69,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { data: existingClaim } = await supabase
     .from('SupplierClaim')
     .select('id, status')
-    .eq('supplierId', id)
+    .eq('supplierId', supplier.id)
     .eq('userId', user.id)
     .single()
 
@@ -94,7 +100,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { data: claim, error } = await supabase
     .from('SupplierClaim')
     .insert({
-      supplierId: id,
+      supplierId: supplier.id,
       userId: user.id,
       status: 'PENDING',
       companyEmail,
@@ -114,7 +120,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   await supabase
     .from('Supplier')
     .update({ claimStatus: 'PENDING' })
-    .eq('id', id)
+    .eq('id', supplier.id)
 
   // In a production app, you would send an email with the verification code
   // For now, we'll return a message indicating the process
@@ -133,7 +139,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }, 201)
 }
 
-// PATCH /api/suppliers/[id]/claim - Verify claim with code
+// PATCH /api/suppliers/[slug]/claim - Verify claim with code
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   let user
   try {
@@ -142,7 +148,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return unauthorizedResponse()
   }
 
-  const { id } = await params
+  const { slug } = await params
   const supabase = await createClient()
   const body = await request.json()
 
@@ -152,11 +158,17 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return errorResponse('Verification code is required')
   }
 
+  // Get supplier by slug
+  const supplier = await getSupplierBySlug(supabase, slug)
+  if (!supplier) {
+    return notFoundResponse('Supplier not found')
+  }
+
   // Get the pending claim
   const { data: claim } = await supabase
     .from('SupplierClaim')
     .select('id, verificationCode, status')
-    .eq('supplierId', id)
+    .eq('supplierId', supplier.id)
     .eq('userId', user.id)
     .eq('status', 'PENDING')
     .single()
@@ -186,14 +198,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 
   // Update the supplier to link it to the user
-  const { data: supplier, error: supplierError } = await supabase
+  const { data: updatedSupplier, error: supplierError } = await supabase
     .from('Supplier')
     .update({
       userId: user.id,
       claimStatus: 'CLAIMED',
       updatedAt: new Date().toISOString(),
     })
-    .eq('id', id)
+    .eq('id', supplier.id)
     .select()
     .single()
 
@@ -203,7 +215,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 
   return successResponse({
-    supplier,
+    supplier: updatedSupplier,
     message: 'Supplier profile claimed successfully! You can now manage this profile.',
   })
 }

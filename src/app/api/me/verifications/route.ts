@@ -94,9 +94,9 @@ export async function GET() {
 
   const stats = {
     total: relationships.length,
-    fullyVerified: relationships.filter((r: { isFullyVerified: boolean }) => r.isFullyVerified).length,
-    pendingMyVerification: relationships.filter((r: { myVerification: boolean }) => !r.myVerification).length,
-    pendingTheirVerification: relationships.filter((r: { myVerification: boolean; theirVerification: boolean }) => r.myVerification && !r.theirVerification).length,
+    fullyVerified: relationships.filter((r: any) => r.isFullyVerified).length,
+    pendingMyVerification: relationships.filter((r: any) => !r.myVerification).length,
+    pendingTheirVerification: relationships.filter((r: any) => r.myVerification && !r.theirVerification).length,
   }
 
   return successResponse({

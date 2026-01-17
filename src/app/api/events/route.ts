@@ -129,8 +129,8 @@ export async function GET(request: NextRequest) {
     .eq('status', 'PUBLISHED')
     .not('city', 'is', null)
 
-  const types = [...new Set(typesData?.map(e => e.type) || [])]
-  const cities = [...new Set(citiesData?.map(e => e.city).filter(Boolean) || [])]
+  const types = Array.from(new Set(typesData?.map(e => e.type) || []))
+  const cities = Array.from(new Set(citiesData?.map(e => e.city).filter(Boolean) || []))
 
   return successResponse({
     events: processedEvents,
