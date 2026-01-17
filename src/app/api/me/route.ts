@@ -83,3 +83,43 @@ export async function PATCH(request: NextRequest) {
 
   return successResponse(updatedUser)
 }
+
+// DELETE /api/me - Delete current user account
+export async function DELETE() {
+  let user
+  try {
+    user = await requireAuth()
+  } catch {
+    return unauthorizedResponse()
+  }
+
+  const supabase = await createClient()
+
+  try {
+    // Delete user from our database (cascades to Brand, Supplier, Member, etc.)
+    const { error: deleteError } = await supabase
+      .from('User')
+      .delete()
+      .eq('id', user.id)
+
+    if (deleteError) {
+      console.error('Error deleting user from database:', deleteError)
+      return serverErrorResponse('Failed to delete account')
+    }
+
+    // Sign out the user
+    await supabase.auth.signOut()
+
+    // Note: Deleting from Supabase Auth requires admin API
+    // In a production app, you would use a server-side function with service role key
+    // to call: supabase.auth.admin.deleteUser(user.id)
+
+    return successResponse({
+      deleted: true,
+      message: 'Your account has been deleted successfully.',
+    })
+  } catch (error) {
+    console.error('Error deleting account:', error)
+    return serverErrorResponse('Failed to delete account')
+  }
+}
