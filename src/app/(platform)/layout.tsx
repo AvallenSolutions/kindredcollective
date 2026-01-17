@@ -1,6 +1,6 @@
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
-import { getSession } from '@/lib/auth/session'
+import { getSession, getUserMember } from '@/lib/auth/session'
 
 export default async function PlatformLayout({
   children,
@@ -9,12 +9,16 @@ export default async function PlatformLayout({
 }) {
   const session = await getSession()
 
-  const user = session.user
-    ? {
-        email: session.user.email,
-        role: session.user.role,
-      }
-    : null
+  let user = null
+  if (session.user) {
+    const member = await getUserMember(session.user.id)
+    user = {
+      email: session.user.email,
+      role: session.user.role,
+      firstName: member?.firstName || null,
+      lastName: member?.lastName || null,
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
