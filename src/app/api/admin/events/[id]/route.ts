@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/auth'
 import {
   successResponse,
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 
   const { id } = await params
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data: event, error } = await supabase
     .from('Event')
@@ -52,7 +52,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 
   const { id } = await params
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const body = await request.json()
 
   const allowedFields = [
@@ -122,7 +122,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   }
 
   const { id } = await params
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { error } = await supabase
     .from('Event')
