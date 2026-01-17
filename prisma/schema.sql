@@ -67,22 +67,19 @@ END $$;
 
 -- ============= TABLES =============
 
--- User table
 CREATE TABLE IF NOT EXISTS "User" (
   "id" TEXT NOT NULL,
-  "email" TEXT NOT NULL,
+  "email" TEXT NOT NULL UNIQUE,
   "emailVerified" TIMESTAMP(3),
   "role" "UserRole" NOT NULL,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
   CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
--- Member table
 CREATE TABLE IF NOT EXISTS "Member" (
   "id" TEXT NOT NULL,
-  "userId" TEXT NOT NULL,
+  "userId" TEXT NOT NULL UNIQUE,
   "firstName" TEXT NOT NULL,
   "lastName" TEXT NOT NULL,
   "jobTitle" TEXT,
@@ -93,16 +90,14 @@ CREATE TABLE IF NOT EXISTS "Member" (
   "isPublic" BOOLEAN NOT NULL DEFAULT true,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
   CONSTRAINT "Member_pkey" PRIMARY KEY ("id")
 );
 
--- Brand table
 CREATE TABLE IF NOT EXISTS "Brand" (
   "id" TEXT NOT NULL,
-  "userId" TEXT NOT NULL,
+  "userId" TEXT NOT NULL UNIQUE,
   "name" TEXT NOT NULL,
-  "slug" TEXT NOT NULL,
+  "slug" TEXT NOT NULL UNIQUE,
   "tagline" TEXT,
   "description" TEXT,
   "story" TEXT,
@@ -121,11 +116,9 @@ CREATE TABLE IF NOT EXISTS "Brand" (
   "isPublic" BOOLEAN NOT NULL DEFAULT true,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
   CONSTRAINT "Brand_pkey" PRIMARY KEY ("id")
 );
 
--- BrandImage table
 CREATE TABLE IF NOT EXISTS "BrandImage" (
   "id" TEXT NOT NULL,
   "brandId" TEXT NOT NULL,
@@ -133,16 +126,14 @@ CREATE TABLE IF NOT EXISTS "BrandImage" (
   "alt" TEXT,
   "order" INTEGER NOT NULL DEFAULT 0,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
   CONSTRAINT "BrandImage_pkey" PRIMARY KEY ("id")
 );
 
--- Supplier table
 CREATE TABLE IF NOT EXISTS "Supplier" (
   "id" TEXT NOT NULL,
-  "userId" TEXT,
+  "userId" TEXT UNIQUE,
   "companyName" TEXT NOT NULL,
-  "slug" TEXT NOT NULL,
+  "slug" TEXT NOT NULL UNIQUE,
   "tagline" TEXT,
   "description" TEXT,
   "logoUrl" TEXT,
@@ -170,11 +161,9 @@ CREATE TABLE IF NOT EXISTS "Supplier" (
   "viewCount" INTEGER NOT NULL DEFAULT 0,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
   CONSTRAINT "Supplier_pkey" PRIMARY KEY ("id")
 );
 
--- SupplierImage table
 CREATE TABLE IF NOT EXISTS "SupplierImage" (
   "id" TEXT NOT NULL,
   "supplierId" TEXT NOT NULL,
@@ -182,11 +171,9 @@ CREATE TABLE IF NOT EXISTS "SupplierImage" (
   "alt" TEXT,
   "order" INTEGER NOT NULL DEFAULT 0,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
   CONSTRAINT "SupplierImage_pkey" PRIMARY KEY ("id")
 );
 
--- SupplierReview table
 CREATE TABLE IF NOT EXISTS "SupplierReview" (
   "id" TEXT NOT NULL,
   "supplierId" TEXT NOT NULL,
@@ -204,11 +191,9 @@ CREATE TABLE IF NOT EXISTS "SupplierReview" (
   "isPublic" BOOLEAN NOT NULL DEFAULT true,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
   CONSTRAINT "SupplierReview_pkey" PRIMARY KEY ("id")
 );
 
--- SupplierClaim table
 CREATE TABLE IF NOT EXISTS "SupplierClaim" (
   "id" TEXT NOT NULL,
   "supplierId" TEXT NOT NULL,
@@ -221,11 +206,10 @@ CREATE TABLE IF NOT EXISTS "SupplierClaim" (
   "processedBy" TEXT,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  CONSTRAINT "SupplierClaim_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "SupplierClaim_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "SupplierClaim_supplierId_userId_key" UNIQUE ("supplierId", "userId")
 );
 
--- Offer table
 CREATE TABLE IF NOT EXISTS "Offer" (
   "id" TEXT NOT NULL,
   "supplierId" TEXT NOT NULL,
@@ -245,25 +229,22 @@ CREATE TABLE IF NOT EXISTS "Offer" (
   "claimCount" INTEGER NOT NULL DEFAULT 0,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
   CONSTRAINT "Offer_pkey" PRIMARY KEY ("id")
 );
 
--- OfferClaim table
 CREATE TABLE IF NOT EXISTS "OfferClaim" (
   "id" TEXT NOT NULL,
   "offerId" TEXT NOT NULL,
   "userId" TEXT NOT NULL,
   "claimedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  CONSTRAINT "OfferClaim_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "OfferClaim_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "OfferClaim_offerId_userId_key" UNIQUE ("offerId", "userId")
 );
 
--- Event table
 CREATE TABLE IF NOT EXISTS "Event" (
   "id" TEXT NOT NULL,
   "title" TEXT NOT NULL,
-  "slug" TEXT NOT NULL,
+  "slug" TEXT NOT NULL UNIQUE,
   "description" TEXT,
   "type" "EventType" NOT NULL,
   "status" "EventStatus" NOT NULL DEFAULT 'DRAFT',
@@ -286,11 +267,9 @@ CREATE TABLE IF NOT EXISTS "Event" (
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" TEXT,
-
   CONSTRAINT "Event_pkey" PRIMARY KEY ("id")
 );
 
--- EventRsvp table
 CREATE TABLE IF NOT EXISTS "EventRsvp" (
   "id" TEXT NOT NULL,
   "eventId" TEXT NOT NULL,
@@ -298,57 +277,50 @@ CREATE TABLE IF NOT EXISTS "EventRsvp" (
   "status" "RsvpStatus" NOT NULL,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  CONSTRAINT "EventRsvp_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "EventRsvp_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "EventRsvp_eventId_userId_key" UNIQUE ("eventId", "userId")
 );
 
--- SavedSupplier table
 CREATE TABLE IF NOT EXISTS "SavedSupplier" (
   "id" TEXT NOT NULL,
   "userId" TEXT NOT NULL,
   "supplierId" TEXT NOT NULL,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  CONSTRAINT "SavedSupplier_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "SavedSupplier_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "SavedSupplier_userId_supplierId_key" UNIQUE ("userId", "supplierId")
 );
 
--- SavedBrand table
 CREATE TABLE IF NOT EXISTS "SavedBrand" (
   "id" TEXT NOT NULL,
   "userId" TEXT NOT NULL,
   "brandId" TEXT NOT NULL,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  CONSTRAINT "SavedBrand_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "SavedBrand_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "SavedBrand_userId_brandId_key" UNIQUE ("userId", "brandId")
 );
 
--- NewsSource table
 CREATE TABLE IF NOT EXISTS "NewsSource" (
   "id" TEXT NOT NULL,
   "name" TEXT NOT NULL,
-  "feedUrl" TEXT NOT NULL,
+  "feedUrl" TEXT NOT NULL UNIQUE,
   "siteUrl" TEXT,
   "isActive" BOOLEAN NOT NULL DEFAULT true,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
   CONSTRAINT "NewsSource_pkey" PRIMARY KEY ("id")
 );
 
--- NewsArticle table
 CREATE TABLE IF NOT EXISTS "NewsArticle" (
   "id" TEXT NOT NULL,
   "sourceId" TEXT NOT NULL,
   "title" TEXT NOT NULL,
-  "url" TEXT NOT NULL,
+  "url" TEXT NOT NULL UNIQUE,
   "description" TEXT,
   "imageUrl" TEXT,
   "publishedAt" TIMESTAMP(3) NOT NULL,
   "fetchedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
   CONSTRAINT "NewsArticle_pkey" PRIMARY KEY ("id")
 );
 
--- SearchQuery table
 CREATE TABLE IF NOT EXISTS "SearchQuery" (
   "id" TEXT NOT NULL,
   "query" TEXT NOT NULL,
@@ -357,50 +329,43 @@ CREATE TABLE IF NOT EXISTS "SearchQuery" (
   "processingMs" INTEGER NOT NULL,
   "usedAI" BOOLEAN NOT NULL DEFAULT false,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
   CONSTRAINT "SearchQuery_pkey" PRIMARY KEY ("id")
 );
 
--- Organisation table
 CREATE TABLE IF NOT EXISTS "Organisation" (
   "id" TEXT NOT NULL,
   "name" TEXT NOT NULL,
-  "slug" TEXT NOT NULL,
+  "slug" TEXT NOT NULL UNIQUE,
   "type" "UserRole" NOT NULL,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  "brandId" TEXT,
-  "supplierId" TEXT,
-
+  "brandId" TEXT UNIQUE,
+  "supplierId" TEXT UNIQUE,
   CONSTRAINT "Organisation_pkey" PRIMARY KEY ("id")
 );
 
--- OrganisationMember table
 CREATE TABLE IF NOT EXISTS "OrganisationMember" (
   "id" TEXT NOT NULL,
   "organisationId" TEXT NOT NULL,
   "userId" TEXT NOT NULL,
   "isOwner" BOOLEAN NOT NULL DEFAULT false,
   "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  CONSTRAINT "OrganisationMember_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "OrganisationMember_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "OrganisationMember_organisationId_userId_key" UNIQUE ("organisationId", "userId")
 );
 
--- OrganisationInvite table
 CREATE TABLE IF NOT EXISTS "OrganisationInvite" (
   "id" TEXT NOT NULL,
   "organisationId" TEXT NOT NULL,
   "email" TEXT NOT NULL,
-  "token" TEXT NOT NULL,
+  "token" TEXT NOT NULL UNIQUE,
   "expiresAt" TIMESTAMP(3) NOT NULL,
   "acceptedAt" TIMESTAMP(3),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "createdById" TEXT NOT NULL,
-
   CONSTRAINT "OrganisationInvite_pkey" PRIMARY KEY ("id")
 );
 
--- WorkRelationship table
 CREATE TABLE IF NOT EXISTS "WorkRelationship" (
   "id" TEXT NOT NULL,
   "brandId" TEXT NOT NULL,
@@ -411,32 +376,9 @@ CREATE TABLE IF NOT EXISTS "WorkRelationship" (
   "projectDescription" TEXT,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-  CONSTRAINT "WorkRelationship_pkey" PRIMARY KEY ("id")
+  CONSTRAINT "WorkRelationship_pkey" PRIMARY KEY ("id"),
+  CONSTRAINT "WorkRelationship_brandId_supplierId_key" UNIQUE ("brandId", "supplierId")
 );
-
--- ============= UNIQUE CONSTRAINTS =============
-
-ALTER TABLE "User" ADD CONSTRAINT "User_email_key" UNIQUE ("email") ON CONFLICT DO NOTHING;
-ALTER TABLE "Member" ADD CONSTRAINT "Member_userId_key" UNIQUE ("userId") ON CONFLICT DO NOTHING;
-ALTER TABLE "Brand" ADD CONSTRAINT "Brand_userId_key" UNIQUE ("userId") ON CONFLICT DO NOTHING;
-ALTER TABLE "Brand" ADD CONSTRAINT "Brand_slug_key" UNIQUE ("slug") ON CONFLICT DO NOTHING;
-ALTER TABLE "Supplier" ADD CONSTRAINT "Supplier_userId_key" UNIQUE ("userId") ON CONFLICT DO NOTHING;
-ALTER TABLE "Supplier" ADD CONSTRAINT "Supplier_slug_key" UNIQUE ("slug") ON CONFLICT DO NOTHING;
-ALTER TABLE "SupplierClaim" ADD CONSTRAINT "SupplierClaim_supplierId_userId_key" UNIQUE ("supplierId", "userId") ON CONFLICT DO NOTHING;
-ALTER TABLE "OfferClaim" ADD CONSTRAINT "OfferClaim_offerId_userId_key" UNIQUE ("offerId", "userId") ON CONFLICT DO NOTHING;
-ALTER TABLE "Event" ADD CONSTRAINT "Event_slug_key" UNIQUE ("slug") ON CONFLICT DO NOTHING;
-ALTER TABLE "EventRsvp" ADD CONSTRAINT "EventRsvp_eventId_userId_key" UNIQUE ("eventId", "userId") ON CONFLICT DO NOTHING;
-ALTER TABLE "SavedSupplier" ADD CONSTRAINT "SavedSupplier_userId_supplierId_key" UNIQUE ("userId", "supplierId") ON CONFLICT DO NOTHING;
-ALTER TABLE "SavedBrand" ADD CONSTRAINT "SavedBrand_userId_brandId_key" UNIQUE ("userId", "brandId") ON CONFLICT DO NOTHING;
-ALTER TABLE "NewsSource" ADD CONSTRAINT "NewsSource_feedUrl_key" UNIQUE ("feedUrl") ON CONFLICT DO NOTHING;
-ALTER TABLE "NewsArticle" ADD CONSTRAINT "NewsArticle_url_key" UNIQUE ("url") ON CONFLICT DO NOTHING;
-ALTER TABLE "Organisation" ADD CONSTRAINT "Organisation_slug_key" UNIQUE ("slug") ON CONFLICT DO NOTHING;
-ALTER TABLE "Organisation" ADD CONSTRAINT "Organisation_brandId_key" UNIQUE ("brandId") ON CONFLICT DO NOTHING;
-ALTER TABLE "Organisation" ADD CONSTRAINT "Organisation_supplierId_key" UNIQUE ("supplierId") ON CONFLICT DO NOTHING;
-ALTER TABLE "OrganisationMember" ADD CONSTRAINT "OrganisationMember_organisationId_userId_key" UNIQUE ("organisationId", "userId") ON CONFLICT DO NOTHING;
-ALTER TABLE "OrganisationInvite" ADD CONSTRAINT "OrganisationInvite_token_key" UNIQUE ("token") ON CONFLICT DO NOTHING;
-ALTER TABLE "WorkRelationship" ADD CONSTRAINT "WorkRelationship_brandId_supplierId_key" UNIQUE ("brandId", "supplierId") ON CONFLICT DO NOTHING;
 
 -- ============= FOREIGN KEYS =============
 
@@ -556,4 +498,3 @@ CREATE INDEX IF NOT EXISTS "WorkRelationship_brandId_idx" ON "WorkRelationship"(
 CREATE INDEX IF NOT EXISTS "WorkRelationship_supplierId_idx" ON "WorkRelationship"("supplierId");
 
 -- ============= DONE =============
--- Schema created successfully!
