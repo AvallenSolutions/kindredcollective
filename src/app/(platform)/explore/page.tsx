@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Search, SlidersHorizontal, Bot, Sparkles, ChevronDown, LayoutGrid, List, Zap } from 'lucide-react'
 import { SupplierCard } from '@/components/suppliers/supplier-card'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { SUPPLIER_CATEGORY_LABELS } from '@/types/database'
 import type { SupplierCategory } from '@prisma/client'
 
@@ -11,7 +11,8 @@ export const revalidate = 0
 
 async function getSuppliers() {
   try {
-    const supabase = await createClient()
+    // Use admin client to bypass RLS for public read operations
+    const supabase = createAdminClient()
 
     // Query all public suppliers from database
     const { data: suppliers, error } = await supabase

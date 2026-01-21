@@ -13,7 +13,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { Badge, Button, Card, CardContent } from '@/components/ui'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { SUPPLIER_CATEGORY_LABELS, CERTIFICATION_LABELS } from '@/types/database'
 import type { SupplierCategory, Certification } from '@prisma/client'
 
@@ -48,7 +48,8 @@ const categoryColors: Record<SupplierCategory, string> = {
 
 async function getSupplierBySlug(slug: string) {
   try {
-    const supabase = await createClient()
+    // Use admin client to bypass RLS for public read operations
+    const supabase = createAdminClient()
 
     const { data: supplier, error } = await supabase
       .from('Supplier')
