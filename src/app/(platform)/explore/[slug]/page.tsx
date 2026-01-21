@@ -13,9 +13,13 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { Badge, Button, Card, CardContent } from '@/components/ui'
-import { suppliers } from '../../../../../prisma/seed-data'
+import { createClient } from '@/lib/supabase/server'
 import { SUPPLIER_CATEGORY_LABELS, CERTIFICATION_LABELS } from '@/types/database'
 import type { SupplierCategory, Certification } from '@prisma/client'
+
+// Force dynamic rendering to always fetch fresh data from Supabase
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 interface SupplierProfilePageProps {
   params: Promise<{ slug: string }>
@@ -42,9 +46,32 @@ const categoryColors: Record<SupplierCategory, string> = {
   OTHER: 'bg-gray-400',
 }
 
+async function getSupplierBySlug(slug: string) {
+  try {
+    const supabase = await createClient()
+
+    const { data: supplier, error } = await supabase
+      .from('Supplier')
+      .select('*')
+      .eq('slug', slug)
+      .eq('isPublic', true)
+      .single()
+
+    if (error || !supplier) {
+      console.error('Error fetching supplier:', error)
+      return null
+    }
+
+    return supplier
+  } catch (err) {
+    console.error('Failed to fetch supplier:', err)
+    return null
+  }
+}
+
 export default async function SupplierProfilePage({ params }: SupplierProfilePageProps) {
   const { slug } = await params
-  const supplier = suppliers.find((s) => s.slug === slug)
+  const supplier = await getSupplierBySlug(slug)
 
   if (!supplier) {
     notFound()
@@ -337,9 +364,3 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
   )
 }
 
-// Generate static params for all suppliers
-export function generateStaticParams() {
-  return suppliers.map((supplier) => ({
-    slug: supplier.slug,
-  }))
-}
