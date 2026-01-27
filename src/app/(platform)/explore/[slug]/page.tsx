@@ -78,7 +78,7 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
     notFound()
   }
 
-  const categoryColor = categoryColors[supplier.category] || 'bg-gray-400'
+  const categoryColor = categoryColors[supplier.category as SupplierCategory] || 'bg-gray-400'
 
   return (
     <div className="min-h-screen">
