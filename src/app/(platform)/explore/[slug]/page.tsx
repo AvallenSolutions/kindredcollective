@@ -114,7 +114,7 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
                     Verified
                   </Badge>
                 )}
-                {supplier.certifications?.map((cert) => (
+                {supplier.certifications?.map((cert: string) => (
                   <Badge key={cert} variant="lime">
                     {CERTIFICATION_LABELS[cert as Certification]}
                   </Badge>
@@ -183,7 +183,7 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
               <CardContent className="p-6">
                 <h2 className="font-display text-xl font-bold mb-4">Services</h2>
                 <div className="grid sm:grid-cols-2 gap-3">
-                  {supplier.services.map((service) => (
+                  {supplier.services.map((service: string) => (
                     <div
                       key={service}
                       className="flex items-center gap-3 p-3 bg-gray-50 border-2 border-gray-200"
@@ -204,7 +204,7 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
                     Service Regions
                   </h2>
                   <div className="flex flex-wrap gap-2">
-                    {supplier.serviceRegions.map((region) => (
+                    {supplier.serviceRegions.map((region: string) => (
                       <Badge key={region} variant="outline">
                         {region}
                       </Badge>
@@ -326,7 +326,7 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
                     Certifications
                   </h3>
                   <div className="space-y-2">
-                    {supplier.certifications.map((cert) => (
+                    {supplier.certifications.map((cert: string) => (
                       <div
                         key={cert}
                         className="flex items-center gap-2 p-2 bg-lime/10 border-2 border-lime"
