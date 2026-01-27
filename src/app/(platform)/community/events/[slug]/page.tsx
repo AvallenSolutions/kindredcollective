@@ -1,6 +1,3 @@
-'use client'
-
-import { useState } from 'react'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -12,15 +9,16 @@ import {
   Users,
   Share2,
   ExternalLink,
-  Check,
   Ticket,
 } from 'lucide-react'
 import { Badge, Button, Card, CardContent } from '@/components/ui'
-import { events } from '../../../../../../prisma/seed-events'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { EVENT_TYPE_LABELS } from '@/types/database'
 import type { EventType } from '@prisma/client'
 import { cn, formatDate } from '@/lib/utils'
-import { use } from 'react'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 interface EventDetailPageProps {
   params: Promise<{ slug: string }>
@@ -37,38 +35,90 @@ const typeColors: Record<EventType, string> = {
   OTHER: 'bg-gray-400',
 }
 
-// Sample attendees for demo
-const sampleAttendees = [
-  { id: '1', name: 'Sarah Mitchell', company: 'Tarquin\'s Gin', avatarUrl: null },
-  { id: '2', name: 'James Cooper', company: 'Scale Drinks', avatarUrl: null },
-  { id: '3', name: 'Emma Thompson', company: 'Lucky Saint', avatarUrl: null },
-  { id: '4', name: 'David Chen', company: 'Berlin Packaging', avatarUrl: null },
-  { id: '5', name: 'Lucy Williams', company: 'BB Comms', avatarUrl: null },
-  { id: '6', name: 'Tom Richards', company: 'Chapel Down', avatarUrl: null },
-]
+async function getEvent(slug: string) {
+  try {
+    const supabase = createAdminClient()
 
-export default function EventDetailPage({ params }: EventDetailPageProps) {
-  const { slug } = use(params)
-  const event = events.find((e) => e.slug === slug)
-  const [rsvpStatus, setRsvpStatus] = useState<'none' | 'going' | 'interested'>('none')
+    const { data: event, error } = await supabase
+      .from('Event')
+      .select('*')
+      .eq('slug', slug)
+      .eq('status', 'PUBLISHED')
+      .single()
+
+    if (error || !event) {
+      return null
+    }
+
+    // Fetch RSVP count
+    const { count } = await supabase
+      .from('EventRsvp')
+      .select('id', { count: 'exact', head: true })
+      .eq('eventId', event.id)
+      .eq('status', 'GOING')
+
+    // Fetch attendees (public members who RSVP'd)
+    const { data: rsvps } = await supabase
+      .from('EventRsvp')
+      .select('userId')
+      .eq('eventId', event.id)
+      .eq('status', 'GOING')
+      .limit(6)
+
+    let attendees: Array<{ id: string; name: string; company: string }> = []
+    if (rsvps && rsvps.length > 0) {
+      const userIds = rsvps.map((r) => r.userId)
+      const { data: members } = await supabase
+        .from('Member')
+        .select('userId, firstName, lastName')
+        .in('userId', userIds)
+        .eq('isPublic', true)
+
+      const { data: brands } = await supabase
+        .from('Brand')
+        .select('userId, name')
+        .in('userId', userIds)
+      const { data: suppliers } = await supabase
+        .from('Supplier')
+        .select('userId, companyName')
+        .in('userId', userIds)
+
+      const brandMap = new Map(brands?.map((b) => [b.userId, b.name]) || [])
+      const supplierMap = new Map(suppliers?.map((s) => [s.userId, s.companyName]) || [])
+
+      attendees = (members || []).map((m) => ({
+        id: m.userId,
+        name: `${m.firstName} ${m.lastName}`,
+        company: brandMap.get(m.userId) || supplierMap.get(m.userId) || '',
+      }))
+    }
+
+    return {
+      ...event,
+      attendeeCount: count || 0,
+      attendees,
+    }
+  } catch {
+    return null
+  }
+}
+
+export default async function EventDetailPage({ params }: EventDetailPageProps) {
+  const { slug } = await params
+  const event = await getEvent(slug)
 
   if (!event) {
     notFound()
   }
 
-  const typeColor = typeColors[event.type] || 'bg-gray-400'
+  const typeColor = typeColors[event.type as EventType] || 'bg-gray-400'
   const isPast = new Date(event.startDate) < new Date()
-
-  const handleRsvp = (status: 'going' | 'interested') => {
-    setRsvpStatus(status === rsvpStatus ? 'none' : status)
-  }
 
   return (
     <div className="min-h-screen">
       {/* Header */}
       <section className={cn(typeColor, 'border-b-4 border-black')}>
         <div className="section-container py-8">
-          {/* Back Link */}
           <Link
             href="/community/events"
             className="inline-flex items-center text-sm font-bold mb-6 hover:underline"
@@ -92,7 +142,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-3 mb-3">
                 <Badge variant="outline" className="bg-white/90">
-                  {EVENT_TYPE_LABELS[event.type]}
+                  {EVENT_TYPE_LABELS[event.type as EventType]}
                 </Badge>
                 {event.isFeatured && (
                   <Badge variant="coral">Featured</Badge>
@@ -106,7 +156,6 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                 {event.title}
               </h1>
 
-              {/* Meta */}
               <div className="flex flex-wrap gap-4 text-sm">
                 <span className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
@@ -122,7 +171,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
               </div>
             </div>
 
-            {/* RSVP/Price */}
+            {/* Price */}
             <div className="flex flex-col gap-3">
               {!isPast ? (
                 <>
@@ -134,40 +183,9 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                       {event.isFree ? 'FREE' : `£${event.price}`}
                     </span>
                   </div>
-                  <Button
-                    size="lg"
-                    onClick={() => handleRsvp('going')}
-                    className={cn(
-                      rsvpStatus === 'going' && 'bg-lime text-black border-lime'
-                    )}
-                  >
-                    {rsvpStatus === 'going' ? (
-                      <>
-                        <Check className="w-4 h-4 mr-2" />
-                        Going
-                      </>
-                    ) : (
-                      <>
-                        <Ticket className="w-4 h-4 mr-2" />
-                        {event.isFree ? 'RSVP' : 'Get Tickets'}
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleRsvp('interested')}
-                    className={cn(
-                      rsvpStatus === 'interested' && 'bg-cyan text-black border-cyan'
-                    )}
-                  >
-                    {rsvpStatus === 'interested' ? (
-                      <>
-                        <Check className="w-4 h-4 mr-2" />
-                        Interested
-                      </>
-                    ) : (
-                      'Interested'
-                    )}
+                  <Button size="lg">
+                    <Ticket className="w-4 h-4 mr-2" />
+                    {event.isFree ? 'RSVP' : 'Get Tickets'}
                   </Button>
                 </>
               ) : (
@@ -183,7 +201,6 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
       {/* Main Content */}
       <section className="section-container py-8 lg:py-12">
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
             {/* Description */}
             <Card>
@@ -196,7 +213,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
             </Card>
 
             {/* Attendees */}
-            {event.showAttendees && (
+            {event.attendees.length > 0 && (
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
@@ -205,11 +222,11 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                     </h2>
                     <Badge variant="cyan">
                       <Users className="w-3 h-3 mr-1" />
-                      {sampleAttendees.length} attending
+                      {event.attendeeCount} attending
                     </Badge>
                   </div>
                   <div className="grid sm:grid-cols-2 gap-3">
-                    {sampleAttendees.map((attendee) => (
+                    {event.attendees.map((attendee: { id: string; name: string; company: string }) => (
                       <div
                         key={attendee.id}
                         className="flex items-center gap-3 p-3 bg-gray-50 border-2 border-gray-200"
@@ -226,9 +243,11 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                       </div>
                     ))}
                   </div>
-                  <p className="text-sm text-gray-500 mt-4">
-                    + more attendees
-                  </p>
+                  {event.attendeeCount > event.attendees.length && (
+                    <p className="text-sm text-gray-500 mt-4">
+                      + {event.attendeeCount - event.attendees.length} more attendees
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -269,10 +288,10 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                       <p className="text-sm text-gray-600">{event.address}</p>
                     )}
                     <p className="text-sm text-gray-600">
-                      {event.city}, {event.country}
+                      {[event.city, event.country].filter(Boolean).join(', ')}
                     </p>
                     <a
-                      href={`https://maps.google.com/?q=${encodeURIComponent(`${event.venueName} ${event.address} ${event.city}`)}`}
+                      href={`https://maps.google.com/?q=${encodeURIComponent([event.venueName, event.address, event.city].filter(Boolean).join(' '))}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center text-sm text-cyan hover:underline mt-2"
@@ -305,7 +324,7 @@ export default function EventDetailPage({ params }: EventDetailPageProps) {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-500">Type</span>
-                    <span className="font-bold">{EVENT_TYPE_LABELS[event.type]}</span>
+                    <span className="font-bold">{EVENT_TYPE_LABELS[event.type as EventType]}</span>
                   </div>
                   {event.capacity && (
                     <div className="flex justify-between">
