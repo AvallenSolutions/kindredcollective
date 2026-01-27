@@ -9,8 +9,39 @@ import { getInitials } from '@/lib/utils'
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
+async function ensureMemberRecords() {
+  try {
+    const supabase = createAdminClient()
+    const { data: users } = await supabase.from('User').select('id, email, role')
+    if (!users || users.length === 0) return
+    const { data: existingMembers } = await supabase.from('Member').select('userId')
+    const existingUserIds = new Set(existingMembers?.map((m) => m.userId) || [])
+    const usersWithoutMembers = users.filter((u) => !existingUserIds.has(u.id))
+    for (const user of usersWithoutMembers) {
+      const emailName = user.email.split('@')[0]
+      const parts = emailName.split(/[._-]/)
+      const firstName = parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : 'User'
+      const lastName = parts[1] ? parts[1].charAt(0).toUpperCase() + parts[1].slice(1) : ''
+      await supabase.from('Member').insert({
+        userId: user.id,
+        firstName,
+        lastName,
+        jobTitle: user.role === 'ADMIN' ? 'Admin' : null,
+        isPublic: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+    }
+  } catch (err) {
+    console.error('Error ensuring member records:', err)
+  }
+}
+
 async function getCommunityData() {
   const supabase = createAdminClient()
+
+  // Auto-create Member records for any users missing them
+  await ensureMemberRecords()
 
   // Fetch brands
   const { data: brands } = await supabase
