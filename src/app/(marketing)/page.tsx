@@ -1,6 +1,36 @@
 import Link from 'next/link'
 import { Search, Globe, LayoutDashboard, Scissors, Star, ArrowRight, Ticket } from 'lucide-react'
 import { Button } from '@/components/ui'
+import { createAdminClient } from '@/lib/supabase/admin'
+
+// Force dynamic rendering so featured suppliers rotate on every page load
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+async function getFeaturedSuppliers(count = 4) {
+  try {
+    const supabase = createAdminClient()
+
+    const { data: suppliers, error } = await supabase
+      .from('Supplier')
+      .select('id, companyName, slug, logoUrl, category, services, location, country, isVerified, isPublic')
+      .eq('isPublic', true)
+
+    if (error || !suppliers || suppliers.length === 0) {
+      return []
+    }
+
+    // Shuffle and pick `count` random suppliers
+    for (let i = suppliers.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [suppliers[i], suppliers[j]] = [suppliers[j], suppliers[i]]
+    }
+
+    return suppliers.slice(0, count)
+  } catch {
+    return []
+  }
+}
 
 const brands = [
   'DUPPY SHARE',
@@ -39,42 +69,8 @@ const featuredOffers = [
   },
 ]
 
-const featuredSuppliers = [
-  {
-    slug: 'saverglass',
-    name: 'SAVERGLASS',
-    location: 'France',
-    category: 'Production',
-    tags: ['Low MOQ', 'Bespoke'],
-    image: 'https://images.unsplash.com/photo-1597484661643-2f5fef640dd1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-  },
-  {
-    slug: 'london-city-bond-ltd',
-    name: 'London City Bond',
-    location: 'London, UK',
-    category: 'Logistics',
-    tags: ['D2C', 'Trade'],
-    image: 'https://images.unsplash.com/photo-1601058268499-e52658b8bb88?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-  },
-  {
-    slug: 'aitch-creates',
-    name: 'Aitch Creates',
-    location: 'United Kingdom',
-    category: 'Creative',
-    tags: ['Branding', 'Pack Design'],
-    image: 'https://images.unsplash.com/photo-1595246140625-573b715d11dc?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-  },
-  {
-    slug: 'berlin-packaging',
-    name: 'Berlin Packaging',
-    location: 'Germany',
-    category: 'Packaging',
-    tags: ['Glass', 'Global'],
-    image: 'https://images.unsplash.com/photo-1571613316887-6f8d5cbf7ef7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-  },
-]
-
-export default function HomePage() {
+export default async function HomePage() {
+  const featuredSuppliers = await getFeaturedSuppliers(4)
   return (
     <>
       {/* Hero Section */}
@@ -297,7 +293,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16">
             <h2 className="font-display text-5xl md:text-6xl font-bold mb-6 uppercase tracking-tight">Featured Partners</h2>
-            <p className="text-xl text-gray-600 font-medium max-w-2xl mx-auto">Hand-picked suppliers powering the next generation of drink brands.</p>
+            <p className="text-xl text-gray-600 font-medium max-w-2xl mx-auto">Discover suppliers powering the next generation of drink brands.</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -307,20 +303,24 @@ export default function HomePage() {
                 href={`/explore/${supplier.slug}`}
                 className="group block bg-white border-2 border-black rounded-xl overflow-hidden neo-shadow hover:translate-y-[-4px] hover:shadow-[6px_6px_0px_0px_#000] transition-all duration-200"
               >
-                <div className="h-48 overflow-hidden border-b-2 border-black relative">
-                  <img
-                    src={supplier.image}
-                    alt={supplier.name}
-                    className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500 group-hover:scale-110"
-                  />
+                <div className="h-48 overflow-hidden border-b-2 border-black relative bg-white flex items-center justify-center p-6">
+                  {supplier.logoUrl ? (
+                    <img
+                      src={supplier.logoUrl}
+                      alt={supplier.companyName}
+                      className="max-w-full max-h-full object-contain group-hover:scale-110 transition-transform duration-500"
+                    />
+                  ) : (
+                    <div className="text-2xl font-display font-bold text-gray-300 uppercase">{supplier.companyName}</div>
+                  )}
                   <div className="absolute top-3 right-3 bg-black text-white text-xs font-bold px-2 py-1 uppercase">{supplier.category}</div>
                 </div>
                 <div className="p-6">
-                  <h3 className="font-display text-xl font-bold mb-1">{supplier.name}</h3>
-                  <p className="text-sm text-gray-500 font-medium mb-4">{supplier.location}</p>
+                  <h3 className="font-display text-xl font-bold mb-1">{supplier.companyName}</h3>
+                  <p className="text-sm text-gray-500 font-medium mb-4">{supplier.location || supplier.country || 'Global'}</p>
                   <div className="flex flex-wrap gap-2 mb-4">
-                    {supplier.tags.map((tag) => (
-                      <span key={tag} className="px-2 py-1 bg-gray-100 border border-black rounded-md text-[10px] font-bold uppercase">{tag}</span>
+                    {(supplier.services as string[] || []).slice(0, 2).map((service: string) => (
+                      <span key={service} className="px-2 py-1 bg-gray-100 border border-black rounded-md text-[10px] font-bold uppercase">{service}</span>
                     ))}
                   </div>
                   <div className="w-full py-2 border-2 border-black text-center font-bold text-sm uppercase group-hover:bg-lime transition-colors">
