@@ -1,3 +1,4 @@
+import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/auth'
 import {
@@ -48,6 +49,7 @@ export async function POST() {
     const { error } = await supabase
       .from('Member')
       .insert({
+        id: crypto.randomUUID(),
         userId: user.id,
         firstName,
         lastName,

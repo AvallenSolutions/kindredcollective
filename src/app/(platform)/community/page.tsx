@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { DRINK_CATEGORY_LABELS } from '@/types/database'
 import type { DrinkCategory } from '@prisma/client'
 import { getInitials } from '@/lib/utils'
+import crypto from 'crypto'
 
 // Force dynamic rendering to always fetch fresh data
 export const dynamic = 'force-dynamic'
@@ -22,7 +23,8 @@ async function ensureMemberRecords() {
       const parts = emailName.split(/[._-]/)
       const firstName = parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : 'User'
       const lastName = parts[1] ? parts[1].charAt(0).toUpperCase() + parts[1].slice(1) : ''
-      await supabase.from('Member').insert({
+      const { error } = await supabase.from('Member').insert({
+        id: crypto.randomUUID(),
         userId: user.id,
         firstName,
         lastName,
@@ -31,6 +33,7 @@ async function ensureMemberRecords() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       })
+      if (error) console.error('Failed to insert member for user:', user.id, error)
     }
   } catch (err) {
     console.error('Error ensuring member records:', err)
