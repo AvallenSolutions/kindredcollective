@@ -106,7 +106,7 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-3 mb-3">
                 <Badge variant="outline" className="bg-white">
-                  {SUPPLIER_CATEGORY_LABELS[supplier.category]}
+                  {SUPPLIER_CATEGORY_LABELS[supplier.category as SupplierCategory]}
                 </Badge>
                 {supplier.isVerified && (
                   <Badge variant="blue" className="bg-blue-500 text-white border-blue-500">
@@ -352,7 +352,7 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
             Looking for More Options?
           </h2>
           <p className="text-gray-600 mb-6">
-            Explore other suppliers in {SUPPLIER_CATEGORY_LABELS[supplier.category]}
+            Explore other suppliers in {SUPPLIER_CATEGORY_LABELS[supplier.category as SupplierCategory]}
           </p>
           <Link href={`/explore?category=${supplier.category}`}>
             <Button variant="outline" size="lg">
