@@ -1,5 +1,6 @@
 import Link from 'next/link'
-import { Twitter, Instagram, Linkedin, Zap } from 'lucide-react'
+import Image from 'next/image'
+import { Twitter, Instagram, Linkedin } from 'lucide-react'
 
 const footerNavigation = {
   platform: [
@@ -27,10 +28,10 @@ export function Footer() {
           {/* Brand Column */}
           <div className="col-span-1 md:col-span-1">
             <div className="flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 bg-black text-white flex items-center justify-center">
-                <Zap className="w-4 h-4" />
+              <div className="w-8 h-8 flex items-center justify-center">
+                <Image src="/pineapple-logo.svg" alt="Kindred Collective logo" width={32} height={32} className="w-8 h-8" />
               </div>
-              <span className="text-xl font-display font-bold uppercase">Kindred.</span>
+              <span className="text-xl font-display font-bold uppercase">Kindred Collective</span>
             </div>
             <p className="text-sm font-medium text-gray-600 mb-6">
               Empowering independent makers to create exceptional liquids.
