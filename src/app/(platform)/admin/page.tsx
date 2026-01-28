@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { Shield, Users, Building2, Store, Calendar, Gift, Plus, Settings } from 'lucide-react'
+import { Shield, Users, Building2, Store, Calendar, Gift, Plus, Settings, Mail } from 'lucide-react'
 
 export default async function AdminPage() {
   const session = await getSession()
@@ -15,16 +15,18 @@ export default async function AdminPage() {
   const supabase = createAdminClient()
 
   // Fetch counts for dashboard stats
-  const [usersResult, brandsResult, suppliersResult, eventsResult, offersResult] = await Promise.all([
+  const [usersResult, brandsResult, suppliersResult, eventsResult, offersResult, invitesResult] = await Promise.all([
     supabase.from('User').select('*', { count: 'exact', head: true }),
     supabase.from('Brand').select('*', { count: 'exact', head: true }),
     supabase.from('Supplier').select('*', { count: 'exact', head: true }),
     supabase.from('Event').select('*', { count: 'exact', head: true }),
     supabase.from('Offer').select('*', { count: 'exact', head: true }),
+    supabase.from('InviteLink').select('*', { count: 'exact', head: true }),
   ])
 
   const stats = [
     { name: 'Total Users', value: usersResult.count || 0, icon: Users, color: 'bg-cyan', href: '/admin/users' },
+    { name: 'Invite Links', value: invitesResult.count || 0, icon: Mail, color: 'bg-purple-400', href: '/admin/invites' },
     { name: 'Brands', value: brandsResult.count || 0, icon: Building2, color: 'bg-yellow', href: '/admin/brands' },
     { name: 'Suppliers', value: suppliersResult.count || 0, icon: Store, color: 'bg-magenta', href: '/admin/suppliers' },
     { name: 'Events', value: eventsResult.count || 0, icon: Calendar, color: 'bg-green-400', href: '/admin/events' },
@@ -54,6 +56,12 @@ export default async function AdminPage() {
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-3 mb-8">
         <Link
+          href="/admin/invites"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-purple-400 border-2 border-black font-bold uppercase text-sm neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+        >
+          <Mail className="w-4 h-4" /> Invite Links
+        </Link>
+        <Link
           href="/admin/users/new"
           className="inline-flex items-center gap-2 px-4 py-2 bg-cyan border-2 border-black font-bold uppercase text-sm neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
         >
@@ -74,7 +82,7 @@ export default async function AdminPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
         {stats.map((stat) => (
           <Link
             key={stat.name}
