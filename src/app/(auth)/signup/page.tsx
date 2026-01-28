@@ -170,8 +170,8 @@ function SignupForm() {
         return
       }
 
-      // Redirect to dashboard
-      router.push('/dashboard?welcome=true')
+      // Redirect to onboarding to complete profile setup
+      router.push('/onboarding')
       router.refresh()
     } catch {
       setError('An unexpected error occurred')
