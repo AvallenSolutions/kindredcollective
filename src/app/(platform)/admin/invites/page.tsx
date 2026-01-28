@@ -256,7 +256,7 @@ export default function AdminInvitesPage() {
           {invites.length === 0 ? (
             <div className="px-6 py-12 text-center text-gray-500">
               <p>No invite links created yet.</p>
-              <p className="text-sm">Click "Generate Invite" to create your first invite link.</p>
+              <p className="text-sm">Click &quot;Generate Invite&quot; to create your first invite link.</p>
             </div>
           ) : (
             invites.map((invite) => (

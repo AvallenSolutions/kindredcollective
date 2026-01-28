@@ -220,7 +220,7 @@ export default function OnboardingPage() {
               Welcome to Kindred Collective!
             </h1>
             <p className="text-gray-600 text-lg">
-              Let's set up your profile
+              Let&apos;s set up your profile
             </p>
           </div>
 
@@ -238,7 +238,7 @@ export default function OnboardingPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-600 mb-4">
-                    I'm the first person from my brand to join. Let's create your brand profile.
+                    I&apos;m the first person from my brand to join. Let&apos;s create your brand profile.
                   </p>
                   <div className="flex items-center text-sm font-bold text-cyan">
                     Get Started <ArrowRight className="ml-2 w-4 h-4" />
@@ -282,7 +282,7 @@ export default function OnboardingPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-600 mb-4">
-                    We're already listed. Let me claim our profile.
+                    We&apos;re already listed. Let me claim our profile.
                   </p>
                   <div className="flex items-center text-sm font-bold text-magenta">
                     Search & Claim <ArrowRight className="ml-2 w-4 h-4" />
@@ -302,7 +302,7 @@ export default function OnboardingPage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-gray-600 mb-4">
-                    We're not listed yet. Let's create our profile.
+                    We&apos;re not listed yet. Let&apos;s create our profile.
                   </p>
                   <div className="flex items-center text-sm font-bold text-cyan">
                     Get Started <ArrowRight className="ml-2 w-4 h-4" />
