@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   description: 'The UK\'s leading marketplace connecting independent drinks brands with suppliers, manufacturers, and service providers.',
   keywords: ['drinks', 'spirits', 'beer', 'wine', 'suppliers', 'packaging', 'ingredients', 'independent brands'],
   authors: [{ name: 'Kindred Collective' }],
+  icons: {
+    icon: '/icon.svg',
+  },
   openGraph: {
     title: 'Kindred Collective | The Independent Drinks Ecosystem',
     description: 'Connect with suppliers, discover brands, and grow your drinks business.',

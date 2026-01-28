@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" fill="#000000"/>
+  <g fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Crown/Leaves -->
+    <!-- Center leaf - tall pointed oval -->
+    <path d="M50 8 Q54 20 54 30 Q54 36 50 42 Q46 36 46 30 Q46 20 50 8" />
+
+    <!-- Inner left leaves -->
+    <path d="M42 40 Q36 28 38 12 Q32 28 42 40" />
+    <path d="M36 44 Q26 30 30 10 Q22 32 36 44" />
+
+    <!-- Inner right leaves -->
+    <path d="M58 40 Q64 28 62 12 Q68 28 58 40" />
+    <path d="M64 44 Q74 30 70 10 Q78 32 64 44" />
+
+    <!-- Outer left leaves -->
+    <path d="M30 48 Q14 38 18 14 Q10 40 30 48" />
+    <path d="M24 50 Q6 44 8 22 Q2 46 24 50" />
+
+    <!-- Outer right leaves -->
+    <path d="M70 48 Q86 38 82 14 Q90 40 70 48" />
+    <path d="M76 50 Q94 44 92 22 Q98 46 76 50" />
+
+    <!-- Small decorative seeds at crown base -->
+    <path d="M40 42 Q38 38 42 36 Q44 40 40 42" />
+    <path d="M60 42 Q62 38 58 36 Q56 40 60 42" />
+
+    <!-- Pineapple body - semi circular top -->
+    <path d="M20 52 A32 32 0 0 1 80 52" />
+
+    <!-- Body bottom curve -->
+    <path d="M20 52 Q20 80 50 92 Q80 80 80 52" />
+
+    <!-- Geometric X pattern inside body -->
+    <!-- Upper X -->
+    <path d="M26 56 L50 52 L74 56" />
+    <path d="M32 66 L50 52" />
+    <path d="M68 66 L50 52" />
+
+    <!-- Diamond middle section -->
+    <path d="M26 56 L32 66 L50 76 L68 66 L74 56" />
+    <path d="M32 66 L50 60 L68 66" />
+    <path d="M50 60 L50 76" />
+
+    <!-- Lower curves -->
+    <path d="M32 66 Q40 82 50 86" />
+    <path d="M68 66 Q60 82 50 86" />
+  </g>
+</svg>
