@@ -1,11 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   const role = searchParams.get('role') || 'BRAND' // Default to BRAND if not specified
-  const next = searchParams.get('next') ?? '/dashboard?welcome=true'
+  const inviteToken = searchParams.get('invite')
+  const next = searchParams.get('next') ?? '/onboarding' // Redirect to onboarding for profile setup
 
   if (code) {
     const supabase = await createClient()
@@ -28,13 +30,48 @@ export async function GET(request: Request) {
         .single()
 
       if (!existingUser) {
+        const adminSupabase = createAdminClient()
+
+        // Validate invite token (REQUIRED for new signups)
+        if (!inviteToken) {
+          // New users MUST have an invite token
+          return NextResponse.redirect(`${origin}/signup?error=invite_required`)
+        }
+
+        let validatedInviteToken = null
+        if (inviteToken) {
+          const { data: invite, error: inviteError } = await adminSupabase
+            .from('InviteLink')
+            .select('id, token, isActive, expiresAt, maxUses, usedCount')
+            .eq('token', inviteToken)
+            .single()
+
+          // Check invite validity
+          if (!invite ||
+              !invite.isActive ||
+              (invite.expiresAt && new Date(invite.expiresAt) < new Date()) ||
+              (invite.maxUses && invite.usedCount >= invite.maxUses)) {
+            // Invalid, inactive, expired, or maxed out invite
+            return NextResponse.redirect(`${origin}/signup?error=invalid_invite`)
+          }
+
+          validatedInviteToken = inviteToken
+
+          // Increment invite usage count
+          await adminSupabase
+            .from('InviteLink')
+            .update({ usedCount: invite.usedCount + 1 })
+            .eq('id', invite.id)
+        }
+
         // Create user record in our database
-        const { error: createError } = await supabase
+        const { error: createError } = await adminSupabase
           .from('User')
           .insert({
             id: user.id,
             email: user.email!,
             role: userRole,
+            inviteLinkToken: validatedInviteToken,
             emailVerified: user.email_confirmed_at ? new Date(user.email_confirmed_at).toISOString() : null,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
