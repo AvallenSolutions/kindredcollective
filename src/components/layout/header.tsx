@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useState } from 'react'
-import { Menu, X, User, LogOut, Zap, Shield } from 'lucide-react'
+import { Menu, X, User, LogOut, Shield } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
@@ -34,10 +35,10 @@ export function Header({ user }: HeaderProps) {
       <nav className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between" aria-label="Global">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 bg-black text-white flex items-center justify-center rounded-none neo-border border-black group-hover:bg-cyan group-hover:text-black transition-colors">
-            <Zap className="w-6 h-6" />
+          <div className="w-10 h-10 flex items-center justify-center">
+            <Image src="/pineapple-logo.svg" alt="Kindred Collective logo" width={40} height={40} className="w-10 h-10" />
           </div>
-          <span className="font-display font-bold text-2xl tracking-tighter uppercase">Kindred.</span>
+          <span className="font-display font-bold text-2xl tracking-tighter uppercase">Kindred Collective</span>
         </Link>
 
         {/* Desktop Menu */}
