@@ -105,6 +105,12 @@ enum ClaimStatus {
   REJECTED
 }
 
+enum OrganisationMemberRole {
+  OWNER   // Full control, can transfer ownership
+  ADMIN   // Can manage members and settings
+  MEMBER  // Basic access
+}
+
 // ============= USERS & AUTH =============
 
 model User {
@@ -114,6 +120,10 @@ model User {
   role          UserRole
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  // Invite tracking
+  inviteLinkToken String?
+  inviteLink      InviteLink? @relation("InviteSignups", fields: [inviteLinkToken], references: [token])
 
   // Relations
   brand           Brand?
@@ -126,6 +136,7 @@ model User {
   supplierClaims  SupplierClaim[]
   reviews         SupplierReview[]
   organisationMembers OrganisationMember[]
+  createdInvites  InviteLink[] @relation("AdminInvites")
 
   @@index([email])
   @@index([role])
@@ -499,17 +510,18 @@ model Organisation {
 }
 
 model OrganisationMember {
-  id             String   @id @default(cuid())
+  id             String                 @id @default(cuid())
   organisationId String
   userId         String
-  isOwner        Boolean  @default(false)
-  joinedAt       DateTime @default(now())
+  role           OrganisationMemberRole @default(MEMBER)
+  joinedAt       DateTime               @default(now())
 
   organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([organisationId, userId])
   @@index([userId])
+  @@index([role])
 }
 
 model OrganisationInvite {
@@ -517,6 +529,7 @@ model OrganisationInvite {
   organisationId String
   email          String
   token          String    @unique
+  role           OrganisationMemberRole @default(MEMBER) // Role the invitee will get
   expiresAt      DateTime
   acceptedAt     DateTime?
   createdAt      DateTime  @default(now())
@@ -526,6 +539,28 @@ model OrganisationInvite {
 
   @@index([token])
   @@index([email])
+}
+
+// ============= ADMIN INVITE LINKS =============
+
+model InviteLink {
+  id          String   @id @default(cuid())
+  token       String   @unique
+  createdBy   String   // Admin who created it
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime?
+  maxUses     Int?     // null = unlimited
+  usedCount   Int      @default(0)
+  isActive    Boolean  @default(true)
+  notes       String?  @db.Text
+
+  // Relations
+  signups User[] @relation("InviteSignups")
+  admin   User   @relation("AdminInvites", fields: [createdBy], references: [id])
+
+  @@index([token])
+  @@index([isActive])
+  @@index([createdBy])
 }
 
 // ============= WORK RELATIONSHIPS (VERIFICATION) =============

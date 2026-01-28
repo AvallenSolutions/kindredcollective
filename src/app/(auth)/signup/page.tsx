@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Building2, Wine, ArrowRight, Check, Loader2 } from 'lucide-react'
@@ -41,18 +41,85 @@ function SignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialRole = searchParams.get('role') as UserRole | null
+  const inviteToken = searchParams.get('invite')
 
   const [step, setStep] = useState<'role' | 'details'>(initialRole ? 'details' : 'role')
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(initialRole)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    companyName: '',
     firstName: '',
     lastName: '',
   })
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [inviteValidating, setInviteValidating] = useState(true)
+  const [inviteValid, setInviteValid] = useState(false)
+
+  // Validate invite token on mount
+  useEffect(() => {
+    if (!inviteToken) {
+      setInviteValidating(false)
+      setInviteValid(false)
+      setError('An invite link is required to join Kindred Collective')
+      return
+    }
+
+    fetch(`/api/invites/validate?token=${inviteToken}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.data.valid) {
+          setInviteValid(true)
+        } else {
+          setInviteValid(false)
+          setError(data.error || 'Invalid invite link')
+        }
+      })
+      .catch(() => {
+        setInviteValid(false)
+        setError('Failed to validate invite link')
+      })
+      .finally(() => {
+        setInviteValidating(false)
+      })
+  }, [inviteToken])
+
+  // Show loading state while validating invite
+  if (inviteValidating) {
+    return (
+      <div className="w-full max-w-md px-4 text-center">
+        <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-cyan" />
+        <p className="text-gray-600">Validating invite...</p>
+      </div>
+    )
+  }
+
+  // Show error if no invite or invalid invite
+  if (!inviteToken || !inviteValid) {
+    return (
+      <div className="w-full max-w-md px-4">
+        <Card className="shadow-brutal-lg">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Invite Required</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="bg-coral/10 border-2 border-coral text-coral px-4 py-3 text-sm mb-4">
+              {error || 'An invite link is required to join Kindred Collective'}
+            </div>
+            <p className="text-center text-gray-600 mb-4">
+              Kindred Collective is a private membership community. Please contact an administrator to receive an invite link.
+            </p>
+            <Link
+              href="/login"
+              className="block w-full text-center px-4 py-2 bg-cyan border-2 border-black font-bold uppercase text-sm neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+            >
+              Back to Login
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   const handleRoleSelect = (role: UserRole) => {
     setSelectedRole(role)
@@ -61,7 +128,7 @@ function SignupForm() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedRole) return
+    if (!selectedRole || !inviteToken) return
 
     setError(null)
     setLoading(true)
@@ -78,7 +145,7 @@ function SignupForm() {
           role: selectedRole.toUpperCase(),
           firstName: formData.firstName,
           lastName: formData.lastName,
-          companyName: formData.companyName,
+          inviteToken: inviteToken, // Include invite token
         }),
       })
 
@@ -103,8 +170,8 @@ function SignupForm() {
         return
       }
 
-      // Redirect to dashboard
-      router.push('/dashboard?welcome=true')
+      // Redirect to onboarding to complete profile setup
+      router.push('/onboarding')
       router.refresh()
     } catch {
       setError('An unexpected error occurred')
@@ -113,14 +180,14 @@ function SignupForm() {
   }
 
   const handleOAuthSignup = async (provider: 'google' | 'linkedin_oidc') => {
-    if (!selectedRole) return
+    if (!selectedRole || !inviteToken) return
 
     const supabase = createClient()
 
     await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback?role=${selectedRole}`,
+        redirectTo: `${window.location.origin}/api/auth/callback?role=${selectedRole}&invite=${inviteToken}`,
       },
     })
   }
@@ -274,19 +341,6 @@ function SignupForm() {
                   required
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="companyName">
-                {selectedRole === 'brand' ? 'Brand Name' : 'Company Name'}
-              </Label>
-              <Input
-                id="companyName"
-                placeholder={selectedRole === 'brand' ? 'Your Brand Ltd' : 'Your Company Ltd'}
-                value={formData.companyName}
-                onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                required
-              />
             </div>
 
             <div className="space-y-2">
