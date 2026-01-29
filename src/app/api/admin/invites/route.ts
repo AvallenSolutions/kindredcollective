@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('InviteLink')
-    .select('*, admin:User!InviteLink_createdBy_fkey(email, member:Member(firstName, lastName))', { count: 'exact' })
+    .select('*', { count: 'exact' })
     .order('createdAt', { ascending: false })
     .range((page - 1) * limit, page * limit - 1)
 
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     const { data: invite, error } = await supabase
       .from('InviteLink')
       .insert(inviteData)
-      .select('*, admin:User!InviteLink_createdBy_fkey(email, member:Member(firstName, lastName))')
+      .select('*')
       .single()
 
     if (error) {
