@@ -7,7 +7,7 @@ import {
   unauthorizedResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
-import { randomBytes } from 'crypto'
+import { randomBytes, randomUUID } from 'crypto'
 
 // GET /api/admin/invites - List all invite links
 export async function GET(request: NextRequest) {
@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
 
     // Prepare invite data
     const inviteData: any = {
+      id: randomUUID(), // Generate UUID for the primary key
       token,
       createdBy: user.id,
       createdAt: new Date().toISOString(),
