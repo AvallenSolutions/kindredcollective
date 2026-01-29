@@ -303,9 +303,6 @@ export default function AdminInvitesPage() {
                           <span>Expires {formatDate(invite.expiresAt)}</span>
                         </div>
                       )}
-                      <div>
-                        by {invite.admin.member.firstName} {invite.admin.member.lastName}
-                      </div>
                     </div>
 
                     {/* Notes */}

@@ -24,7 +24,7 @@ export async function GET(
 
   const { data: invite, error } = await supabase
     .from('InviteLink')
-    .select('*, admin:User!InviteLink_createdBy_fkey(email, member:Member(firstName, lastName)), signups:User!User_inviteLinkToken_fkey(id, email, role, createdAt, member:Member(firstName, lastName))')
+    .select('*')
     .eq('id', params.id)
     .single()
 
@@ -73,7 +73,7 @@ export async function PATCH(
     .from('InviteLink')
     .update(updateData)
     .eq('id', params.id)
-    .select('*, admin:User!InviteLink_createdBy_fkey(email, member:Member(firstName, lastName))')
+    .select('*')
     .single()
 
   if (error) {
