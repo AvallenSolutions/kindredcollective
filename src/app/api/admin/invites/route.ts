@@ -68,15 +68,20 @@ export async function GET(request: NextRequest) {
 // POST /api/admin/invites - Create a new invite link
 export async function POST(request: NextRequest) {
   try {
+    console.log('[InviteLink] Starting invite creation...')
+
     const user = await requireAdmin()
+    console.log('[InviteLink] Admin user authenticated:', user.id, user.email)
 
     const supabase = createAdminClient()
     const body = await request.json()
+    console.log('[InviteLink] Request body:', body)
 
     const { expiresAt, maxUses, notes } = body
 
     // Generate a secure random token (32 characters, URL-safe)
     const token = randomBytes(24).toString('base64url')
+    console.log('[InviteLink] Generated token:', token)
 
     // Prepare invite data
     const inviteData: any = {
@@ -99,6 +104,8 @@ export async function POST(request: NextRequest) {
       inviteData.notes = notes
     }
 
+    console.log('[InviteLink] Invite data to insert:', inviteData)
+
     // Create invite link
     const { data: invite, error } = await supabase
       .from('InviteLink')
@@ -107,13 +114,17 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('Error creating invite link:', error)
+      console.error('[InviteLink] Database error:', error)
+      console.error('[InviteLink] Error details:', JSON.stringify(error, null, 2))
       return serverErrorResponse('Failed to create invite link')
     }
 
+    console.log('[InviteLink] Successfully created invite:', invite.id)
     return successResponse(invite, 201)
   } catch (error) {
-    console.error('Error in POST /api/admin/invites:', error)
-    return unauthorizedResponse('Admin access required')
+    console.error('[InviteLink] Caught exception:', error)
+    console.error('[InviteLink] Exception type:', error instanceof Error ? error.message : typeof error)
+    console.error('[InviteLink] Exception stack:', error instanceof Error ? error.stack : 'No stack')
+    return serverErrorResponse('Internal server error: ' + (error instanceof Error ? error.message : String(error)))
   }
 }
