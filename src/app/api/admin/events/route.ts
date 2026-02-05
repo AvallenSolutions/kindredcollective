@@ -128,7 +128,13 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     console.error('[AdminEvents] Error creating event:', error)
-    return serverErrorResponse('Failed to create event')
+    console.error('[AdminEvents] Error details:', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    })
+    return errorResponse(`Failed to create event: ${error.message || 'Unknown error'}`, 500)
   }
 
   return successResponse(event, 201)
