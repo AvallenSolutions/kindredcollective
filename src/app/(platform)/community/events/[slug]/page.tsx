@@ -16,6 +16,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { EVENT_TYPE_LABELS } from '@/types/database'
 import type { EventType } from '@prisma/client'
 import { cn, formatDate } from '@/lib/utils'
+import { EventRsvpButton } from '@/components/events/event-rsvp-button'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -183,10 +184,17 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
                       {event.isFree ? 'FREE' : `£${event.price}`}
                     </span>
                   </div>
-                  <Button size="lg">
-                    <Ticket className="w-4 h-4 mr-2" />
-                    {event.isFree ? 'RSVP' : 'Get Tickets'}
-                  </Button>
+                  <EventRsvpButton
+                    eventSlug={event.slug}
+                    eventId={event.id}
+                    eventTitle={event.title}
+                    isFree={event.isFree}
+                    isRegistrationExternal={!!event.registrationUrl}
+                    registrationUrl={event.registrationUrl}
+                    isPast={isPast}
+                    capacity={event.capacity}
+                    currentAttendees={event.attendeeCount}
+                  />
                 </>
               ) : (
                 <Badge variant="outline" className="bg-gray-200 text-gray-600">

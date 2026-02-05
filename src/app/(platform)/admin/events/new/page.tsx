@@ -3,16 +3,17 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Calendar } from 'lucide-react'
+import { ArrowLeft, Calendar, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui'
 
 const EVENT_TYPES = [
-  'CONFERENCE',
-  'WORKSHOP',
-  'NETWORKING',
   'TRADE_SHOW',
-  'WEBINAR',
   'MEETUP',
+  'WORKSHOP',
+  'WEBINAR',
+  'NETWORKING',
+  'LAUNCH',
+  'PARTY',
   'OTHER',
 ]
 
@@ -20,6 +21,9 @@ export default function NewEventPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string>('')
+  const [uploading, setUploading] = useState(false)
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
@@ -49,32 +53,84 @@ export default function NewEventPage() {
       .replace(/(^-|-$)/g, '')
   }
 
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) {
+      setImageFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  function clearImage() {
+    setImageFile(null)
+    setImagePreview('')
+    setFormData({ ...formData, imageUrl: '' })
+  }
+
+  async function uploadImage() {
+    if (!imageFile) return null
+
+    const formData = new FormData()
+    formData.append('file', imageFile)
+
+    const res = await fetch('/api/upload?bucket=event-images&folder=events', {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (!res.ok) {
+      throw new Error('Failed to upload image')
+    }
+
+    const data = await res.json()
+    return data.url
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const payload = {
-      ...formData,
-      capacity: formData.capacity ? parseInt(formData.capacity) : null,
-      price: formData.price ? parseFloat(formData.price) : null,
-      endDate: formData.endDate || null,
+    try {
+      // Upload image first if any
+      let imageUrl = formData.imageUrl
+      if (imageFile) {
+        setUploading(true)
+        imageUrl = await uploadImage()
+        setUploading(false)
+      }
+
+      const payload = {
+        ...formData,
+        imageUrl,
+        capacity: formData.capacity ? parseInt(formData.capacity) : null,
+        price: formData.price ? parseFloat(formData.price) : null,
+        endDate: formData.endDate || null,
+      }
+
+      const res = await fetch('/api/admin/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      const data = await res.json()
+
+      if (data.success) {
+        router.push('/admin/events')
+      } else {
+        setError(data.error || 'Failed to create event')
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to create event')
+    } finally {
+      setLoading(false)
+      setUploading(false)
     }
-
-    const res = await fetch('/api/admin/events', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-
-    const data = await res.json()
-
-    if (data.success) {
-      router.push('/admin/events')
-    } else {
-      setError(data.error || 'Failed to create event')
-    }
-    setLoading(false)
   }
 
   return (
@@ -340,6 +396,36 @@ export default function NewEventPage() {
           </div>
 
           <div className="md:col-span-2">
+            <label className="block text-sm font-bold uppercase tracking-wide mb-2">
+              Event Image
+            </label>
+            {imagePreview ? (
+              <div className="relative border-2 border-black">
+                <img src={imagePreview} alt="Event preview" className="w-full h-64 object-cover" />
+                <button
+                  type="button"
+                  onClick={clearImage}
+                  className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded hover:bg-red-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center border-2 border-dashed border-black p-12 cursor-pointer hover:bg-gray-50">
+                <Upload className="w-8 h-8 mb-2 text-gray-400" />
+                <span className="text-sm text-gray-500">Click to upload event image</span>
+                <span className="text-xs text-gray-400 mt-1">Recommended: 1200x630px</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
+
+          <div className="md:col-span-2">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -356,10 +442,10 @@ export default function NewEventPage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={loading}
+            disabled={loading || uploading}
             className="flex-1"
           >
-            {loading ? 'Creating...' : (
+            {uploading ? 'Uploading image...' : loading ? 'Creating...' : (
               <>
                 <Calendar className="w-4 h-4 mr-2" />
                 Create Event
