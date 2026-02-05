@@ -61,7 +61,7 @@ export function ContactSupplierButton({
     <>
       <Button
         onClick={() => setIsOpen(true)}
-        size={variant === 'full' ? 'default' : 'lg'}
+        size={variant === 'full' ? 'md' : 'lg'}
         className={variant === 'full' ? 'w-full' : className}
       >
         <Mail className="w-4 h-4 mr-2" />
