@@ -107,9 +107,10 @@ export default function NewEventPage() {
       const payload = {
         ...formData,
         imageUrl,
+        startDate: formData.startDate ? new Date(formData.startDate).toISOString() : formData.startDate,
+        endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null,
         capacity: formData.capacity ? parseInt(formData.capacity) : null,
         price: formData.price ? parseFloat(formData.price) : null,
-        endDate: formData.endDate || null,
       }
 
       const res = await fetch('/api/admin/events', {
