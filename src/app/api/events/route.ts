@@ -4,21 +4,27 @@ import {
   successResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { sanitizeFilterInput } from '@/lib/api/sanitize'
+import { parsePagination, paginationMeta } from '@/lib/api/pagination'
+import { applyRateLimit } from '@/lib/api/rate-limit'
 
 // GET /api/events - List published events with filtering
 export async function GET(request: NextRequest) {
+  // Rate limit: 60 requests per minute per IP
+  const rateLimitResponse = applyRateLimit(request, 60, 60_000)
+  if (rateLimitResponse) return rateLimitResponse
+
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
 
-  // Pagination
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  // Pagination (clamped to [1, 100])
+  const { page, limit, from, to } = parsePagination(searchParams)
 
   // Filters
   const type = searchParams.get('type')
-  const city = searchParams.get('city')
-  const country = searchParams.get('country')
-  const search = searchParams.get('search')
+  const rawCity = searchParams.get('city')
+  const rawCountry = searchParams.get('country')
+  const rawSearch = searchParams.get('search')
   const isVirtual = searchParams.get('virtual')
   const isFree = searchParams.get('free')
   const upcoming = searchParams.get('upcoming') !== 'false' // Default to upcoming only
@@ -55,7 +61,7 @@ export async function GET(request: NextRequest) {
     .eq('status', 'PUBLISHED')
     .order('isFeatured', { ascending: false })
     .order('startDate', { ascending: true })
-    .range((page - 1) * limit, page * limit - 1)
+    .range(from, to)
 
   // Only show upcoming events by default
   if (upcoming) {
@@ -66,15 +72,18 @@ export async function GET(request: NextRequest) {
     query = query.eq('type', type)
   }
 
-  if (city) {
+  if (rawCity) {
+    const city = sanitizeFilterInput(rawCity)
     query = query.ilike('city', `%${city}%`)
   }
 
-  if (country) {
+  if (rawCountry) {
+    const country = sanitizeFilterInput(rawCountry)
     query = query.ilike('country', `%${country}%`)
   }
 
-  if (search) {
+  if (rawSearch) {
+    const search = sanitizeFilterInput(rawSearch)
     query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
   }
 
@@ -97,7 +106,7 @@ export async function GET(request: NextRequest) {
   const { data: events, error, count } = await query
 
   if (error) {
-    console.error('Error fetching events:', error)
+    console.error('[Events] Error fetching events:', error)
     return serverErrorResponse('Failed to fetch events')
   }
 
@@ -134,12 +143,7 @@ export async function GET(request: NextRequest) {
 
   return successResponse({
     events: processedEvents,
-    pagination: {
-      page,
-      limit,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
-    },
+    pagination: paginationMeta(page, limit, count || 0),
     filters: {
       types,
       cities,

@@ -32,9 +32,12 @@ export async function getSession(): Promise<AuthSession> {
     .single()
 
   if (error || !dbUser) {
-    // User exists in auth but not in our User table
-    // This shouldn't happen in normal flow, but handle gracefully
-    console.error('User not found in database:', authUser.id, error)
+    // Distinguish real database errors from "user not found"
+    if (error && error.code !== 'PGRST116') {
+      console.error('[Session] Database error fetching user role:', authUser.id, error)
+    } else {
+      console.error('[Session] User not found in database:', authUser.id)
+    }
     return {
       user: null,
       isAuthenticated: false,

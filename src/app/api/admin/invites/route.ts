@@ -7,7 +7,8 @@ import {
   unauthorizedResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
-import { randomBytes } from 'crypto'
+import { parsePagination, paginationMeta } from '@/lib/api/pagination'
+import { generateSecureToken } from '@/lib/api/token'
 
 // GET /api/admin/invites - List all invite links
 export async function GET(request: NextRequest) {
@@ -20,15 +21,14 @@ export async function GET(request: NextRequest) {
   const supabase = createAdminClient()
   const { searchParams } = new URL(request.url)
 
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const { page, limit, from, to } = parsePagination(searchParams)
   const isActive = searchParams.get('isActive')
 
   let query = supabase
     .from('InviteLink')
     .select('*', { count: 'exact' })
     .order('createdAt', { ascending: false })
-    .range((page - 1) * limit, page * limit - 1)
+    .range(from, to)
 
   if (isActive !== null && isActive !== undefined) {
     query = query.eq('isActive', isActive === 'true')
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   const { data: invites, error, count } = await query
 
   if (error) {
-    console.error('Error fetching invite links:', error)
+    console.error('[AdminInvites] Error fetching invite links:', error)
     return serverErrorResponse('Failed to fetch invite links')
   }
 
@@ -56,35 +56,25 @@ export async function GET(request: NextRequest) {
   return successResponse({
     invites,
     stats,
-    pagination: {
-      page,
-      limit,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
-    },
+    pagination: paginationMeta(page, limit, count || 0),
   })
 }
 
 // POST /api/admin/invites - Create a new invite link
 export async function POST(request: NextRequest) {
   try {
-    console.log('[InviteLink] Starting invite creation...')
-
     const user = await requireAdmin()
-    console.log('[InviteLink] Admin user authenticated:', user.id, user.email)
 
     const supabase = createAdminClient()
     const body = await request.json()
-    console.log('[InviteLink] Request body:', body)
 
     const { expiresAt, maxUses, notes } = body
 
-    // Generate a secure random token (32 characters, URL-safe)
-    const token = randomBytes(24).toString('base64url')
-    console.log('[InviteLink] Generated token:', token)
+    // Generate a secure random token using standardized utility
+    const token = generateSecureToken(24)
 
     // Prepare invite data
-    const inviteData: any = {
+    const inviteData: Record<string, string | number | boolean> = {
       token,
       createdBy: user.id,
       createdAt: new Date().toISOString(),
@@ -104,8 +94,6 @@ export async function POST(request: NextRequest) {
       inviteData.notes = notes
     }
 
-    console.log('[InviteLink] Invite data to insert:', inviteData)
-
     // Create invite link
     const { data: invite, error } = await supabase
       .from('InviteLink')
@@ -114,17 +102,13 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error('[InviteLink] Database error:', error)
-      console.error('[InviteLink] Error details:', JSON.stringify(error, null, 2))
+      console.error('[AdminInvites] Error creating invite link:', error)
       return serverErrorResponse('Failed to create invite link')
     }
 
-    console.log('[InviteLink] Successfully created invite:', invite.id)
     return successResponse(invite, 201)
   } catch (error) {
-    console.error('[InviteLink] Caught exception:', error)
-    console.error('[InviteLink] Exception type:', error instanceof Error ? error.message : typeof error)
-    console.error('[InviteLink] Exception stack:', error instanceof Error ? error.stack : 'No stack')
-    return serverErrorResponse('Internal server error: ' + (error instanceof Error ? error.message : String(error)))
+    console.error('[AdminInvites] Unexpected error:', error instanceof Error ? error.message : error)
+    return serverErrorResponse('Failed to create invite link')
   }
 }

@@ -6,6 +6,7 @@ import {
   unauthorizedResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { parsePagination, paginationMeta } from '@/lib/api/pagination'
 
 // GET /api/admin/claims - List all supplier claims
 export async function GET(request: NextRequest) {
@@ -18,15 +19,14 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
 
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const { page, limit, from, to } = parsePagination(searchParams)
   const status = searchParams.get('status')
 
   let query = supabase
     .from('SupplierClaim')
     .select('*, supplier:Supplier(id, companyName, slug, contactEmail), user:User(email, member:Member(firstName, lastName))', { count: 'exact' })
     .order('createdAt', { ascending: false })
-    .range((page - 1) * limit, page * limit - 1)
+    .range(from, to)
 
   if (status) {
     query = query.eq('status', status)
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
   const { data: claims, error, count } = await query
 
   if (error) {
-    console.error('Error fetching claims:', error)
+    console.error('[AdminClaims] Error fetching claims:', error)
     return serverErrorResponse('Failed to fetch claims')
   }
 
@@ -54,11 +54,6 @@ export async function GET(request: NextRequest) {
   return successResponse({
     claims,
     statistics,
-    pagination: {
-      page,
-      limit,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
-    },
+    pagination: paginationMeta(page, limit, count || 0),
   })
 }

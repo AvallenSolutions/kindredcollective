@@ -28,13 +28,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const session = await getSession()
 
   // Get the offer
-  const { data: offer } = await supabase
+  const { data: offer, error: offerError } = await supabase
     .from('Offer')
     .select('id, title, status, forBrandsOnly, startDate, endDate, claimCount')
     .eq('id', id)
     .single()
 
-  if (!offer) {
+  if (offerError || !offer) {
+    if (offerError && offerError.code !== 'PGRST116') {
+      console.error('[OfferClaim] Error fetching offer:', offerError)
+      return serverErrorResponse('Failed to fetch offer')
+    }
     return notFoundResponse('Offer not found')
   }
 
@@ -58,13 +62,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return errorResponse('This offer is only available to brand users')
   }
 
-  // Check if already claimed
-  const { data: existing } = await supabase
+  // Check if already claimed (PGRST116 = no rows found, which is expected)
+  const { data: existing, error: existingError } = await supabase
     .from('OfferClaim')
     .select('id')
     .eq('offerId', id)
     .eq('userId', user.id)
     .single()
+
+  if (existingError && existingError.code !== 'PGRST116') {
+    console.error('[OfferClaim] Error checking existing claim:', existingError)
+    return serverErrorResponse('Failed to check existing claim')
+  }
 
   if (existing) {
     return errorResponse('You have already claimed this offer')
@@ -95,14 +104,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     .single()
 
   if (claimError) {
-    console.error('Error claiming offer:', claimError)
+    console.error('[OfferClaim] Error creating claim:', claimError)
     return serverErrorResponse('Failed to claim offer')
   }
 
-  // Increment claim count on the offer
+  // Update claim count using a count query to avoid race conditions.
+  // The old read-modify-write pattern (claimCount + 1) loses increments
+  // when two requests read the same value concurrently.
+  const { count } = await supabase
+    .from('OfferClaim')
+    .select('id', { count: 'exact', head: true })
+    .eq('offerId', id)
+
   await supabase
     .from('Offer')
-    .update({ claimCount: (offer.claimCount || 0) + 1 })
+    .update({ claimCount: count || 0 })
     .eq('id', id)
 
   return successResponse(claim, 201)

@@ -7,6 +7,7 @@ import {
   unauthorizedResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { parsePagination, paginationMeta } from '@/lib/api/pagination'
 
 // GET /api/me/offers - Get current supplier's offers
 export async function GET(request: NextRequest) {
@@ -26,8 +27,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { searchParams } = new URL(request.url)
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const { page, limit, from, to } = parsePagination(searchParams)
   const status = searchParams.get('status')
 
   let query = supabase
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     .select('*, claims:OfferClaim(count)', { count: 'exact' })
     .eq('supplierId', supplier.id)
     .order('createdAt', { ascending: false })
-    .range((page - 1) * limit, page * limit - 1)
+    .range(from, to)
 
   if (status) {
     query = query.eq('status', status)
@@ -44,18 +44,13 @@ export async function GET(request: NextRequest) {
   const { data: offers, error, count } = await query
 
   if (error) {
-    console.error('Error fetching offers:', error)
+    console.error('[MyOffers] Error fetching offers:', error)
     return serverErrorResponse('Failed to fetch offers')
   }
 
   return successResponse({
     offers,
-    pagination: {
-      page,
-      limit,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
-    },
+    pagination: paginationMeta(page, limit, count || 0),
   })
 }
 
@@ -121,7 +116,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    console.error('Error creating offer:', error)
+    console.error('[MyOffers] Error creating offer:', error)
     return serverErrorResponse('Failed to create offer')
   }
 

@@ -9,6 +9,13 @@ import {
   notFoundResponse,
 } from '@/lib/api/response'
 
+interface InviteUpdateData {
+  isActive?: boolean
+  expiresAt?: string | null
+  maxUses?: number | null
+  notes?: string
+}
+
 // GET /api/admin/invites/[id] - Get a specific invite link
 export async function GET(
   request: NextRequest,
@@ -29,6 +36,10 @@ export async function GET(
     .single()
 
   if (error || !invite) {
+    if (error && error.code !== 'PGRST116') {
+      console.error('[AdminInvites] Error fetching invite:', error)
+      return serverErrorResponse('Failed to fetch invite')
+    }
     return notFoundResponse('Invite link not found')
   }
 
@@ -51,7 +62,7 @@ export async function PATCH(
 
   const { isActive, expiresAt, maxUses, notes } = body
 
-  const updateData: any = {}
+  const updateData: InviteUpdateData = {}
 
   if (typeof isActive === 'boolean') {
     updateData.isActive = isActive
@@ -77,7 +88,7 @@ export async function PATCH(
     .single()
 
   if (error) {
-    console.error('Error updating invite link:', error)
+    console.error('[AdminInvites] Error updating invite link:', error)
     return serverErrorResponse('Failed to update invite link')
   }
 
@@ -102,13 +113,17 @@ export async function DELETE(
   const supabase = createAdminClient()
 
   // Check if invite has been used
-  const { data: invite } = await supabase
+  const { data: invite, error: fetchError } = await supabase
     .from('InviteLink')
     .select('usedCount')
     .eq('id', params.id)
     .single()
 
-  if (!invite) {
+  if (fetchError || !invite) {
+    if (fetchError && fetchError.code !== 'PGRST116') {
+      console.error('[AdminInvites] Error fetching invite:', fetchError)
+      return serverErrorResponse('Failed to fetch invite')
+    }
     return notFoundResponse('Invite link not found')
   }
 
@@ -122,7 +137,7 @@ export async function DELETE(
     .eq('id', params.id)
 
   if (error) {
-    console.error('Error deleting invite link:', error)
+    console.error('[AdminInvites] Error deleting invite link:', error)
     return serverErrorResponse('Failed to delete invite link')
   }
 

@@ -7,6 +7,7 @@ import {
   unauthorizedResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { parsePagination, paginationMeta } from '@/lib/api/pagination'
 
 // GET /api/me/events - Get current user's events
 export async function GET(request: NextRequest) {
@@ -20,8 +21,7 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
 
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const { page, limit, from, to } = parsePagination(searchParams)
   const status = searchParams.get('status')
 
   let query = supabase
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     .select('*, rsvps:EventRsvp(count)', { count: 'exact' })
     .eq('createdById', user.id)
     .order('startDate', { ascending: true })
-    .range((page - 1) * limit, page * limit - 1)
+    .range(from, to)
 
   if (status) {
     query = query.eq('status', status)
@@ -38,18 +38,13 @@ export async function GET(request: NextRequest) {
   const { data: events, error, count } = await query
 
   if (error) {
-    console.error('Error fetching events:', error)
+    console.error('[MyEvents] Error fetching events:', error)
     return serverErrorResponse('Failed to fetch events')
   }
 
   return successResponse({
     events,
-    pagination: {
-      page,
-      limit,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
-    },
+    pagination: paginationMeta(page, limit, count || 0),
   })
 }
 
@@ -121,7 +116,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    console.error('Error creating event:', error)
+    console.error('[MyEvents] Error creating event:', error)
     if (error.code === '23505') {
       return errorResponse('Slug already exists')
     }

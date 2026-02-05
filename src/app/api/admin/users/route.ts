@@ -7,6 +7,8 @@ import {
   unauthorizedResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { sanitizeFilterInput } from '@/lib/api/sanitize'
+import { parsePagination, paginationMeta } from '@/lib/api/pagination'
 
 // GET /api/admin/users - List all users
 export async function GET(request: NextRequest) {
@@ -19,40 +21,35 @@ export async function GET(request: NextRequest) {
   const supabase = createAdminClient()
   const { searchParams } = new URL(request.url)
 
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const { page, limit, from, to } = parsePagination(searchParams)
   const role = searchParams.get('role')
-  const search = searchParams.get('search')
+  const rawSearch = searchParams.get('search')
 
   let query = supabase
     .from('User')
     .select('*', { count: 'exact' })
     .order('createdAt', { ascending: false })
-    .range((page - 1) * limit, page * limit - 1)
+    .range(from, to)
 
   if (role) {
     query = query.eq('role', role)
   }
 
-  if (search) {
+  if (rawSearch) {
+    const search = sanitizeFilterInput(rawSearch)
     query = query.ilike('email', `%${search}%`)
   }
 
   const { data: users, error, count } = await query
 
   if (error) {
-    console.error('Error fetching users:', error)
+    console.error('[AdminUsers] Error fetching users:', error)
     return serverErrorResponse('Failed to fetch users')
   }
 
   return successResponse({
     users,
-    pagination: {
-      page,
-      limit,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
-    },
+    pagination: paginationMeta(page, limit, count || 0),
   })
 }
 
@@ -84,7 +81,7 @@ export async function POST(request: NextRequest) {
   })
 
   if (authError) {
-    console.error('Error creating auth user:', authError)
+    console.error('[AdminUsers] Error creating auth user:', authError)
     return errorResponse(authError.message)
   }
 
@@ -102,7 +99,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (dbError) {
-    console.error('Error creating user record:', dbError)
+    console.error('[AdminUsers] Error creating user record:', dbError)
     return serverErrorResponse('Failed to create user record')
   }
 

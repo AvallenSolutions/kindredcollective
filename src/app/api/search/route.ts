@@ -6,18 +6,29 @@ import {
   errorResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { sanitizeFilterInput } from '@/lib/api/sanitize'
+import { applyRateLimit } from '@/lib/api/rate-limit'
 
 // GET /api/search - Unified search across suppliers, brands, events, offers
 export async function GET(request: NextRequest) {
+  // Rate limit: 30 search requests per minute per IP
+  const rateLimitResponse = applyRateLimit(request, 30, 60_000)
+  if (rateLimitResponse) return rateLimitResponse
+
   const supabase = await createClient()
   const session = await getSession()
   const { searchParams } = new URL(request.url)
 
-  const query = searchParams.get('q')
+  const rawQuery = searchParams.get('q')
   const types = searchParams.getAll('type')
-  const limit = parseInt(searchParams.get('limit') || '10')
+  const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '10'), 1), 50)
 
-  if (!query || query.length < 2) {
+  if (!rawQuery || rawQuery.length < 2) {
+    return errorResponse('Search query must be at least 2 characters')
+  }
+
+  const query = sanitizeFilterInput(rawQuery)
+  if (query.length < 2) {
     return errorResponse('Search query must be at least 2 characters')
   }
 
@@ -108,7 +119,7 @@ export async function GET(request: NextRequest) {
   // Log the search query for analytics
   try {
     await supabase.from('SearchQuery').insert({
-      query,
+      query: rawQuery,
       userId: session.user?.id || null,
       resultCount: Object.values(results).flat().length,
       processingMs,
@@ -116,14 +127,14 @@ export async function GET(request: NextRequest) {
       createdAt: new Date().toISOString(),
     })
   } catch (e) {
-    console.error('Failed to log search query:', e)
+    console.error('[Search] Failed to log search query:', e)
   }
 
   // Calculate total results
   const totalResults = Object.values(results).flat().length
 
   return successResponse({
-    query,
+    query: rawQuery,
     results,
     totalResults,
     processingMs,

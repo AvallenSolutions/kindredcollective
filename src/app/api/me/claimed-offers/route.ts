@@ -6,6 +6,38 @@ import {
   serverErrorResponse,
 } from '@/lib/api/response'
 
+interface OfferData {
+  id: string
+  title: string
+  description: string | null
+  type: string
+  discountValue: number | null
+  code: string | null
+  termsConditions: string | null
+  status: string
+  endDate: string | null
+  imageUrl: string | null
+  supplier: {
+    id: string
+    companyName: string
+    slug: string
+    logoUrl: string | null
+    contactEmail: string | null
+  } | Array<{
+    id: string
+    companyName: string
+    slug: string
+    logoUrl: string | null
+    contactEmail: string | null
+  }>
+}
+
+interface ClaimData {
+  id: string
+  claimedAt: string
+  offer: OfferData | OfferData[]
+}
+
 // GET /api/me/claimed-offers - List user's claimed offers
 export async function GET() {
   let user
@@ -46,13 +78,13 @@ export async function GET() {
     .order('claimedAt', { ascending: false })
 
   if (error) {
-    console.error('Error fetching claimed offers:', error)
+    console.error('[ClaimedOffers] Error fetching claimed offers:', error)
     return serverErrorResponse('Failed to fetch claimed offers')
   }
 
   // Add expired status to each claim
   const now = new Date()
-  const processedClaims = (claims || []).map((claim: any) => {
+  const processedClaims = ((claims || []) as ClaimData[]).map((claim) => {
     // Supabase returns nested relations as arrays
     const offer = Array.isArray(claim.offer) ? claim.offer[0] : claim.offer
     return {
