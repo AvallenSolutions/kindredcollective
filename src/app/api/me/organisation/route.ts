@@ -34,7 +34,7 @@ export async function GET() {
     .from('OrganisationMember')
     .select(`
       id,
-      isOwner,
+      role,
       joinedAt,
       organisation:Organisation(
         id,
@@ -46,7 +46,7 @@ export async function GET() {
         supplier:Supplier(id, companyName, slug, logoUrl),
         members:OrganisationMember(
           id,
-          isOwner,
+          role,
           joinedAt,
           user:User(id, email, member:Member(firstName, lastName, avatarUrl))
         )
@@ -69,7 +69,8 @@ export async function GET() {
 
   return successResponse({
     hasOrganisation: true,
-    isOwner: membership.isOwner,
+    isOwner: membership.role === 'OWNER',
+    userRole: membership.role,
     organisation: membership.organisation,
   })
 }
@@ -186,7 +187,7 @@ export async function POST(request: NextRequest) {
     .insert({
       organisationId: organisation.id,
       userId: user.id,
-      isOwner: true,
+      role: 'OWNER',
       joinedAt: new Date().toISOString(),
     })
 
@@ -217,7 +218,7 @@ export async function DELETE() {
   // Get user's organisation membership
   const { data: membership, error: membershipError } = await supabase
     .from('OrganisationMember')
-    .select('id, isOwner, organisationId')
+    .select('id, role, organisationId')
     .eq('userId', user.id)
     .single()
 
@@ -230,7 +231,7 @@ export async function DELETE() {
     return notFoundResponse('You are not a member of any organisation')
   }
 
-  if (!membership.isOwner) {
+  if (membership.role !== 'OWNER') {
     return errorResponse('Only the organisation owner can delete it', 403)
   }
 

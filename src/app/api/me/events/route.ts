@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireBrand } from '@/lib/auth'
+import { requireRole } from '@/lib/auth'
 import {
   successResponse,
   errorResponse,
@@ -13,9 +13,9 @@ import { parsePagination, paginationMeta } from '@/lib/api/pagination'
 export async function GET(request: NextRequest) {
   let user
   try {
-    user = await requireBrand()
+    user = await requireRole(['BRAND', 'SUPPLIER', 'ADMIN'])
   } catch {
-    return unauthorizedResponse('Brand access required')
+    return unauthorizedResponse('Brand or Supplier access required')
   }
 
   const supabase = await createClient()
@@ -52,9 +52,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   let user
   try {
-    user = await requireBrand()
+    user = await requireRole(['BRAND', 'SUPPLIER', 'ADMIN'])
   } catch {
-    return unauthorizedResponse('Brand access required')
+    return unauthorizedResponse('Brand or Supplier access required')
   }
 
   const supabase = await createClient()

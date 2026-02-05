@@ -105,7 +105,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     .insert({
       organisationId: invite.organisationId,
       userId: user.id,
-      isOwner: false,
+      role: 'MEMBER',
       joinedAt: new Date().toISOString(),
     })
 
@@ -159,12 +159,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   // Verify user is the organisation owner
   const { data: membership } = await supabase
     .from('OrganisationMember')
-    .select('isOwner')
+    .select('role')
     .eq('organisationId', invite.organisationId)
     .eq('userId', user.id)
     .single()
 
-  if (!membership?.isOwner) {
+  if (membership?.role !== 'OWNER') {
     return errorResponse('Only the organisation owner can cancel invites', 403)
   }
 

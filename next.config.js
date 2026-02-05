@@ -7,6 +7,14 @@ const nextConfig = {
         hostname: '*.supabase.co',
         pathname: '/storage/v1/object/public/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'cdn.shopify.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
     ],
   },
   async headers() {
@@ -22,7 +30,7 @@ const nextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' https://*.supabase.co data: blob:",
+              "img-src 'self' https://*.supabase.co https://cdn.shopify.com https://images.unsplash.com data: blob:",
               "connect-src 'self' https://*.supabase.co",
               "frame-src 'none'",
               "object-src 'none'",

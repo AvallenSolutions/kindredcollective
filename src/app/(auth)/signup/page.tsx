@@ -3,14 +3,26 @@
 import { Suspense, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Building2, Wine, ArrowRight, Check, Loader2 } from 'lucide-react'
+import { Building2, Wine, Users, ArrowRight, Check, Loader2 } from 'lucide-react'
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Badge } from '@/components/ui'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
-type UserRole = 'brand' | 'supplier'
+type UserRole = 'brand' | 'supplier' | 'member'
 
 const roleInfo = {
+  member: {
+    icon: Users,
+    title: 'I\'m a Member',
+    description: 'Industry professional looking to connect and discover',
+    benefits: [
+      'Attend industry events',
+      'Review suppliers',
+      'Connect with brands',
+      'Build your profile',
+    ],
+    color: 'yellow',
+  },
   brand: {
     icon: Wine,
     title: 'I\'m a Brand',
@@ -45,6 +57,7 @@ function SignupForm() {
 
   const [step, setStep] = useState<'role' | 'details'>(initialRole ? 'details' : 'role')
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(initialRole)
+  const [lockedRole, setLockedRole] = useState<UserRole | null>(null)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -70,6 +83,13 @@ function SignupForm() {
       .then((data) => {
         if (data.success && data.data.valid) {
           setInviteValid(true)
+          // If invite has a target role, lock the user to that role
+          if (data.data.targetRole) {
+            const role = data.data.targetRole.toLowerCase() as UserRole
+            setSelectedRole(role)
+            setLockedRole(role)
+            setStep('details')
+          }
         } else {
           setInviteValid(false)
           setError(data.error || 'Invalid invite link')
@@ -201,10 +221,15 @@ function SignupForm() {
           <p className="text-gray-600">Choose your account type to get started</p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          {(['brand', 'supplier'] as const).map((role) => {
+        <div className="grid md:grid-cols-3 gap-6">
+          {(['member', 'brand', 'supplier'] as const).map((role) => {
             const info = roleInfo[role]
             const Icon = info.icon
+            const colorClasses = {
+              cyan: 'bg-cyan',
+              coral: 'bg-coral text-white',
+              yellow: 'bg-yellow',
+            }
             return (
               <button
                 key={role}
@@ -217,7 +242,7 @@ function SignupForm() {
               >
                 <div className={cn(
                   'w-12 h-12 border-3 border-black flex items-center justify-center mb-4',
-                  info.color === 'cyan' ? 'bg-cyan' : 'bg-coral text-white'
+                  colorClasses[info.color as keyof typeof colorClasses]
                 )}>
                   <Icon className="h-6 w-6" />
                 </div>
@@ -228,7 +253,7 @@ function SignupForm() {
                     <li key={benefit} className="flex items-center gap-2 text-sm">
                       <Check className={cn(
                         'w-4 h-4',
-                        info.color === 'cyan' ? 'text-cyan' : 'text-coral'
+                        info.color === 'cyan' ? 'text-cyan' : info.color === 'coral' ? 'text-coral' : 'text-yellow-600'
                       )} />
                       {benefit}
                     </li>
@@ -260,17 +285,19 @@ function SignupForm() {
       <Card className="shadow-brutal-lg">
         <CardHeader className="text-center pb-2">
           <div className="flex justify-center mb-4">
-            <Badge variant={selectedRole === 'brand' ? 'cyan' : 'coral'}>
+            <Badge variant={selectedRole === 'brand' ? 'cyan' : selectedRole === 'supplier' ? 'coral' : 'default'}>
               {roleData?.title}
             </Badge>
           </div>
           <CardTitle className="text-2xl">Create Your Account</CardTitle>
-          <button
-            onClick={() => setStep('role')}
-            className="text-sm text-gray-500 hover:text-cyan mt-2"
-          >
-            ← Change account type
-          </button>
+          {!lockedRole && (
+            <button
+              onClick={() => setStep('role')}
+              className="text-sm text-gray-500 hover:text-cyan mt-2"
+            >
+              ← Change account type
+            </button>
+          )}
         </CardHeader>
         <CardContent className="pt-6">
           {/* OAuth Buttons */}

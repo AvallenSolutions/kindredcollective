@@ -102,7 +102,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   })
 }
 
-// POST /api/suppliers/[slug]/reviews - Submit a review (BRAND users only)
+// POST /api/suppliers/[slug]/reviews - Submit a review (BRAND, MEMBER, or ADMIN users)
 export async function POST(request: NextRequest, { params }: RouteParams) {
   let user
   try {
@@ -112,8 +112,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   const session = await getSession()
-  if (!session.isBrand && !session.isAdmin) {
-    return errorResponse('Only brand users can submit reviews', 403)
+  if (!session.isBrand && !session.isMember && !session.isAdmin) {
+    return errorResponse('Only brand or member users can submit reviews', 403)
   }
 
   const { slug } = await params
@@ -168,7 +168,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   // Get member info for reviewer name
   const { data: member, error: memberError } = await supabase
     .from('Member')
-    .select('firstName, lastName')
+    .select('firstName, lastName, company')
     .eq('userId', user.id)
     .single()
 
@@ -177,6 +177,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   const reviewerName = member ? `${member.firstName} ${member.lastName}` : user.email.split('@')[0]
+  const reviewerCompany = userBrand?.name || member?.company || null
 
   // Create the review
   const { data: review, error } = await supabase
@@ -186,7 +187,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       brandId: userBrand?.id || null,
       userId: user.id,
       reviewerName,
-      reviewerCompany: userBrand?.name || null,
+      reviewerCompany,
       rating,
       title,
       content,

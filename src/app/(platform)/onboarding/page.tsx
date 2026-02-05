@@ -6,7 +6,7 @@ import { Building2, Store, Search, Plus, Users, Loader2, Check, ArrowRight } fro
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
-type Step = 'choose' | 'brand-create' | 'supplier-search' | 'supplier-create' | 'join-org' | 'complete'
+type Step = 'choose' | 'member-profile' | 'brand-create' | 'supplier-search' | 'supplier-create' | 'join-org' | 'complete'
 
 interface Supplier {
   id: string
@@ -22,7 +22,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState<Step>('choose')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [userRole, setUserRole] = useState<'BRAND' | 'SUPPLIER' | null>(null)
+  const [userRole, setUserRole] = useState<'BRAND' | 'SUPPLIER' | 'MEMBER' | null>(null)
 
   // Brand form data
   const [brandData, setBrandData] = useState({
@@ -39,6 +39,13 @@ export default function OnboardingPage() {
     description: '',
     logoUrl: '',
     services: '',
+  })
+
+  // Member profile form data
+  const [memberData, setMemberData] = useState({
+    company: '',
+    jobTitle: '',
+    bio: '',
   })
 
   // Supplier search
@@ -202,6 +209,39 @@ export default function OnboardingPage() {
     }
   }
 
+  // Update member profile (for MEMBER role)
+  const handleUpdateMemberProfile = async () => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/me/member', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          company: memberData.company || null,
+          jobTitle: memberData.jobTitle || null,
+          bio: memberData.bio || null,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to update profile')
+        setLoading(false)
+        return
+      }
+
+      // Success - redirect to dashboard
+      router.push('/dashboard?welcome=true')
+      router.refresh()
+    } catch {
+      setError('An unexpected error occurred')
+      setLoading(false)
+    }
+  }
+
   if (!userRole) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -223,6 +263,30 @@ export default function OnboardingPage() {
               Let&apos;s set up your profile
             </p>
           </div>
+
+          {userRole === 'MEMBER' && (
+            <div className="max-w-2xl mx-auto">
+              <Card
+                className="cursor-pointer hover:shadow-brutal-lg transition-all hover:-translate-y-1"
+                onClick={() => setStep('member-profile')}
+              >
+                <CardHeader>
+                  <div className="w-12 h-12 bg-yellow border-2 border-black flex items-center justify-center mb-4">
+                    <Users className="w-6 h-6" />
+                  </div>
+                  <CardTitle>Complete Your Profile</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-600 mb-4">
+                    Add your company and job title to help others connect with you.
+                  </p>
+                  <div className="flex items-center text-sm font-bold text-yellow-600">
+                    Get Started <ArrowRight className="ml-2 w-4 h-4" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {userRole === 'BRAND' && (
             <div className="grid md:grid-cols-2 gap-6">
@@ -331,6 +395,86 @@ export default function OnboardingPage() {
               </Card>
             </div>
           )}
+        </div>
+      </div>
+    )
+  }
+
+  // Member profile step
+  if (step === 'member-profile') {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4">
+        <div className="max-w-2xl mx-auto">
+          <Card className="shadow-brutal-lg">
+            <CardHeader>
+              <CardTitle className="text-2xl">Complete Your Profile</CardTitle>
+              <button
+                onClick={() => setStep('choose')}
+                className="text-sm text-gray-500 hover:text-cyan"
+              >
+                ← Back
+              </button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {error && (
+                <div className="bg-coral/10 border-2 border-coral text-coral px-4 py-3 text-sm">
+                  {error}
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="memberCompany">Company</Label>
+                <Input
+                  id="memberCompany"
+                  placeholder="Your company name"
+                  value={memberData.company}
+                  onChange={(e) => setMemberData({ ...memberData, company: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="memberJobTitle">Job Title</Label>
+                <Input
+                  id="memberJobTitle"
+                  placeholder="e.g. Marketing Manager"
+                  value={memberData.jobTitle}
+                  onChange={(e) => setMemberData({ ...memberData, jobTitle: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="memberBio">Bio</Label>
+                <textarea
+                  id="memberBio"
+                  placeholder="Tell others about yourself..."
+                  value={memberData.bio}
+                  onChange={(e) => setMemberData({ ...memberData, bio: e.target.value })}
+                  className="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-cyan resize-none"
+                  rows={4}
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    router.push('/dashboard?welcome=true')
+                    router.refresh()
+                  }}
+                  className="flex-1"
+                >
+                  Skip for Now
+                </Button>
+                <Button
+                  onClick={handleUpdateMemberProfile}
+                  disabled={loading}
+                  className="flex-1"
+                >
+                  {loading ? 'Saving...' : 'Save Profile'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     )

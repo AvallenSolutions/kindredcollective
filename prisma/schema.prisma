@@ -15,6 +15,7 @@ enum UserRole {
   BRAND
   SUPPLIER
   ADMIN
+  MEMBER
 }
 
 enum DrinkCategory {
@@ -149,6 +150,7 @@ model Member {
   userId      String   @unique
   firstName   String
   lastName    String
+  company     String?
   jobTitle    String?
   bio         String?  @db.Text
   avatarUrl   String?
@@ -544,15 +546,18 @@ model OrganisationInvite {
 // ============= ADMIN INVITE LINKS =============
 
 model InviteLink {
-  id          String   @id @default(cuid())
-  token       String   @unique
-  createdBy   String   // Admin who created it
-  createdAt   DateTime @default(now())
+  id          String    @id @default(cuid())
+  token       String    @unique
+  createdBy   String    // Admin who created it
+  createdAt   DateTime  @default(now())
   expiresAt   DateTime?
-  maxUses     Int?     // null = unlimited
-  usedCount   Int      @default(0)
-  isActive    Boolean  @default(true)
-  notes       String?  @db.Text
+  maxUses     Int?      // null = unlimited
+  usedCount   Int       @default(0)
+  isActive    Boolean   @default(true)
+  notes       String?   @db.Text
+  targetRole  UserRole? // If set, user must sign up with this role
+  email       String?   // Optional: targeted invite for specific email
+  phone       String?   // Optional: for WhatsApp share tracking
 
   // Relations
   signups User[] @relation("InviteSignups")
@@ -561,6 +566,7 @@ model InviteLink {
   @@index([token])
   @@index([isActive])
   @@index([createdBy])
+  @@index([email])
 }
 
 // ============= WORK RELATIONSHIPS (VERIFICATION) =============

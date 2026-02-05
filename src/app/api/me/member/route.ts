@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     return errorResponse('Member profile already exists. Use PATCH to update.')
   }
 
-  const { firstName, lastName, jobTitle, bio, linkedinUrl, phone, isPublic } = body
+  const { firstName, lastName, jobTitle, bio, linkedinUrl, phone, isPublic, company } = body
 
   if (!firstName || !lastName) {
     return errorResponse('First name and last name are required')
@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       firstName,
       lastName,
+      company: company || null,
       jobTitle: jobTitle || null,
       bio: bio || null,
       linkedinUrl: linkedinUrl || null,
@@ -102,6 +103,7 @@ export async function PATCH(request: NextRequest) {
   const allowedFields = [
     'firstName',
     'lastName',
+    'company',
     'jobTitle',
     'bio',
     'avatarUrl',

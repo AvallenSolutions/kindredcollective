@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { AuthSession, SessionUser, hasPermission, isAdmin, isBrand, isSupplier } from './types'
+import { AuthSession, SessionUser, hasPermission, isAdmin, isBrand, isSupplier, isMember } from './types'
 import type { UserRole } from '@prisma/client'
 
 /**
@@ -19,6 +19,7 @@ export async function getSession(): Promise<AuthSession> {
       isAdmin: false,
       isBrand: false,
       isSupplier: false,
+      isMember: false,
     }
   }
 
@@ -44,6 +45,7 @@ export async function getSession(): Promise<AuthSession> {
       isAdmin: false,
       isBrand: false,
       isSupplier: false,
+      isMember: false,
     }
   }
 
@@ -59,6 +61,7 @@ export async function getSession(): Promise<AuthSession> {
     isAdmin: isAdmin(sessionUser.role),
     isBrand: isBrand(sessionUser.role),
     isSupplier: isSupplier(sessionUser.role),
+    isMember: isMember(sessionUser.role),
   }
 }
 
@@ -101,6 +104,13 @@ export async function requireAdmin(): Promise<SessionUser> {
  */
 export async function requireSupplier(): Promise<SessionUser> {
   return requireRole(['SUPPLIER', 'ADMIN'])
+}
+
+/**
+ * Require member role (or admin)
+ */
+export async function requireMember(): Promise<SessionUser> {
+  return requireRole(['MEMBER', 'ADMIN'])
 }
 
 /**
