@@ -30,7 +30,7 @@ export async function GET() {
   const supabase = await createClient()
 
   // Get user's organisation membership
-  const { data: membership } = await supabase
+  const { data: membership, error: membershipError } = await supabase
     .from('OrganisationMember')
     .select(`
       id,
@@ -54,6 +54,11 @@ export async function GET() {
     `)
     .eq('userId', user.id)
     .single()
+
+  if (membershipError && membershipError.code !== 'PGRST116') {
+    console.error('[Organisation] Error fetching membership:', membershipError)
+    return serverErrorResponse('Failed to fetch organisation')
+  }
 
   if (!membership) {
     return successResponse({
@@ -89,11 +94,16 @@ export async function POST(request: NextRequest) {
   }
 
   // Check if user already has an organisation
-  const { data: existingMembership } = await supabase
+  const { data: existingMembership, error: existingError } = await supabase
     .from('OrganisationMember')
     .select('id')
     .eq('userId', user.id)
     .single()
+
+  if (existingError && existingError.code !== 'PGRST116') {
+    console.error('[Organisation] Error checking existing membership:', existingError)
+    return serverErrorResponse('Failed to check membership')
+  }
 
   if (existingMembership) {
     return errorResponse('You are already a member of an organisation')
@@ -104,18 +114,28 @@ export async function POST(request: NextRequest) {
   let supplierId = null
 
   if (session.isBrand) {
-    const { data: brand } = await supabase
+    const { data: brand, error: brandError } = await supabase
       .from('Brand')
       .select('id')
       .eq('userId', user.id)
       .single()
+
+    if (brandError && brandError.code !== 'PGRST116') {
+      console.error('[Organisation] Error fetching brand:', brandError)
+      return serverErrorResponse('Failed to fetch brand profile')
+    }
     brandId = brand?.id || null
   } else if (session.isSupplier) {
-    const { data: supplier } = await supabase
+    const { data: supplier, error: supplierError } = await supabase
       .from('Supplier')
       .select('id')
       .eq('userId', user.id)
       .single()
+
+    if (supplierError && supplierError.code !== 'PGRST116') {
+      console.error('[Organisation] Error fetching supplier:', supplierError)
+      return serverErrorResponse('Failed to fetch supplier profile')
+    }
     supplierId = supplier?.id || null
   }
 
@@ -125,11 +145,16 @@ export async function POST(request: NextRequest) {
 
   // Generate unique slug
   let slug = generateSlug(name)
-  const { data: existingOrg } = await supabase
+  const { data: existingOrg, error: slugError } = await supabase
     .from('Organisation')
     .select('id')
     .eq('slug', slug)
     .single()
+
+  if (slugError && slugError.code !== 'PGRST116') {
+    console.error('[Organisation] Error checking slug:', slugError)
+    return serverErrorResponse('Failed to check slug availability')
+  }
 
   if (existingOrg) {
     slug = `${slug}-${Date.now()}`
@@ -151,7 +176,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (orgError) {
-    console.error('Error creating organisation:', orgError)
+    console.error('[Organisation] Error creating organisation:', orgError)
     return serverErrorResponse('Failed to create organisation')
   }
 
@@ -166,7 +191,7 @@ export async function POST(request: NextRequest) {
     })
 
   if (memberError) {
-    console.error('Error adding organisation member:', memberError)
+    console.error('[Organisation] Error adding member:', memberError)
     // Rollback organisation creation
     await supabase.from('Organisation').delete().eq('id', organisation.id)
     return serverErrorResponse('Failed to create organisation')
@@ -190,11 +215,16 @@ export async function DELETE() {
   const supabase = await createClient()
 
   // Get user's organisation membership
-  const { data: membership } = await supabase
+  const { data: membership, error: membershipError } = await supabase
     .from('OrganisationMember')
     .select('id, isOwner, organisationId')
     .eq('userId', user.id)
     .single()
+
+  if (membershipError && membershipError.code !== 'PGRST116') {
+    console.error('[Organisation] Error fetching membership:', membershipError)
+    return serverErrorResponse('Failed to fetch membership')
+  }
 
   if (!membership) {
     return notFoundResponse('You are not a member of any organisation')
@@ -211,7 +241,7 @@ export async function DELETE() {
     .eq('id', membership.organisationId)
 
   if (error) {
-    console.error('Error deleting organisation:', error)
+    console.error('[Organisation] Error deleting organisation:', error)
     return serverErrorResponse('Failed to delete organisation')
   }
 

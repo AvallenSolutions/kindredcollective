@@ -5,9 +5,16 @@ import {
   successResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { sanitizeFilterInput } from '@/lib/api/sanitize'
+import { parsePagination, paginationMeta } from '@/lib/api/pagination'
+import { applyRateLimit } from '@/lib/api/rate-limit'
 
 // GET /api/offers - List active offers
 export async function GET(request: NextRequest) {
+  // Rate limit: 60 requests per minute per IP
+  const rateLimitResponse = applyRateLimit(request, 60, 60_000)
+  if (rateLimitResponse) return rateLimitResponse
+
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
 
@@ -15,14 +22,13 @@ export async function GET(request: NextRequest) {
   const session = await getSession()
   const isBrandUser = session.isBrand
 
-  // Pagination
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  // Pagination (clamped to [1, 100])
+  const { page, limit, from, to } = parsePagination(searchParams)
 
   // Filters
   const type = searchParams.get('type')
   const supplierId = searchParams.get('supplierId')
-  const search = searchParams.get('search')
+  const rawSearch = searchParams.get('search')
 
   const now = new Date().toISOString()
 
@@ -58,7 +64,7 @@ export async function GET(request: NextRequest) {
     .or(`endDate.is.null,endDate.gte.${now}`)
     .or(`startDate.is.null,startDate.lte.${now}`)
     .order('createdAt', { ascending: false })
-    .range((page - 1) * limit, page * limit - 1)
+    .range(from, to)
 
   // Filter out brand-only offers for non-brand users
   if (!isBrandUser) {
@@ -73,18 +79,19 @@ export async function GET(request: NextRequest) {
     query = query.eq('supplierId', supplierId)
   }
 
-  if (search) {
+  if (rawSearch) {
+    const search = sanitizeFilterInput(rawSearch)
     query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
   }
 
   const { data: offers, error, count } = await query
 
   if (error) {
-    console.error('Error fetching offers:', error)
+    console.error('[Offers] Error fetching offers:', error)
     return serverErrorResponse('Failed to fetch offers')
   }
 
-  // Get filter options
+  // Get filter options - only fetch the type column for unique values
   const { data: typesData } = await supabase
     .from('Offer')
     .select('type')
@@ -94,12 +101,7 @@ export async function GET(request: NextRequest) {
 
   return successResponse({
     offers,
-    pagination: {
-      page,
-      limit,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
-    },
+    pagination: paginationMeta(page, limit, count || 0),
     filters: {
       types,
     },

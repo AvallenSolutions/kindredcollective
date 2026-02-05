@@ -3,10 +3,32 @@ import { createClient } from '@/lib/supabase/server'
 import {
   successResponse,
   notFoundResponse,
+  serverErrorResponse,
 } from '@/lib/api/response'
 
 interface RouteParams {
   params: Promise<{ slug: string }>
+}
+
+interface RsvpUser {
+  id: string
+  member: {
+    firstName: string
+    lastName: string
+    avatarUrl: string | null
+    jobTitle: string | null
+  } | Array<{
+    firstName: string
+    lastName: string
+    avatarUrl: string | null
+    jobTitle: string | null
+  }>
+}
+
+interface EventRsvp {
+  id: string
+  status: string
+  user: RsvpUser | RsvpUser[]
 }
 
 // GET /api/events/[slug] - Get single event detail
@@ -54,15 +76,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     .single()
 
   if (error || !event) {
+    if (error && error.code !== 'PGRST116') {
+      console.error('[EventDetail] Error fetching event:', error)
+      return serverErrorResponse('Failed to fetch event')
+    }
     return notFoundResponse('Event not found')
   }
 
   // Calculate RSVP counts
-  const rsvps = event.rsvps || []
+  const rsvps = (event.rsvps || []) as EventRsvp[]
   const rsvpCounts = {
-    going: rsvps.filter((r: { status: string }) => r.status === 'GOING').length,
-    interested: rsvps.filter((r: { status: string }) => r.status === 'INTERESTED').length,
-    notGoing: rsvps.filter((r: { status: string }) => r.status === 'NOT_GOING').length,
+    going: rsvps.filter((r) => r.status === 'GOING').length,
+    interested: rsvps.filter((r) => r.status === 'INTERESTED').length,
+    notGoing: rsvps.filter((r) => r.status === 'NOT_GOING').length,
   }
 
   // Get attendees if showAttendees is true
@@ -76,21 +102,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   if (event.showAttendees) {
     attendees = rsvps
-      .filter((r: any) => {
+      .filter((r) => {
         const user = Array.isArray(r.user) ? r.user[0] : r.user
         const member = user?.member
         const memberData = Array.isArray(member) ? member[0] : member
         return (r.status === 'GOING' || r.status === 'INTERESTED') && memberData
       })
-      .map((r: any) => {
+      .map((r) => {
         const user = Array.isArray(r.user) ? r.user[0] : r.user
         const member = user?.member
         const memberData = Array.isArray(member) ? member[0] : member
         return {
-          firstName: memberData.firstName,
-          lastName: memberData.lastName,
-          avatarUrl: memberData.avatarUrl,
-          jobTitle: memberData.jobTitle,
+          firstName: memberData!.firstName,
+          lastName: memberData!.lastName,
+          avatarUrl: memberData!.avatarUrl,
+          jobTitle: memberData!.jobTitle,
           status: r.status,
         }
       })

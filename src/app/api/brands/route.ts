@@ -4,20 +4,26 @@ import {
   successResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { sanitizeFilterInput } from '@/lib/api/sanitize'
+import { parsePagination, paginationMeta } from '@/lib/api/pagination'
+import { applyRateLimit } from '@/lib/api/rate-limit'
 
 // GET /api/brands - List public brands with filtering
 export async function GET(request: NextRequest) {
+  // Rate limit: 60 requests per minute per IP
+  const rateLimitResponse = applyRateLimit(request, 60, 60_000)
+  if (rateLimitResponse) return rateLimitResponse
+
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
 
-  // Pagination
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  // Pagination (clamped to [1, 100])
+  const { page, limit, from, to } = parsePagination(searchParams)
 
   // Filters
   const category = searchParams.get('category')
-  const location = searchParams.get('location')
-  const search = searchParams.get('search')
+  const rawLocation = searchParams.get('location')
+  const rawSearch = searchParams.get('search')
   const isVerified = searchParams.get('verified')
 
   let query = supabase
@@ -42,17 +48,19 @@ export async function GET(request: NextRequest) {
     .eq('isPublic', true)
     .order('isVerified', { ascending: false })
     .order('createdAt', { ascending: false })
-    .range((page - 1) * limit, page * limit - 1)
+    .range(from, to)
 
   if (category) {
     query = query.eq('category', category)
   }
 
-  if (location) {
+  if (rawLocation) {
+    const location = sanitizeFilterInput(rawLocation)
     query = query.or(`location.ilike.%${location}%,country.ilike.%${location}%`)
   }
 
-  if (search) {
+  if (rawSearch) {
+    const search = sanitizeFilterInput(rawSearch)
     query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%,tagline.ilike.%${search}%`)
   }
 
@@ -63,11 +71,11 @@ export async function GET(request: NextRequest) {
   const { data: brands, error, count } = await query
 
   if (error) {
-    console.error('Error fetching brands:', error)
+    console.error('[Brands] Error fetching brands:', error)
     return serverErrorResponse('Failed to fetch brands')
   }
 
-  // Get all unique categories for filter options
+  // Get unique categories for filter options
   const { data: categoriesData } = await supabase
     .from('Brand')
     .select('category')
@@ -77,12 +85,7 @@ export async function GET(request: NextRequest) {
 
   return successResponse({
     brands,
-    pagination: {
-      page,
-      limit,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
-    },
+    pagination: paginationMeta(page, limit, count || 0),
     filters: {
       categories,
     },

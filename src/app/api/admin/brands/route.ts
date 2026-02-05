@@ -7,6 +7,8 @@ import {
   unauthorizedResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { parsePagination, paginationMeta } from '@/lib/api/pagination'
+import { sanitizeFilterInput } from '@/lib/api/sanitize'
 
 // GET /api/admin/brands - List all brands (including private)
 export async function GET(request: NextRequest) {
@@ -19,8 +21,7 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
 
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const { page, limit, from, to } = parsePagination(searchParams)
   const category = searchParams.get('category')
   const search = searchParams.get('search')
   const isPublic = searchParams.get('isPublic')
@@ -30,14 +31,14 @@ export async function GET(request: NextRequest) {
     .from('Brand')
     .select('*, user:User(email), images:BrandImage(url, alt, order)', { count: 'exact' })
     .order('createdAt', { ascending: false })
-    .range((page - 1) * limit, page * limit - 1)
+    .range(from, to)
 
   if (category) {
     query = query.eq('category', category)
   }
 
   if (search) {
-    query = query.ilike('name', `%${search}%`)
+    query = query.ilike('name', `%${sanitizeFilterInput(search)}%`)
   }
 
   if (isPublic !== null && isPublic !== undefined) {
@@ -51,18 +52,13 @@ export async function GET(request: NextRequest) {
   const { data: brands, error, count } = await query
 
   if (error) {
-    console.error('Error fetching brands:', error)
+    console.error('[AdminBrands] Error fetching brands:', error)
     return serverErrorResponse('Failed to fetch brands')
   }
 
   return successResponse({
     brands,
-    pagination: {
-      page,
-      limit,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
-    },
+    pagination: paginationMeta(page, limit, count || 0),
   })
 }
 
@@ -156,7 +152,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    console.error('Error creating brand:', error)
+    console.error('[AdminBrands] Error creating brand:', error)
     return serverErrorResponse('Failed to create brand')
   }
 

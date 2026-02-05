@@ -1,8 +1,18 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
 /**
- * Create an admin Supabase client using the service role key
- * This bypasses Row Level Security - use only for trusted server-side operations
+ * SECURITY: This client bypasses all Row Level Security (RLS) policies.
+ * It should ONLY be used for trusted server-side operations where RLS
+ * would create circular dependencies or where admin-level access is required.
+ *
+ * Current legitimate uses:
+ * - getSession(): Fetching user role (RLS circular dependency)
+ * - getUserMember(): Member profiles where RLS requires role lookup
+ * - Signup flow: Creating records for newly authenticated users
+ * - Admin API routes: Cross-user CRUD operations behind requireAdmin()
+ *
+ * NEVER pass this client to untrusted code or use it to serve
+ * user-facing queries without explicit authorization checks.
  */
 export function createAdminClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL

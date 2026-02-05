@@ -7,6 +7,8 @@ import {
   unauthorizedResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { parsePagination, paginationMeta } from '@/lib/api/pagination'
+import { sanitizeFilterInput } from '@/lib/api/sanitize'
 
 // GET /api/admin/events - List all events
 export async function GET(request: NextRequest) {
@@ -19,8 +21,7 @@ export async function GET(request: NextRequest) {
   const supabase = createAdminClient()
   const { searchParams } = new URL(request.url)
 
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const { page, limit, from, to } = parsePagination(searchParams)
   const status = searchParams.get('status')
   const type = searchParams.get('type')
   const search = searchParams.get('search')
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     .from('Event')
     .select('*, rsvps:EventRsvp(count)', { count: 'exact' })
     .order('startDate', { ascending: true })
-    .range((page - 1) * limit, page * limit - 1)
+    .range(from, to)
 
   if (status) {
     query = query.eq('status', status)
@@ -40,24 +41,19 @@ export async function GET(request: NextRequest) {
   }
 
   if (search) {
-    query = query.ilike('title', `%${search}%`)
+    query = query.ilike('title', `%${sanitizeFilterInput(search)}%`)
   }
 
   const { data: events, error, count } = await query
 
   if (error) {
-    console.error('Error fetching events:', error)
+    console.error('[AdminEvents] Error fetching events:', error)
     return serverErrorResponse('Failed to fetch events')
   }
 
   return successResponse({
     events,
-    pagination: {
-      page,
-      limit,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
-    },
+    pagination: paginationMeta(page, limit, count || 0),
   })
 }
 
@@ -131,7 +127,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    console.error('Error creating event:', error)
+    console.error('[AdminEvents] Error creating event:', error)
     return serverErrorResponse('Failed to create event')
   }
 

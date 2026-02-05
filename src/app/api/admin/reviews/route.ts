@@ -6,6 +6,7 @@ import {
   unauthorizedResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { parsePagination, paginationMeta } from '@/lib/api/pagination'
 
 // GET /api/admin/reviews - List all reviews for moderation
 export async function GET(request: NextRequest) {
@@ -18,8 +19,7 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
 
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const { page, limit, from, to } = parsePagination(searchParams)
   const isPublic = searchParams.get('isPublic')
   const isVerified = searchParams.get('isVerified')
   const supplierId = searchParams.get('supplierId')
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     .from('SupplierReview')
     .select('*, supplier:Supplier(id, companyName, slug), brand:Brand(id, name, slug), user:User(email)', { count: 'exact' })
     .order('createdAt', { ascending: false })
-    .range((page - 1) * limit, page * limit - 1)
+    .range(from, to)
 
   if (isPublic !== null && isPublic !== undefined) {
     query = query.eq('isPublic', isPublic === 'true')
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
   const { data: reviews, error, count } = await query
 
   if (error) {
-    console.error('Error fetching reviews:', error)
+    console.error('[AdminReviews] Error fetching reviews:', error)
     return serverErrorResponse('Failed to fetch reviews')
   }
 
@@ -74,11 +74,6 @@ export async function GET(request: NextRequest) {
   return successResponse({
     reviews,
     statistics,
-    pagination: {
-      page,
-      limit,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
-    },
+    pagination: paginationMeta(page, limit, count || 0),
   })
 }

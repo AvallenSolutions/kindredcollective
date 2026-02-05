@@ -31,6 +31,9 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (inviteError || !invite) {
+    if (inviteError && inviteError.code !== 'PGRST116') {
+      console.error('[Signup] Error validating invite token:', inviteError)
+    }
     return NextResponse.json(
       { error: 'Invalid invite link' },
       { status: 403 }
@@ -96,27 +99,33 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Create user record in our database with invite tracking
+  // Create user record in our database with invite tracking.
+  // This must succeed - the User record links auth to roles and profiles.
   const { error: userError } = await adminSupabase
     .from('User')
     .insert({
       id: authData.user.id,
       email: authData.user.email!,
       role: userRole,
-      inviteLinkToken: inviteToken, // Track which invite was used
-      emailVerified: null, // Will be set when email is confirmed
+      inviteLinkToken: inviteToken,
+      emailVerified: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
 
   if (userError) {
-    console.error('Error creating user record:', userError)
-    // Don't fail - the user can still use the app
+    console.error('[Signup] Failed to create User record:', userError)
+    // Clean up the auth user to avoid an orphaned auth account
+    await adminSupabase.auth.admin.deleteUser(authData.user.id)
+    return NextResponse.json(
+      { error: 'Failed to complete signup. Please try again.' },
+      { status: 500 }
+    )
   }
 
   // Create member profile
   if (firstName || lastName) {
-    await adminSupabase
+    const { error: memberError } = await adminSupabase
       .from('Member')
       .insert({
         userId: authData.user.id,
@@ -126,12 +135,24 @@ export async function POST(request: NextRequest) {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       })
+
+    if (memberError) {
+      // Non-fatal: user can create their profile during onboarding
+      console.error('[Signup] Failed to create Member profile:', memberError)
+    }
   }
 
-  // Increment invite usage count
+  // Update invite usage count by counting actual users who used this token.
+  // This avoids race conditions from concurrent signups reading the same
+  // usedCount value and both incrementing to the same number.
+  const { count: usageCount } = await adminSupabase
+    .from('User')
+    .select('id', { count: 'exact', head: true })
+    .eq('inviteLinkToken', inviteToken)
+
   await adminSupabase
     .from('InviteLink')
-    .update({ usedCount: invite.usedCount + 1 })
+    .update({ usedCount: usageCount || 0 })
     .eq('id', invite.id)
 
   return NextResponse.json({

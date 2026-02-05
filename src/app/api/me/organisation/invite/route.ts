@@ -8,12 +8,11 @@ import {
   notFoundResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
-import crypto from 'crypto'
+import { generateSecureToken } from '@/lib/api/token'
 
-// Generate a secure random token
-function generateToken(): string {
-  return crypto.randomBytes(32).toString('hex')
-}
+// RFC 5322 simplified email validation - more permissive than the old regex
+// to support plus addressing, subdomains, and internationalized TLDs
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 // POST /api/me/organisation/invite - Send invite
 export async function POST(request: NextRequest) {
@@ -34,17 +33,21 @@ export async function POST(request: NextRequest) {
   }
 
   // Validate email format
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(email)) {
+  if (!EMAIL_REGEX.test(email)) {
     return errorResponse('Invalid email format')
   }
 
   // Get user's organisation membership
-  const { data: membership } = await supabase
+  const { data: membership, error: membershipError } = await supabase
     .from('OrganisationMember')
     .select('id, isOwner, organisationId, organisation:Organisation(name)')
     .eq('userId', user.id)
     .single()
+
+  if (membershipError && membershipError.code !== 'PGRST116') {
+    console.error('[OrgInvite] Error fetching membership:', membershipError)
+    return serverErrorResponse('Failed to verify membership')
+  }
 
   if (!membership) {
     return notFoundResponse('You are not a member of any organisation')
@@ -55,19 +58,29 @@ export async function POST(request: NextRequest) {
   }
 
   // Check if email is already a member
-  const { data: existingUser } = await supabase
+  const { data: existingUser, error: userLookupError } = await supabase
     .from('User')
     .select('id')
     .eq('email', email)
     .single()
 
+  if (userLookupError && userLookupError.code !== 'PGRST116') {
+    console.error('[OrgInvite] Error looking up user:', userLookupError)
+    return serverErrorResponse('Failed to check user')
+  }
+
   if (existingUser) {
-    const { data: existingMember } = await supabase
+    const { data: existingMember, error: memberCheckError } = await supabase
       .from('OrganisationMember')
       .select('id')
       .eq('organisationId', membership.organisationId)
       .eq('userId', existingUser.id)
       .single()
+
+    if (memberCheckError && memberCheckError.code !== 'PGRST116') {
+      console.error('[OrgInvite] Error checking membership:', memberCheckError)
+      return serverErrorResponse('Failed to check membership')
+    }
 
     if (existingMember) {
       return errorResponse('This user is already a member of your organisation')
@@ -75,13 +88,18 @@ export async function POST(request: NextRequest) {
   }
 
   // Check if there's already a pending invite for this email
-  const { data: existingInvite } = await supabase
+  const { data: existingInvite, error: inviteCheckError } = await supabase
     .from('OrganisationInvite')
     .select('id, expiresAt')
     .eq('organisationId', membership.organisationId)
     .eq('email', email)
     .is('acceptedAt', null)
     .single()
+
+  if (inviteCheckError && inviteCheckError.code !== 'PGRST116') {
+    console.error('[OrgInvite] Error checking existing invite:', inviteCheckError)
+    return serverErrorResponse('Failed to check existing invites')
+  }
 
   if (existingInvite && new Date(existingInvite.expiresAt) > new Date()) {
     return errorResponse('An invite has already been sent to this email')
@@ -94,8 +112,8 @@ export async function POST(request: NextRequest) {
     .eq('organisationId', membership.organisationId)
     .eq('email', email)
 
-  // Create invite
-  const token = generateToken()
+  // Create invite using standardized token generation
+  const token = generateSecureToken()
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + 7) // 7 days expiry
 
@@ -113,12 +131,9 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    console.error('Error creating invite:', error)
+    console.error('[OrgInvite] Error creating invite:', error)
     return serverErrorResponse('Failed to create invite')
   }
-
-  // TODO: Send invite email via Supabase Auth or email service
-  // For now, return the invite URL for manual sharing
 
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/invite/${token}`
 
@@ -145,11 +160,16 @@ export async function GET() {
   const supabase = await createClient()
 
   // Get user's organisation membership
-  const { data: membership } = await supabase
+  const { data: membership, error: membershipError } = await supabase
     .from('OrganisationMember')
     .select('id, isOwner, organisationId')
     .eq('userId', user.id)
     .single()
+
+  if (membershipError && membershipError.code !== 'PGRST116') {
+    console.error('[OrgInvite] Error fetching membership:', membershipError)
+    return serverErrorResponse('Failed to verify membership')
+  }
 
   if (!membership) {
     return notFoundResponse('You are not a member of any organisation')
@@ -167,7 +187,7 @@ export async function GET() {
     .order('createdAt', { ascending: false })
 
   if (error) {
-    console.error('Error fetching invites:', error)
+    console.error('[OrgInvite] Error fetching invites:', error)
     return serverErrorResponse('Failed to fetch invites')
   }
 

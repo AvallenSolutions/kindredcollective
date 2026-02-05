@@ -27,6 +27,10 @@ export async function GET() {
     .single()
 
   if (error || !brand) {
+    if (error && error.code !== 'PGRST116') {
+      console.error('[MeBrand] Error fetching brand:', error)
+      return serverErrorResponse('Failed to fetch brand profile')
+    }
     return notFoundResponse('Brand profile not found')
   }
 
@@ -45,12 +49,17 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const body = await request.json()
 
-  // Check if user already has a brand
-  const { data: existing } = await supabase
+  // Check if user already has a brand (PGRST116 = no rows found, expected)
+  const { data: existing, error: existingError } = await supabase
     .from('Brand')
     .select('id')
     .eq('userId', user.id)
     .single()
+
+  if (existingError && existingError.code !== 'PGRST116') {
+    console.error('[MeBrand] Error checking existing brand:', existingError)
+    return serverErrorResponse('Failed to check existing brand')
+  }
 
   if (existing) {
     return errorResponse('Brand profile already exists')
@@ -108,7 +117,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    console.error('Error creating brand:', error)
+    console.error('[MeBrand] Error creating brand:', error)
     if (error.code === '23505') {
       return errorResponse('Slug already exists')
     }
@@ -167,7 +176,7 @@ export async function PATCH(request: NextRequest) {
     .single()
 
   if (error) {
-    console.error('Error updating brand:', error)
+    console.error('[MeBrand] Error updating brand:', error)
     return serverErrorResponse('Failed to update brand')
   }
 
@@ -195,7 +204,7 @@ export async function DELETE() {
     .eq('userId', user.id)
 
   if (error) {
-    console.error('Error deleting brand:', error)
+    console.error('[MeBrand] Error deleting brand:', error)
     return serverErrorResponse('Failed to delete brand')
   }
 

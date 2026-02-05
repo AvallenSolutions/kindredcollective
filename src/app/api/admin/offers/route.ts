@@ -7,6 +7,8 @@ import {
   unauthorizedResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { parsePagination, paginationMeta } from '@/lib/api/pagination'
+import { sanitizeFilterInput } from '@/lib/api/sanitize'
 
 // GET /api/admin/offers - List all offers
 export async function GET(request: NextRequest) {
@@ -19,8 +21,7 @@ export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
 
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '20')
+  const { page, limit, from, to } = parsePagination(searchParams)
   const status = searchParams.get('status')
   const type = searchParams.get('type')
   const supplierId = searchParams.get('supplierId')
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     .from('Offer')
     .select('*, supplier:Supplier(id, companyName, slug, logoUrl), claims:OfferClaim(count)', { count: 'exact' })
     .order('createdAt', { ascending: false })
-    .range((page - 1) * limit, page * limit - 1)
+    .range(from, to)
 
   if (status) {
     query = query.eq('status', status)
@@ -45,24 +46,19 @@ export async function GET(request: NextRequest) {
   }
 
   if (search) {
-    query = query.ilike('title', `%${search}%`)
+    query = query.ilike('title', `%${sanitizeFilterInput(search)}%`)
   }
 
   const { data: offers, error, count } = await query
 
   if (error) {
-    console.error('Error fetching offers:', error)
+    console.error('[AdminOffers] Error fetching offers:', error)
     return serverErrorResponse('Failed to fetch offers')
   }
 
   return successResponse({
     offers,
-    pagination: {
-      page,
-      limit,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
-    },
+    pagination: paginationMeta(page, limit, count || 0),
   })
 }
 
@@ -133,7 +129,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    console.error('Error creating offer:', error)
+    console.error('[AdminOffers] Error creating offer:', error)
     return serverErrorResponse('Failed to create offer')
   }
 

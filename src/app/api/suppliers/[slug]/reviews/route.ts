@@ -9,6 +9,7 @@ import {
   notFoundResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { parsePagination, paginationMeta } from '@/lib/api/pagination'
 
 interface RouteParams {
   params: Promise<{ slug: string }>
@@ -16,11 +17,16 @@ interface RouteParams {
 
 // Helper to get supplier by slug
 async function getSupplierBySlug(supabase: Awaited<ReturnType<typeof createClient>>, slug: string) {
-  const { data: supplier } = await supabase
+  const { data: supplier, error } = await supabase
     .from('Supplier')
     .select('id, isPublic')
     .eq('slug', slug)
     .single()
+
+  if (error && error.code !== 'PGRST116') {
+    console.error('[SupplierReviews] Error fetching supplier:', error)
+  }
+
   return supplier
 }
 
@@ -30,8 +36,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
 
-  const page = parseInt(searchParams.get('page') || '1')
-  const limit = parseInt(searchParams.get('limit') || '10')
+  const { page, limit, from, to } = parsePagination(searchParams, { limit: 10 })
 
   // Check if supplier exists
   const supplier = await getSupplierBySlug(supabase, slug)
@@ -60,10 +65,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     .eq('supplierId', supplier.id)
     .eq('isPublic', true)
     .order('createdAt', { ascending: false })
-    .range((page - 1) * limit, page * limit - 1)
+    .range(from, to)
 
   if (error) {
-    console.error('Error fetching reviews:', error)
+    console.error('[SupplierReviews] Error fetching reviews:', error)
     return serverErrorResponse('Failed to fetch reviews')
   }
 
@@ -93,12 +98,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   return successResponse({
     reviews,
     stats,
-    pagination: {
-      page,
-      limit,
-      total: count || 0,
-      totalPages: Math.ceil((count || 0) / limit),
-    },
+    pagination: paginationMeta(page, limit, count || 0),
   })
 }
 
@@ -155,18 +155,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   // Get user's brand if they have one
-  const { data: userBrand } = await supabase
+  const { data: userBrand, error: brandError } = await supabase
     .from('Brand')
     .select('id, name')
     .eq('userId', user.id)
     .single()
 
+  if (brandError && brandError.code !== 'PGRST116') {
+    console.error('[SupplierReviews] Error fetching user brand:', brandError)
+  }
+
   // Get member info for reviewer name
-  const { data: member } = await supabase
+  const { data: member, error: memberError } = await supabase
     .from('Member')
     .select('firstName, lastName')
     .eq('userId', user.id)
     .single()
+
+  if (memberError && memberError.code !== 'PGRST116') {
+    console.error('[SupplierReviews] Error fetching member info:', memberError)
+  }
 
   const reviewerName = member ? `${member.firstName} ${member.lastName}` : user.email.split('@')[0]
 
@@ -194,7 +202,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     .single()
 
   if (error) {
-    console.error('Error creating review:', error)
+    console.error('[SupplierReviews] Error creating review:', error)
     return serverErrorResponse('Failed to create review')
   }
 
