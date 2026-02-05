@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
   const { data: invite, error: inviteError } = await adminSupabase
     .from('InviteLink')
-    .select('id, token, isActive, expiresAt, maxUses, usedCount')
+    .select('id, token, isActive, expiresAt, maxUses, usedCount, targetRole')
     .eq('token', inviteToken)
     .single()
 
@@ -64,12 +64,17 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const userRole = role.toUpperCase()
-  if (!['BRAND', 'SUPPLIER'].includes(userRole)) {
+  let userRole = role.toUpperCase()
+  if (!['BRAND', 'SUPPLIER', 'MEMBER'].includes(userRole)) {
     return NextResponse.json(
       { error: 'Invalid role' },
       { status: 400 }
     )
+  }
+
+  // If the invite specifies a target role, enforce it
+  if (invite.targetRole) {
+    userRole = invite.targetRole
   }
 
   // Create auth user

@@ -22,6 +22,7 @@ export interface AuthSession {
   isAdmin: boolean
   isBrand: boolean
   isSupplier: boolean
+  isMember: boolean
 }
 
 // Permission checks
@@ -39,21 +40,29 @@ export const permissions = {
   supplier: {
     manageOwnProfile: ['SUPPLIER', 'ADMIN'] as UserRole[],
     manageOwnOffers: ['SUPPLIER', 'ADMIN'] as UserRole[],
+    manageOwnEvents: ['SUPPLIER', 'ADMIN'] as UserRole[],
     viewOfferClaims: ['SUPPLIER', 'ADMIN'] as UserRole[],
   },
   // Brand/User permissions
   brand: {
     manageOwnProfile: ['BRAND', 'ADMIN'] as UserRole[],
     manageOwnEvents: ['BRAND', 'ADMIN'] as UserRole[],
-    claimOffers: ['BRAND', 'SUPPLIER', 'ADMIN'] as UserRole[],
+    claimOffers: ['BRAND', 'SUPPLIER', 'ADMIN', 'MEMBER'] as UserRole[],
+  },
+  // Member permissions
+  member: {
+    manageOwnProfile: ['MEMBER', 'BRAND', 'ADMIN'] as UserRole[],
+    attendEvents: ['MEMBER', 'BRAND', 'SUPPLIER', 'ADMIN'] as UserRole[],
+    writeReviews: ['MEMBER', 'BRAND', 'ADMIN'] as UserRole[],
+    joinOrganisation: ['MEMBER', 'BRAND', 'SUPPLIER', 'ADMIN'] as UserRole[],
   },
   // Common permissions
   common: {
-    viewPublicSuppliers: ['BRAND', 'SUPPLIER', 'ADMIN'] as UserRole[],
-    viewPublicBrands: ['BRAND', 'SUPPLIER', 'ADMIN'] as UserRole[],
-    viewPublicEvents: ['BRAND', 'SUPPLIER', 'ADMIN'] as UserRole[],
-    saveSuppliers: ['BRAND', 'SUPPLIER', 'ADMIN'] as UserRole[],
-    writeReviews: ['BRAND', 'ADMIN'] as UserRole[],
+    viewPublicSuppliers: ['BRAND', 'SUPPLIER', 'ADMIN', 'MEMBER'] as UserRole[],
+    viewPublicBrands: ['BRAND', 'SUPPLIER', 'ADMIN', 'MEMBER'] as UserRole[],
+    viewPublicEvents: ['BRAND', 'SUPPLIER', 'ADMIN', 'MEMBER'] as UserRole[],
+    saveSuppliers: ['BRAND', 'SUPPLIER', 'ADMIN', 'MEMBER'] as UserRole[],
+    writeReviews: ['BRAND', 'ADMIN', 'MEMBER'] as UserRole[],
   },
 } as const
 
@@ -72,4 +81,8 @@ export function isBrand(role: UserRole | undefined): boolean {
 
 export function isSupplier(role: UserRole | undefined): boolean {
   return role === 'SUPPLIER'
+}
+
+export function isMember(role: UserRole | undefined): boolean {
+  return role === 'MEMBER'
 }

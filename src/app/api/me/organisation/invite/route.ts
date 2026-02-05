@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   // Get user's organisation membership
   const { data: membership, error: membershipError } = await supabase
     .from('OrganisationMember')
-    .select('id, isOwner, organisationId, organisation:Organisation(name)')
+    .select('id, role, organisationId, organisation:Organisation(name)')
     .eq('userId', user.id)
     .single()
 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     return notFoundResponse('You are not a member of any organisation')
   }
 
-  if (!membership.isOwner) {
+  if (membership.role !== 'OWNER') {
     return errorResponse('Only the organisation owner can send invites', 403)
   }
 
@@ -162,7 +162,7 @@ export async function GET() {
   // Get user's organisation membership
   const { data: membership, error: membershipError } = await supabase
     .from('OrganisationMember')
-    .select('id, isOwner, organisationId')
+    .select('id, role, organisationId')
     .eq('userId', user.id)
     .single()
 
@@ -175,7 +175,7 @@ export async function GET() {
     return notFoundResponse('You are not a member of any organisation')
   }
 
-  if (!membership.isOwner) {
+  if (membership.role !== 'OWNER') {
     return errorResponse('Only the organisation owner can view invites', 403)
   }
 

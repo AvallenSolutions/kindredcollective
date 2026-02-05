@@ -87,6 +87,7 @@ export default async function DashboardPage() {
     isAdmin: session.isAdmin,
     isSupplier: session.isSupplier,
     isBrand: session.isBrand,
+    isMember: session.isMember,
   }
 
   // Transform data for the dashboard content

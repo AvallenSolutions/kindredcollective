@@ -28,7 +28,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   // Get user's organisation membership
   const { data: userMembership } = await supabase
     .from('OrganisationMember')
-    .select('id, isOwner, organisationId')
+    .select('id, role, organisationId')
     .eq('userId', user.id)
     .single()
 
@@ -39,7 +39,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   // Get the target member
   const { data: targetMember } = await supabase
     .from('OrganisationMember')
-    .select('id, isOwner, organisationId, userId')
+    .select('id, role, organisationId, userId')
     .eq('id', id)
     .single()
 
@@ -55,15 +55,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   // Check permissions
   if (targetMember.userId === user.id) {
     // User is removing themselves
-    if (targetMember.isOwner) {
+    if (targetMember.role === 'OWNER') {
       return errorResponse('Organisation owner cannot leave. Transfer ownership or delete the organisation.')
     }
   } else {
     // Removing someone else - must be owner
-    if (!userMembership.isOwner) {
+    if (userMembership.role !== 'OWNER') {
       return errorResponse('Only the organisation owner can remove members', 403)
     }
-    if (targetMember.isOwner) {
+    if (targetMember.role === 'OWNER') {
       return errorResponse('Cannot remove the organisation owner')
     }
   }
@@ -75,7 +75,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     .eq('id', id)
 
   if (error) {
-    console.error('Error removing member:', error)
+    console.error('[OrgMembers] Error removing member:', error)
     return serverErrorResponse('Failed to remove member')
   }
 
@@ -100,16 +100,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const supabase = await createClient()
   const body = await request.json()
 
-  const { isOwner } = body
+  const { transferOwnership } = body
 
-  if (isOwner !== true) {
-    return errorResponse('Invalid request. Use isOwner: true to transfer ownership.')
+  if (transferOwnership !== true) {
+    return errorResponse('Invalid request. Use transferOwnership: true to transfer ownership.')
   }
 
   // Get user's organisation membership
   const { data: userMembership } = await supabase
     .from('OrganisationMember')
-    .select('id, isOwner, organisationId')
+    .select('id, role, organisationId')
     .eq('userId', user.id)
     .single()
 
@@ -117,7 +117,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('You are not a member of any organisation')
   }
 
-  if (!userMembership.isOwner) {
+  if (userMembership.role !== 'OWNER') {
     return errorResponse('Only the organisation owner can transfer ownership', 403)
   }
 
@@ -140,28 +140,28 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return errorResponse('You are already the owner')
   }
 
-  // Transfer ownership
-  const { error: removeOwnerError } = await supabase
+  // Transfer ownership: demote current owner to ADMIN, promote target to OWNER
+  const { error: demoteError } = await supabase
     .from('OrganisationMember')
-    .update({ isOwner: false })
+    .update({ role: 'ADMIN' })
     .eq('id', userMembership.id)
 
-  if (removeOwnerError) {
-    console.error('Error removing ownership:', removeOwnerError)
+  if (demoteError) {
+    console.error('[OrgMembers] Error demoting owner:', demoteError)
     return serverErrorResponse('Failed to transfer ownership')
   }
 
-  const { error: addOwnerError } = await supabase
+  const { error: promoteError } = await supabase
     .from('OrganisationMember')
-    .update({ isOwner: true })
+    .update({ role: 'OWNER' })
     .eq('id', targetMember.id)
 
-  if (addOwnerError) {
-    console.error('Error adding ownership:', addOwnerError)
+  if (promoteError) {
+    console.error('[OrgMembers] Error promoting member:', promoteError)
     // Rollback
     await supabase
       .from('OrganisationMember')
-      .update({ isOwner: true })
+      .update({ role: 'OWNER' })
       .eq('id', userMembership.id)
     return serverErrorResponse('Failed to transfer ownership')
   }

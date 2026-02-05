@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Copy, Check, X, ExternalLink, Calendar, Users } from 'lucide-react'
+import { ArrowLeft, Plus, Copy, Check, X, ExternalLink, Calendar, Users, MessageCircle } from 'lucide-react'
 
 interface InviteLink {
   id: string
@@ -13,6 +13,9 @@ interface InviteLink {
   usedCount: number
   isActive: boolean
   notes: string | null
+  targetRole: string | null
+  email: string | null
+  phone: string | null
   admin: {
     email: string
     member: {
@@ -35,12 +38,16 @@ export default function AdminInvitesPage() {
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [copiedToken, setCopiedToken] = useState<string | null>(null)
+  const [filterRole, setFilterRole] = useState<string>('')
 
   // Form state for creating invite
   const [formData, setFormData] = useState({
     expiresAt: '',
     maxUses: '',
     notes: '',
+    targetRole: '',
+    email: '',
+    phone: '',
   })
   const [creating, setCreating] = useState(false)
 
@@ -48,9 +55,13 @@ export default function AdminInvitesPage() {
     fetchInvites()
   }, [])
 
-  const fetchInvites = async () => {
+  const fetchInvites = async (role?: string) => {
     try {
-      const response = await fetch('/api/admin/invites')
+      const params = new URLSearchParams()
+      const roleFilter = role !== undefined ? role : filterRole
+      if (roleFilter) params.set('targetRole', roleFilter)
+      const url = `/api/admin/invites${params.toString() ? `?${params}` : ''}`
+      const response = await fetch(url)
       const data = await response.json()
       if (data.success) {
         setInvites(data.data.invites || [])
@@ -68,7 +79,7 @@ export default function AdminInvitesPage() {
     setCreating(true)
 
     try {
-      const payload: any = {}
+      const payload: Record<string, string | number> = {}
 
       if (formData.expiresAt) {
         payload.expiresAt = new Date(formData.expiresAt).toISOString()
@@ -82,6 +93,18 @@ export default function AdminInvitesPage() {
         payload.notes = formData.notes
       }
 
+      if (formData.targetRole) {
+        payload.targetRole = formData.targetRole
+      }
+
+      if (formData.email) {
+        payload.email = formData.email
+      }
+
+      if (formData.phone) {
+        payload.phone = formData.phone
+      }
+
       const response = await fetch('/api/admin/invites', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -92,7 +115,7 @@ export default function AdminInvitesPage() {
 
       if (data.success) {
         setShowCreateModal(false)
-        setFormData({ expiresAt: '', maxUses: '', notes: '' })
+        setFormData({ expiresAt: '', maxUses: '', notes: '', targetRole: '', email: '', phone: '' })
         fetchInvites()
 
         // Auto-copy the new invite link
@@ -179,6 +202,16 @@ export default function AdminInvitesPage() {
     setTimeout(() => setCopiedToken(null), 2000)
   }
 
+  const shareViaWhatsApp = (token: string, phone?: string | null) => {
+    const inviteUrl = `${window.location.origin}/signup?invite=${token}`
+    const message = encodeURIComponent(`You're invited to join Kindred Collective! Sign up here: ${inviteUrl}`)
+    const phoneParam = phone ? phone.replace(/[^0-9]/g, '') : ''
+    const waUrl = phoneParam
+      ? `https://wa.me/${phoneParam}?text=${message}`
+      : `https://wa.me/?text=${message}`
+    window.open(waUrl, '_blank')
+  }
+
   const formatDate = (date: string | null) => {
     if (!date) return 'Never'
     return new Date(date).toLocaleDateString('en-US', {
@@ -218,12 +251,27 @@ export default function AdminInvitesPage() {
           </div>
         </div>
 
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-cyan border-2 border-black font-bold uppercase text-sm neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
-        >
-          <Plus className="w-4 h-4" /> Generate Invite
-        </button>
+        <div className="flex items-center gap-3">
+          <select
+            value={filterRole}
+            onChange={(e) => {
+              setFilterRole(e.target.value)
+              fetchInvites(e.target.value)
+            }}
+            className="px-3 py-2 border-2 border-black text-sm font-bold uppercase focus:outline-none focus:ring-2 focus:ring-cyan"
+          >
+            <option value="">All Roles</option>
+            <option value="MEMBER">Member</option>
+            <option value="BRAND">Brand</option>
+            <option value="SUPPLIER">Supplier</option>
+          </select>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-cyan border-2 border-black font-bold uppercase text-sm neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+          >
+            <Plus className="w-4 h-4" /> Generate Invite
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -282,6 +330,15 @@ export default function AdminInvitesPage() {
                           Expired
                         </span>
                       )}
+                      {invite.targetRole && (
+                        <span className={`px-2 py-0.5 text-xs font-bold uppercase border ${
+                          invite.targetRole === 'MEMBER' ? 'bg-yellow-100 text-yellow-700 border-yellow-700' :
+                          invite.targetRole === 'SUPPLIER' ? 'bg-orange-100 text-orange-700 border-orange-700' :
+                          'bg-cyan/20 text-cyan-700 border-cyan-700'
+                        }`}>
+                          {invite.targetRole}
+                        </span>
+                      )}
                     </div>
 
                     {/* Metadata */}
@@ -323,6 +380,14 @@ export default function AdminInvitesPage() {
                       ) : (
                         <Copy className="w-4 h-4" />
                       )}
+                    </button>
+
+                    <button
+                      onClick={() => shareViaWhatsApp(invite.token, invite.phone)}
+                      className="p-2 bg-green-500 text-white border-2 border-black neo-shadow-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all"
+                      title="Share via WhatsApp"
+                    >
+                      <MessageCircle className="w-4 h-4" />
                     </button>
 
                     {invite.isActive ? (
@@ -375,6 +440,51 @@ export default function AdminInvitesPage() {
             </div>
 
             <form onSubmit={handleCreateInvite} className="px-6 py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-bold uppercase mb-2">
+                  Target Role
+                </label>
+                <select
+                  value={formData.targetRole}
+                  onChange={(e) => setFormData({ ...formData, targetRole: e.target.value })}
+                  className="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-cyan"
+                >
+                  <option value="">Any role (user chooses)</option>
+                  <option value="MEMBER">Member</option>
+                  <option value="BRAND">Brand</option>
+                  <option value="SUPPLIER">Supplier</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">Lock invite to a specific role</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold uppercase mb-2">
+                    Email (Optional)
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-cyan"
+                    placeholder="user@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold uppercase mb-2">
+                    Phone (Optional)
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full px-3 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-cyan"
+                    placeholder="+44..."
+                  />
+                  <p className="text-xs text-gray-500 mt-1">For WhatsApp sharing</p>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-bold uppercase mb-2">
                   Expiration Date (Optional)

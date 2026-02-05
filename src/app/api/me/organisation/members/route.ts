@@ -23,7 +23,7 @@ interface MemberUser {
 
 interface OrgMember {
   id: string
-  isOwner: boolean
+  role: string
   joinedAt: string
   user: MemberUser | MemberUser[]
 }
@@ -60,7 +60,7 @@ export async function GET() {
     .from('OrganisationMember')
     .select(`
       id,
-      isOwner,
+      role,
       joinedAt,
       user:User(
         id,
@@ -70,7 +70,7 @@ export async function GET() {
       )
     `)
     .eq('organisationId', membership.organisationId)
-    .order('isOwner', { ascending: false })
+    .order('role', { ascending: true })
     .order('joinedAt', { ascending: true })
 
   if (error) {
@@ -85,7 +85,8 @@ export async function GET() {
     const profile = Array.isArray(memberProfile) ? memberProfile[0] : memberProfile
     return {
       id: member.id,
-      isOwner: member.isOwner,
+      orgRole: member.role,
+      isOwner: member.role === 'OWNER',
       joinedAt: member.joinedAt,
       userId: memberUser?.id,
       email: memberUser?.email,

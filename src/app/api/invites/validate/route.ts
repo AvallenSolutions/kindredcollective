@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   const { data: invite, error } = await supabase
     .from('InviteLink')
-    .select('id, token, isActive, expiresAt, maxUses, usedCount')
+    .select('id, token, isActive, expiresAt, maxUses, usedCount, targetRole')
     .eq('token', token)
     .single()
 
@@ -45,5 +45,6 @@ export async function GET(request: NextRequest) {
   return successResponse({
     valid: true,
     token: invite.token,
+    targetRole: invite.targetRole || null,
   })
 }

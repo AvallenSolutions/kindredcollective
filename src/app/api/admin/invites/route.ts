@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
 
   const { page, limit, from, to } = parsePagination(searchParams)
   const isActive = searchParams.get('isActive')
+  const targetRole = searchParams.get('targetRole')
 
   let query = supabase
     .from('InviteLink')
@@ -32,6 +33,10 @@ export async function GET(request: NextRequest) {
 
   if (isActive !== null && isActive !== undefined) {
     query = query.eq('isActive', isActive === 'true')
+  }
+
+  if (targetRole) {
+    query = query.eq('targetRole', targetRole)
   }
 
   const { data: invites, error, count } = await query
@@ -68,13 +73,18 @@ export async function POST(request: NextRequest) {
     const supabase = createAdminClient()
     const body = await request.json()
 
-    const { expiresAt, maxUses, notes } = body
+    const { expiresAt, maxUses, notes, targetRole, email, phone } = body
+
+    // Validate targetRole if provided
+    if (targetRole && !['BRAND', 'SUPPLIER', 'MEMBER'].includes(targetRole)) {
+      return errorResponse('Invalid target role. Must be BRAND, SUPPLIER, or MEMBER')
+    }
 
     // Generate a secure random token using standardized utility
     const token = generateSecureToken(24)
 
     // Prepare invite data
-    const inviteData: Record<string, string | number | boolean> = {
+    const inviteData: Record<string, string | number | boolean | null> = {
       token,
       createdBy: user.id,
       createdAt: new Date().toISOString(),
@@ -92,6 +102,18 @@ export async function POST(request: NextRequest) {
 
     if (notes) {
       inviteData.notes = notes
+    }
+
+    if (targetRole) {
+      inviteData.targetRole = targetRole
+    }
+
+    if (email) {
+      inviteData.email = email
+    }
+
+    if (phone) {
+      inviteData.phone = phone
     }
 
     // Create invite link
