@@ -129,7 +129,7 @@ export function EventRsvpButton({
     setIsOpen(true)
   }
 
-  const isFull = capacity && currentAttendees >= capacity
+  const isFull = !!(capacity && currentAttendees >= capacity)
   const buttonText = currentStatus === 'GOING'
     ? '✓ Attending'
     : isFree
