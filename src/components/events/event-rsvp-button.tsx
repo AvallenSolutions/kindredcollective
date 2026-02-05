@@ -201,7 +201,7 @@ export function EventRsvpButton({
                   className="w-full"
                 >
                   {currentStatus === 'GOING' && <CheckCircle className="w-4 h-4 mr-2" />}
-                  I'm Going
+                  I&apos;m Going
                 </Button>
 
                 <Button
@@ -211,7 +211,7 @@ export function EventRsvpButton({
                   className="w-full"
                 >
                   {currentStatus === 'INTERESTED' && <CheckCircle className="w-4 h-4 mr-2" />}
-                  I'm Interested
+                  I&apos;m Interested
                 </Button>
 
                 {currentStatus && (
@@ -228,7 +228,7 @@ export function EventRsvpButton({
 
               {isFull && currentStatus !== 'GOING' && (
                 <p className="text-sm text-red-600 font-medium">
-                  This event is at capacity. You can mark yourself as "Interested" to be notified if spots open up.
+                  This event is at capacity. You can mark yourself as &quot;Interested&quot; to be notified if spots open up.
                 </p>
               )}
             </div>
