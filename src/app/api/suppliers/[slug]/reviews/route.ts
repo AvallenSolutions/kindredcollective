@@ -102,7 +102,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   })
 }
 
-// POST /api/suppliers/[slug]/reviews - Submit a review (BRAND, MEMBER, or ADMIN users)
+// POST /api/suppliers/[slug]/reviews - Submit a review (MEMBER users only)
 export async function POST(request: NextRequest, { params }: RouteParams) {
   let user
   try {
@@ -112,8 +112,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   const session = await getSession()
-  if (!session.isBrand && !session.isMember && !session.isAdmin) {
-    return errorResponse('Only brand or member users can submit reviews', 403)
+  if (!session.isMember) {
+    return errorResponse('Only members can submit reviews', 403)
   }
 
   const { slug } = await params
@@ -194,8 +194,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       wouldRecommend,
       serviceRating,
       valueRating,
-      isVerified: false, // Admin must verify
-      isPublic: false, // Admin must approve
+      isVerified: false,
+      isPublic: true, // Reviews are public immediately
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
@@ -209,6 +209,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   return successResponse({
     ...review,
-    message: 'Review submitted successfully. It will be visible after admin approval.',
+    message: 'Review submitted successfully and is now public.',
   }, 201)
 }

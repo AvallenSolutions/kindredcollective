@@ -3,21 +3,27 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Store } from 'lucide-react'
+import { ArrowLeft, Store, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui'
 
 const CATEGORIES = [
   'PACKAGING',
-  'BRANDING_DESIGN',
-  'FULFILLMENT_LOGISTICS',
-  'PRODUCTION_MANUFACTURING',
-  'MARKETING_PR',
-  'LEGAL_COMPLIANCE',
-  'FINANCE_ACCOUNTING',
-  'TECHNOLOGY',
-  'INGREDIENTS_RAW_MATERIALS',
+  'INGREDIENTS',
+  'LOGISTICS',
+  'CO_PACKING',
+  'DESIGN',
+  'MARKETING',
   'EQUIPMENT',
   'CONSULTING',
+  'LEGAL',
+  'FINANCE',
+  'DISTRIBUTION',
+  'RECRUITMENT',
+  'SOFTWARE',
+  'SUSTAINABILITY',
+  'PR',
+  'PHOTOGRAPHY',
+  'WEB_DEVELOPMENT',
   'OTHER',
 ]
 
@@ -25,6 +31,11 @@ export default function NewSupplierPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string>('')
+  const [heroFile, setHeroFile] = useState<File | null>(null)
+  const [heroPreview, setHeroPreview] = useState<string>('')
+  const [uploading, setUploading] = useState(false)
   const [formData, setFormData] = useState({
     companyName: '',
     slug: '',
@@ -36,6 +47,8 @@ export default function NewSupplierPage() {
     websiteUrl: '',
     contactName: '',
     contactEmail: '',
+    logoUrl: '',
+    heroImageUrl: '',
     isPublic: true,
     isVerified: false,
   })
@@ -47,25 +60,116 @@ export default function NewSupplierPage() {
       .replace(/(^-|-$)/g, '')
   }
 
+  function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) {
+      setLogoFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  function handleHeroChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) {
+      setHeroFile(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setHeroPreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  function clearLogo() {
+    setLogoFile(null)
+    setLogoPreview('')
+    setFormData({ ...formData, logoUrl: '' })
+  }
+
+  function clearHero() {
+    setHeroFile(null)
+    setHeroPreview('')
+    setFormData({ ...formData, heroImageUrl: '' })
+  }
+
+  async function uploadImages() {
+    const uploadedData: { logoUrl?: string; heroImageUrl?: string } = {}
+
+    if (logoFile) {
+      const logoFormData = new FormData()
+      logoFormData.append('file', logoFile)
+
+      const logoRes = await fetch('/api/upload?bucket=supplier-images&folder=logos', {
+        method: 'POST',
+        body: logoFormData,
+      })
+
+      if (!logoRes.ok) {
+        throw new Error('Failed to upload logo')
+      }
+
+      const logoData = await logoRes.json()
+      uploadedData.logoUrl = logoData.url
+    }
+
+    if (heroFile) {
+      const heroFormData = new FormData()
+      heroFormData.append('file', heroFile)
+
+      const heroRes = await fetch('/api/upload?bucket=supplier-images&folder=heroes', {
+        method: 'POST',
+        body: heroFormData,
+      })
+
+      if (!heroRes.ok) {
+        throw new Error('Failed to upload hero image')
+      }
+
+      const heroData = await heroRes.json()
+      uploadedData.heroImageUrl = heroData.url
+    }
+
+    return uploadedData
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const res = await fetch('/api/admin/suppliers', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
-    })
+    try {
+      // Upload images first if any
+      setUploading(true)
+      const uploadedUrls = await uploadImages()
+      setUploading(false)
 
-    const data = await res.json()
+      // Create supplier with uploaded image URLs
+      const res = await fetch('/api/admin/suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          ...uploadedUrls,
+        }),
+      })
 
-    if (data.success) {
-      router.push('/admin/suppliers')
-    } else {
-      setError(data.error || 'Failed to create supplier')
+      const data = await res.json()
+
+      if (data.success) {
+        router.push('/admin/suppliers')
+      } else {
+        setError(data.error || 'Failed to create supplier')
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to create supplier')
+    } finally {
+      setLoading(false)
+      setUploading(false)
     }
-    setLoading(false)
   }
 
   return (
@@ -236,6 +340,64 @@ export default function NewSupplierPage() {
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-bold uppercase tracking-wide mb-2">
+              Logo Image
+            </label>
+            {logoPreview ? (
+              <div className="relative border-2 border-black p-4">
+                <img src={logoPreview} alt="Logo preview" className="max-h-40 mx-auto" />
+                <button
+                  type="button"
+                  onClick={clearLogo}
+                  className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded hover:bg-red-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center border-2 border-dashed border-black p-8 cursor-pointer hover:bg-gray-50">
+                <Upload className="w-8 h-8 mb-2 text-gray-400" />
+                <span className="text-sm text-gray-500">Click to upload logo</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoChange}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-bold uppercase tracking-wide mb-2">
+              Hero Image
+            </label>
+            {heroPreview ? (
+              <div className="relative border-2 border-black p-4">
+                <img src={heroPreview} alt="Hero preview" className="max-h-40 mx-auto" />
+                <button
+                  type="button"
+                  onClick={clearHero}
+                  className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded hover:bg-red-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center border-2 border-dashed border-black p-8 cursor-pointer hover:bg-gray-50">
+                <Upload className="w-8 h-8 mb-2 text-gray-400" />
+                <span className="text-sm text-gray-500">Click to upload hero image</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleHeroChange}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
+
           <div className="flex items-center gap-6">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -263,10 +425,10 @@ export default function NewSupplierPage() {
           <Button
             type="submit"
             variant="primary"
-            disabled={loading}
+            disabled={loading || uploading}
             className="flex-1"
           >
-            {loading ? 'Creating...' : (
+            {uploading ? 'Uploading images...' : loading ? 'Creating...' : (
               <>
                 <Store className="w-4 h-4 mr-2" />
                 Create Supplier

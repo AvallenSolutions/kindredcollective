@@ -16,6 +16,7 @@ import { Badge, Button, Card, CardContent } from '@/components/ui'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { SUPPLIER_CATEGORY_LABELS, CERTIFICATION_LABELS } from '@/types/database'
 import type { SupplierCategory, Certification } from '@prisma/client'
+import { ContactSupplierButton } from '@/components/suppliers/contact-supplier-button'
 
 // Force dynamic rendering to always fetch fresh data from Supabase
 export const dynamic = 'force-dynamic'
@@ -53,7 +54,10 @@ async function getSupplierBySlug(slug: string) {
 
     const { data: supplier, error } = await supabase
       .from('Supplier')
-      .select('*')
+      .select(`
+        *,
+        portfolioImages:SupplierImage(id, imageUrl, altText, displayOrder)
+      `)
       .eq('slug', slug)
       .eq('isPublic', true)
       .single()
@@ -61,6 +65,11 @@ async function getSupplierBySlug(slug: string) {
     if (error || !supplier) {
       console.error('Error fetching supplier:', error)
       return null
+    }
+
+    // Sort portfolio images by displayOrder
+    if (supplier.portfolioImages) {
+      supplier.portfolioImages.sort((a: any, b: any) => a.displayOrder - b.displayOrder)
     }
 
     return supplier
@@ -96,10 +105,18 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
 
           <div className="flex flex-col lg:flex-row lg:items-start gap-6">
             {/* Logo */}
-            <div className="w-24 h-24 lg:w-32 lg:h-32 bg-white border-3 border-black flex items-center justify-center flex-shrink-0">
-              <span className="font-display text-4xl lg:text-5xl font-bold">
-                {supplier.companyName.charAt(0)}
-              </span>
+            <div className="w-24 h-24 lg:w-32 lg:h-32 bg-white border-3 border-black flex items-center justify-center flex-shrink-0 overflow-hidden">
+              {(supplier as any).logoUrl ? (
+                <img
+                  src={(supplier as any).logoUrl}
+                  alt={`${supplier.companyName} logo`}
+                  className="w-full h-full object-contain p-2"
+                />
+              ) : (
+                <span className="font-display text-4xl lg:text-5xl font-bold">
+                  {supplier.companyName.charAt(0)}
+                </span>
+              )}
             </div>
 
             {/* Info */}
@@ -142,10 +159,10 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
 
             {/* Contact CTA */}
             <div className="flex flex-col gap-3 lg:text-right">
-              <Button size="lg">
-                <Mail className="w-4 h-4 mr-2" />
-                Contact Supplier
-              </Button>
+              <ContactSupplierButton
+                supplierSlug={supplier.slug}
+                supplierName={supplier.companyName}
+              />
               {(supplier as any).websiteUrl && (
                 <a
                   href={(supplier as any).websiteUrl}
@@ -162,6 +179,19 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
           </div>
         </div>
       </section>
+
+      {/* Hero Image */}
+      {(supplier as any).heroImageUrl && (
+        <section className="border-b-2 border-black">
+          <div className="w-full h-64 lg:h-96 overflow-hidden">
+            <img
+              src={(supplier as any).heroImageUrl}
+              alt={`${supplier.companyName} hero`}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </section>
+      )}
 
       {/* Main Content */}
       <section className="section-container py-8 lg:py-12">
@@ -208,6 +238,31 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
                       <Badge key={region} variant="outline">
                         {region}
                       </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Portfolio Images */}
+            {(supplier as any).portfolioImages && (supplier as any).portfolioImages.length > 0 && (
+              <Card>
+                <CardContent className="p-6">
+                  <h2 className="font-display text-xl font-bold mb-4">
+                    Portfolio
+                  </h2>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    {(supplier as any).portfolioImages.map((image: any) => (
+                      <div
+                        key={image.id}
+                        className="aspect-video border-2 border-black overflow-hidden hover:shadow-lg transition-shadow"
+                      >
+                        <img
+                          src={image.imageUrl}
+                          alt={image.altText || `${supplier.companyName} portfolio image`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                     ))}
                   </div>
                 </CardContent>
@@ -281,10 +336,11 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
                   Get in Touch
                 </h3>
                 <div className="space-y-3">
-                  <Button className="w-full">
-                    <Mail className="w-4 h-4 mr-2" />
-                    Send Message
-                  </Button>
+                  <ContactSupplierButton
+                    supplierSlug={supplier.slug}
+                    supplierName={supplier.companyName}
+                    variant="full"
+                  />
                   {(supplier as any).contactEmail && (
                     <a
                       href={`mailto:${(supplier as any).contactEmail}`}
