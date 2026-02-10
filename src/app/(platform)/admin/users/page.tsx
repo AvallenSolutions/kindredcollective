@@ -9,7 +9,7 @@ import { Button } from '@/components/ui'
 interface User {
   id: string
   email: string
-  role: 'ADMIN' | 'BRAND' | 'SUPPLIER'
+  role: 'ADMIN' | 'MEMBER'
   createdAt: string
 }
 
@@ -99,8 +99,7 @@ export default function AdminUsersPage() {
         >
           <option value="">All Roles</option>
           <option value="ADMIN">Admin</option>
-          <option value="BRAND">Brand</option>
-          <option value="SUPPLIER">Supplier</option>
+          <option value="MEMBER">Member</option>
         </select>
       </div>
 
@@ -138,8 +137,6 @@ export default function AdminUsersPage() {
                         className={`inline-flex px-2 py-1 text-xs font-bold uppercase border-2 border-black ${
                           user.role === 'ADMIN'
                             ? 'bg-magenta text-white'
-                            : user.role === 'BRAND'
-                            ? 'bg-yellow'
                             : 'bg-cyan'
                         }`}
                       >

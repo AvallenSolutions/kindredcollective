@@ -5,7 +5,6 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const role = searchParams.get('role') || 'BRAND' // Default to BRAND if not specified
   const inviteToken = searchParams.get('invite')
   const next = searchParams.get('next') ?? '/onboarding' // Redirect to onboarding for profile setup
 
@@ -15,12 +14,6 @@ export async function GET(request: Request) {
 
     if (!error && sessionData?.user) {
       const user = sessionData.user
-      const userRole = role.toUpperCase()
-
-      // Update user metadata with role
-      await supabase.auth.updateUser({
-        data: { role: userRole }
-      })
 
       // Check if user already exists in our User table
       const { data: existingUser } = await supabase
@@ -64,13 +57,13 @@ export async function GET(request: Request) {
             .eq('id', invite.id)
         }
 
-        // Create user record in our database
+        // Create user record in our database - always as MEMBER
         const { error: createError } = await adminSupabase
           .from('User')
           .insert({
             id: user.id,
             email: user.email!,
-            role: userRole,
+            role: 'MEMBER',
             inviteLinkToken: validatedInviteToken,
             emailVerified: user.email_confirmed_at ? new Date(user.email_confirmed_at).toISOString() : null,
             createdAt: new Date().toISOString(),

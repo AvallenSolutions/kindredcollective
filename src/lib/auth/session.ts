@@ -1,10 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { AuthSession, SessionUser, hasPermission, isAdmin, isBrand, isSupplier, isMember } from './types'
+import { AuthSession, SessionUser, UserOrganisation, isAdmin } from './types'
 import type { UserRole } from '@prisma/client'
 
 /**
- * Get the current authenticated session with user role
+ * Get the current authenticated session with user role and organisation affiliations
  * Use this in Server Components and API routes
  */
 export async function getSession(): Promise<AuthSession> {
@@ -17,25 +17,38 @@ export async function getSession(): Promise<AuthSession> {
       user: null,
       isAuthenticated: false,
       isAdmin: false,
-      isBrand: false,
-      isSupplier: false,
-      isMember: false,
+      organisations: [],
+      hasBrandAffiliation: false,
+      hasSupplierAffiliation: false,
     }
   }
 
-  // Use admin client to bypass RLS when fetching user role
-  // This is necessary because RLS policies can create circular dependencies
+  // Use admin client to bypass RLS when fetching user data
   const adminClient = createAdminClient()
-  const { data: dbUser, error } = await adminClient
-    .from('User')
-    .select('id, email, role')
-    .eq('id', authUser.id)
-    .single()
 
-  if (error || !dbUser) {
-    // Distinguish real database errors from "user not found"
-    if (error && error.code !== 'PGRST116') {
-      console.error('[Session] Database error fetching user role:', authUser.id, error)
+  // Fetch user + org memberships in parallel
+  const [userResult, orgResult] = await Promise.all([
+    adminClient
+      .from('User')
+      .select('id, email, role')
+      .eq('id', authUser.id)
+      .single(),
+    adminClient
+      .from('OrganisationMember')
+      .select(`
+        role,
+        organisation:Organisation(
+          id, name, slug, type,
+          brand:Brand(id, name, slug),
+          supplier:Supplier(id, companyName, slug)
+        )
+      `)
+      .eq('userId', authUser.id),
+  ])
+
+  if (userResult.error || !userResult.data) {
+    if (userResult.error && userResult.error.code !== 'PGRST116') {
+      console.error('[Session] Database error fetching user:', authUser.id, userResult.error)
     } else {
       console.error('[Session] User not found in database:', authUser.id)
     }
@@ -43,11 +56,37 @@ export async function getSession(): Promise<AuthSession> {
       user: null,
       isAuthenticated: false,
       isAdmin: false,
-      isBrand: false,
-      isSupplier: false,
-      isMember: false,
+      organisations: [],
+      hasBrandAffiliation: false,
+      hasSupplierAffiliation: false,
     }
   }
+
+  const dbUser = userResult.data
+  const orgMemberships = orgResult.data || []
+
+  const organisations: UserOrganisation[] = orgMemberships
+    .filter((m: any) => m.organisation)
+    .map((m: any) => {
+      const org = Array.isArray(m.organisation) ? m.organisation[0] : m.organisation
+      if (!org) return null
+      const brand = Array.isArray(org.brand) ? org.brand[0] : org.brand
+      const supplier = Array.isArray(org.supplier) ? org.supplier[0] : org.supplier
+      return {
+        organisationId: org.id,
+        organisationName: org.name,
+        organisationSlug: org.slug,
+        organisationType: org.type as 'BRAND' | 'SUPPLIER',
+        memberRole: m.role,
+        brandId: brand?.id,
+        brandName: brand?.name,
+        brandSlug: brand?.slug,
+        supplierId: supplier?.id,
+        supplierName: supplier?.companyName,
+        supplierSlug: supplier?.slug,
+      }
+    })
+    .filter(Boolean) as UserOrganisation[]
 
   const sessionUser: SessionUser = {
     id: dbUser.id,
@@ -59,15 +98,14 @@ export async function getSession(): Promise<AuthSession> {
     user: sessionUser,
     isAuthenticated: true,
     isAdmin: isAdmin(sessionUser.role),
-    isBrand: isBrand(sessionUser.role),
-    isSupplier: isSupplier(sessionUser.role),
-    isMember: isMember(sessionUser.role),
+    organisations,
+    hasBrandAffiliation: organisations.some(o => o.organisationType === 'BRAND'),
+    hasSupplierAffiliation: organisations.some(o => o.organisationType === 'SUPPLIER'),
   }
 }
 
 /**
- * Require authentication - throws redirect if not authenticated
- * Use at the top of protected pages/routes
+ * Require authentication - throws if not authenticated
  */
 export async function requireAuth(): Promise<SessionUser> {
   const session = await getSession()
@@ -85,7 +123,7 @@ export async function requireAuth(): Promise<SessionUser> {
 export async function requireRole(allowedRoles: UserRole[]): Promise<SessionUser> {
   const user = await requireAuth()
 
-  if (!hasPermission(user.role, allowedRoles)) {
+  if (!allowedRoles.includes(user.role)) {
     throw new Error('FORBIDDEN')
   }
 
@@ -100,69 +138,9 @@ export async function requireAdmin(): Promise<SessionUser> {
 }
 
 /**
- * Require supplier role (or admin)
- */
-export async function requireSupplier(): Promise<SessionUser> {
-  return requireRole(['SUPPLIER', 'ADMIN'])
-}
-
-/**
- * Require member role (or admin)
- */
-export async function requireMember(): Promise<SessionUser> {
-  return requireRole(['MEMBER', 'ADMIN'])
-}
-
-/**
- * Require brand role (or admin)
- */
-export async function requireBrand(): Promise<SessionUser> {
-  return requireRole(['BRAND', 'ADMIN'])
-}
-
-/**
- * Get user's supplier profile (if they have one)
- */
-export async function getUserSupplier(userId: string) {
-  const supabase = await createClient()
-
-  const { data: supplier, error } = await supabase
-    .from('Supplier')
-    .select('*')
-    .eq('userId', userId)
-    .single()
-
-  if (error) {
-    return null
-  }
-
-  return supplier
-}
-
-/**
- * Get user's brand profile (if they have one)
- */
-export async function getUserBrand(userId: string) {
-  const supabase = await createClient()
-
-  const { data: brand, error } = await supabase
-    .from('Brand')
-    .select('*')
-    .eq('userId', userId)
-    .single()
-
-  if (error) {
-    return null
-  }
-
-  return brand
-}
-
-/**
  * Get user's member profile (if they have one)
  */
 export async function getUserMember(userId: string) {
-  // Use admin client to bypass RLS
   const adminClient = createAdminClient()
 
   const { data: member, error } = await adminClient
@@ -176,4 +154,126 @@ export async function getUserMember(userId: string) {
   }
 
   return member
+}
+
+/**
+ * Get a brand the user can manage via organisation membership
+ */
+export async function getUserBrandViaOrg(userId: string, orgId: string) {
+  const adminClient = createAdminClient()
+
+  // Verify user is a member of this org with sufficient permissions
+  const { data: membership, error: memberError } = await adminClient
+    .from('OrganisationMember')
+    .select('role')
+    .eq('organisationId', orgId)
+    .eq('userId', userId)
+    .single()
+
+  if (memberError || !membership) return null
+
+  // Fetch the org's brand
+  const { data: org, error: orgError } = await adminClient
+    .from('Organisation')
+    .select('brandId, brand:Brand(*)')
+    .eq('id', orgId)
+    .eq('type', 'BRAND')
+    .single()
+
+  if (orgError || !org) return null
+
+  const brand = Array.isArray(org.brand) ? org.brand[0] : org.brand
+  return brand ? { ...brand, userRole: membership.role } : null
+}
+
+/**
+ * Get a supplier the user can manage via organisation membership
+ */
+export async function getUserSupplierViaOrg(userId: string, orgId: string) {
+  const adminClient = createAdminClient()
+
+  const { data: membership, error: memberError } = await adminClient
+    .from('OrganisationMember')
+    .select('role')
+    .eq('organisationId', orgId)
+    .eq('userId', userId)
+    .single()
+
+  if (memberError || !membership) return null
+
+  const { data: org, error: orgError } = await adminClient
+    .from('Organisation')
+    .select('supplierId, supplier:Supplier(*)')
+    .eq('id', orgId)
+    .eq('type', 'SUPPLIER')
+    .single()
+
+  if (orgError || !org) return null
+
+  const supplier = Array.isArray(org.supplier) ? org.supplier[0] : org.supplier
+  return supplier ? { ...supplier, userRole: membership.role } : null
+}
+
+/**
+ * Get ALL brands the user manages (via organisation memberships)
+ */
+export async function getUserBrands(userId: string) {
+  const adminClient = createAdminClient()
+
+  const { data: memberships, error } = await adminClient
+    .from('OrganisationMember')
+    .select(`
+      role,
+      organisation:Organisation(
+        id, name, slug, type,
+        brand:Brand(*)
+      )
+    `)
+    .eq('userId', userId)
+
+  if (error || !memberships) return []
+
+  return memberships
+    .filter((m: any) => {
+      const org = Array.isArray(m.organisation) ? m.organisation[0] : m.organisation
+      return org?.type === 'BRAND' && org?.brand
+    })
+    .map((m: any) => {
+      const org = Array.isArray(m.organisation) ? m.organisation[0] : m.organisation
+      const brand = Array.isArray(org.brand) ? org.brand[0] : org.brand
+      return { ...brand, organisationId: org.id, userRole: m.role }
+    })
+    .filter(Boolean)
+}
+
+/**
+ * Get ALL suppliers the user manages (via organisation memberships)
+ */
+export async function getUserSuppliers(userId: string) {
+  const adminClient = createAdminClient()
+
+  const { data: memberships, error } = await adminClient
+    .from('OrganisationMember')
+    .select(`
+      role,
+      organisation:Organisation(
+        id, name, slug, type,
+        supplier:Supplier(*)
+      )
+    `)
+    .eq('userId', userId)
+
+  if (error || !memberships) return []
+
+  return memberships
+    .filter((m: any) => {
+      const org = Array.isArray(m.organisation) ? m.organisation[0] : m.organisation
+      return org?.type === 'SUPPLIER' && org?.supplier
+    })
+    .map((m: any) => {
+      const org = Array.isArray(m.organisation) ? m.organisation[0] : m.organisation
+      const supplier = Array.isArray(org.supplier) ? org.supplier[0] : org.supplier
+      return { ...supplier, organisationId: org.id, userRole: m.role }
+    })
+    .filter(Boolean)
 }

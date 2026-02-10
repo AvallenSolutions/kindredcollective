@@ -70,8 +70,8 @@ export async function POST(request: NextRequest) {
     return errorResponse('Email and role are required')
   }
 
-  if (!['BRAND', 'SUPPLIER', 'ADMIN'].includes(role)) {
-    return errorResponse('Invalid role')
+  if (!['MEMBER', 'ADMIN'].includes(role)) {
+    return errorResponse('Invalid role. Must be MEMBER or ADMIN')
   }
 
   // Create user in Supabase Auth

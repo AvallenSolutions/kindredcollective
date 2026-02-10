@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { requireSupplier } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAuth, getUserSupplierViaOrg } from '@/lib/auth/session'
 import { uploadImage, validateFile } from '@/lib/storage/upload'
 import {
   successResponse,
@@ -10,30 +10,29 @@ import {
   serverErrorResponse,
 } from '@/lib/api/response'
 
-// GET /api/me/supplier/images - List supplier portfolio images
-export async function GET() {
+// GET /api/me/supplier/images?orgId=xxx - List supplier portfolio images
+export async function GET(request: NextRequest) {
   let user
   try {
-    user = await requireSupplier()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Supplier access required')
+    return unauthorizedResponse('Authentication required')
   }
 
-  const supabase = await createClient()
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
 
-  // Get user's supplier
-  const { data: supplier } = await supabase
-    .from('Supplier')
-    .select('id')
-    .eq('userId', user.id)
-    .single()
-
+  const supplier = await getUserSupplierViaOrg(user.id, orgId)
   if (!supplier) {
-    return notFoundResponse('Supplier profile not found')
+    return notFoundResponse('Supplier not found or access denied')
   }
+
+  const adminClient = createAdminClient()
 
   // Get supplier images
-  const { data: images, error } = await supabase
+  const { data: images, error } = await adminClient
     .from('SupplierImage')
     .select('id, url, alt, order, createdAt')
     .eq('supplierId', supplier.id)
@@ -50,29 +49,28 @@ export async function GET() {
   })
 }
 
-// POST /api/me/supplier/images - Upload supplier portfolio image
+// POST /api/me/supplier/images?orgId=xxx - Upload supplier portfolio image
 export async function POST(request: NextRequest) {
   let user
   try {
-    user = await requireSupplier()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Supplier access required')
+    return unauthorizedResponse('Authentication required')
   }
 
-  const supabase = await createClient()
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
+
+  const supplier = await getUserSupplierViaOrg(user.id, orgId)
+  if (!supplier) {
+    return notFoundResponse('Supplier not found or access denied')
+  }
+
+  const adminClient = createAdminClient()
 
   try {
-    // Get user's supplier
-    const { data: supplier } = await supabase
-      .from('Supplier')
-      .select('id')
-      .eq('userId', user.id)
-      .single()
-
-    if (!supplier) {
-      return notFoundResponse('Supplier profile not found')
-    }
-
     const formData = await request.formData()
     const file = formData.get('file') as File | null
     const alt = formData.get('alt') as string | null
@@ -88,7 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get current max order
-    const { data: existingImages } = await supabase
+    const { data: existingImages } = await adminClient
       .from('SupplierImage')
       .select('order')
       .eq('supplierId', supplier.id)
@@ -103,7 +101,7 @@ export async function POST(request: NextRequest) {
     const { url } = await uploadImage(file, 'supplier-images', supplier.id)
 
     // Create image record
-    const { data: image, error: insertError } = await supabase
+    const { data: image, error: insertError } = await adminClient
       .from('SupplierImage')
       .insert({
         supplierId: supplier.id,

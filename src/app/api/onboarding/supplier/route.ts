@@ -7,20 +7,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth()
 
-    // Check if user already has a supplier
     const adminSupabase = createAdminClient()
-    const { data: existingSupplier } = await adminSupabase
-      .from('Supplier')
-      .select('id')
-      .eq('userId', user.id)
-      .single()
-
-    if (existingSupplier) {
-      return NextResponse.json(
-        { error: 'You already have a supplier profile' },
-        { status: 400 }
-      )
-    }
 
     const body = await request.json()
     const { companyName, category, description, logoUrl, services } = body
@@ -52,11 +39,10 @@ export async function POST(request: NextRequest) {
       finalSlug = `${slug}-${randomSuffix}`
     }
 
-    // Create supplier
+    // Create supplier (no userId - access is through Organisation)
     const { data: supplier, error: supplierError } = await adminSupabase
       .from('Supplier')
       .insert({
-        userId: user.id,
         companyName,
         slug: finalSlug,
         category,

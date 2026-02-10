@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { requireBrand } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAuth, getUserBrandViaOrg, getUserBrands } from '@/lib/auth/session'
 import {
   successResponse,
   errorResponse,
@@ -9,61 +9,51 @@ import {
   serverErrorResponse,
 } from '@/lib/api/response'
 
-// GET /api/me/brand - Get current user's brand profile
-export async function GET() {
+// GET /api/me/brand?orgId=xxx - Get a specific brand via org, or list all user's brands
+export async function GET(request: NextRequest) {
   let user
   try {
-    user = await requireBrand()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Brand access required')
+    return unauthorizedResponse('Authentication required')
   }
 
-  const supabase = await createClient()
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  const adminClient = createAdminClient()
 
-  const { data: brand, error } = await supabase
-    .from('Brand')
-    .select('*, images:BrandImage(*)')
-    .eq('userId', user.id)
-    .single()
-
-  if (error || !brand) {
-    if (error && error.code !== 'PGRST116') {
-      console.error('[MeBrand] Error fetching brand:', error)
-      return serverErrorResponse('Failed to fetch brand profile')
+  // If orgId provided, get specific brand
+  if (orgId) {
+    const brand = await getUserBrandViaOrg(user.id, orgId)
+    if (!brand) {
+      return notFoundResponse('Brand not found or access denied')
     }
-    return notFoundResponse('Brand profile not found')
+
+    // Get images
+    const { data: images } = await adminClient
+      .from('BrandImage')
+      .select('*')
+      .eq('brandId', brand.id)
+      .order('order')
+
+    return successResponse({ ...brand, images: images || [] })
   }
 
-  return successResponse(brand)
+  // No orgId: return all user's brands
+  const brands = await getUserBrands(user.id)
+  return successResponse(brands)
 }
 
-// POST /api/me/brand - Create brand profile
+// POST /api/me/brand - Create a new brand + organisation
 export async function POST(request: NextRequest) {
   let user
   try {
-    user = await requireBrand()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Brand access required')
+    return unauthorizedResponse('Authentication required')
   }
 
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
   const body = await request.json()
-
-  // Check if user already has a brand (PGRST116 = no rows found, expected)
-  const { data: existing, error: existingError } = await supabase
-    .from('Brand')
-    .select('id')
-    .eq('userId', user.id)
-    .single()
-
-  if (existingError && existingError.code !== 'PGRST116') {
-    console.error('[MeBrand] Error checking existing brand:', existingError)
-    return serverErrorResponse('Failed to check existing brand')
-  }
-
-  if (existing) {
-    return errorResponse('Brand profile already exists')
-  }
 
   const {
     name,
@@ -88,10 +78,21 @@ export async function POST(request: NextRequest) {
     return errorResponse('Name, slug, and category are required')
   }
 
-  const { data: brand, error } = await supabase
+  // Check if slug already exists
+  const { data: existingBrand } = await adminClient
+    .from('Brand')
+    .select('id')
+    .eq('slug', slug)
+    .single()
+
+  if (existingBrand) {
+    return errorResponse('A brand with this slug already exists')
+  }
+
+  // Create brand (no userId)
+  const { data: brand, error } = await adminClient
     .from('Brand')
     .insert({
-      userId: user.id,
       name,
       slug,
       tagline,
@@ -124,38 +125,63 @@ export async function POST(request: NextRequest) {
     return serverErrorResponse('Failed to create brand')
   }
 
+  // Create Organisation linked to this brand
+  const { data: org, error: orgError } = await adminClient
+    .from('Organisation')
+    .insert({
+      name: brand.name,
+      slug: brand.slug,
+      type: 'BRAND',
+      brandId: brand.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    .select()
+    .single()
+
+  if (orgError) {
+    console.error('[MeBrand] Error creating organisation:', orgError)
+  }
+
+  // Create OrganisationMember as OWNER
+  if (org) {
+    await adminClient.from('OrganisationMember').insert({
+      organisationId: org.id,
+      userId: user.id,
+      role: 'OWNER',
+      joinedAt: new Date().toISOString(),
+    })
+  }
+
   return successResponse(brand, 201)
 }
 
-// PATCH /api/me/brand - Update brand profile
+// PATCH /api/me/brand?orgId=xxx - Update brand profile
 export async function PATCH(request: NextRequest) {
   let user
   try {
-    user = await requireBrand()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Brand access required')
+    return unauthorizedResponse('Authentication required')
   }
 
-  const supabase = await createClient()
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
+
+  const brand = await getUserBrandViaOrg(user.id, orgId)
+  if (!brand) {
+    return notFoundResponse('Brand not found or access denied')
+  }
+
+  const adminClient = createAdminClient()
   const body = await request.json()
 
   const allowedFields = [
-    'name',
-    'tagline',
-    'description',
-    'story',
-    'category',
-    'subcategories',
-    'yearFounded',
-    'location',
-    'country',
-    'websiteUrl',
-    'instagramUrl',
-    'linkedinUrl',
-    'twitterUrl',
-    'logoUrl',
-    'heroImageUrl',
-    'isPublic',
+    'name', 'tagline', 'description', 'story', 'category', 'subcategories',
+    'yearFounded', 'location', 'country', 'websiteUrl', 'instagramUrl',
+    'linkedinUrl', 'twitterUrl', 'logoUrl', 'heroImageUrl', 'isPublic',
   ]
 
   const updates: Record<string, unknown> = {
@@ -168,10 +194,10 @@ export async function PATCH(request: NextRequest) {
     }
   }
 
-  const { data: brand, error } = await supabase
+  const { data: updated, error } = await adminClient
     .from('Brand')
     .update(updates)
-    .eq('userId', user.id)
+    .eq('id', brand.id)
     .select()
     .single()
 
@@ -180,28 +206,34 @@ export async function PATCH(request: NextRequest) {
     return serverErrorResponse('Failed to update brand')
   }
 
-  if (!brand) {
-    return notFoundResponse('Brand profile not found')
-  }
-
-  return successResponse(brand)
+  return successResponse(updated)
 }
 
-// DELETE /api/me/brand - Delete brand profile
-export async function DELETE() {
+// DELETE /api/me/brand?orgId=xxx - Delete brand profile
+export async function DELETE(request: NextRequest) {
   let user
   try {
-    user = await requireBrand()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Brand access required')
+    return unauthorizedResponse('Authentication required')
   }
 
-  const supabase = await createClient()
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
 
-  const { error } = await supabase
+  const brand = await getUserBrandViaOrg(user.id, orgId)
+  if (!brand) {
+    return notFoundResponse('Brand not found or access denied')
+  }
+
+  const adminClient = createAdminClient()
+
+  const { error } = await adminClient
     .from('Brand')
     .delete()
-    .eq('userId', user.id)
+    .eq('id', brand.id)
 
   if (error) {
     console.error('[MeBrand] Error deleting brand:', error)

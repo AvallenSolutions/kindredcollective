@@ -7,11 +7,11 @@ export async function POST(request: NextRequest) {
   const adminSupabase = createAdminClient()
   const body = await request.json()
 
-  const { email, password, role, firstName, lastName, inviteToken } = body
+  const { email, password, firstName, lastName, inviteToken } = body
 
-  if (!email || !password || !role) {
+  if (!email || !password) {
     return NextResponse.json(
-      { error: 'Email, password, and role are required' },
+      { error: 'Email and password are required' },
       { status: 400 }
     )
   }
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
   const { data: invite, error: inviteError } = await adminSupabase
     .from('InviteLink')
-    .select('id, token, isActive, expiresAt, maxUses, usedCount, targetRole')
+    .select('id, token, isActive, expiresAt, maxUses, usedCount')
     .eq('token', inviteToken)
     .single()
 
@@ -64,26 +64,12 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  let userRole = role.toUpperCase()
-  if (!['BRAND', 'SUPPLIER', 'MEMBER'].includes(userRole)) {
-    return NextResponse.json(
-      { error: 'Invalid role' },
-      { status: 400 }
-    )
-  }
-
-  // If the invite specifies a target role, enforce it
-  if (invite.targetRole) {
-    userRole = invite.targetRole
-  }
-
-  // Create auth user
+  // Create auth user - always as MEMBER
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
-        role: userRole,
         first_name: firstName,
         last_name: lastName,
       },
@@ -111,7 +97,7 @@ export async function POST(request: NextRequest) {
     .insert({
       id: authData.user.id,
       email: authData.user.email!,
-      role: userRole,
+      role: 'MEMBER',
       inviteLinkToken: inviteToken,
       emailVerified: null,
       createdAt: new Date().toISOString(),
@@ -165,7 +151,7 @@ export async function POST(request: NextRequest) {
     user: {
       id: authData.user.id,
       email: authData.user.email,
-      role: userRole,
+      role: 'MEMBER',
     },
     message: authData.user.email_confirmed_at
       ? 'Account created successfully'

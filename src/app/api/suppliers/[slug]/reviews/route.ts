@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireAuth } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAuth } from '@/lib/auth/session'
 import { getSession } from '@/lib/auth/session'
 import {
   successResponse,
@@ -10,6 +11,7 @@ import {
   serverErrorResponse,
 } from '@/lib/api/response'
 import { parsePagination, paginationMeta } from '@/lib/api/pagination'
+import { getUserBrands } from '@/lib/auth/session'
 
 interface RouteParams {
   params: Promise<{ slug: string }>
@@ -102,7 +104,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   })
 }
 
-// POST /api/suppliers/[slug]/reviews - Submit a review (MEMBER users only)
+// POST /api/suppliers/[slug]/reviews - Submit a review (any authenticated user)
 export async function POST(request: NextRequest, { params }: RouteParams) {
   let user
   try {
@@ -111,13 +113,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return unauthorizedResponse()
   }
 
-  const session = await getSession()
-  if (!session.isMember) {
-    return errorResponse('Only members can submit reviews', 403)
-  }
-
   const { slug } = await params
   const supabase = await createClient()
+  const adminClient = createAdminClient()
   const body = await request.json()
 
   const {
@@ -154,19 +152,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Supplier not found')
   }
 
-  // Get user's brand if they have one
-  const { data: userBrand, error: brandError } = await supabase
-    .from('Brand')
-    .select('id, name')
-    .eq('userId', user.id)
-    .single()
-
-  if (brandError && brandError.code !== 'PGRST116') {
-    console.error('[SupplierReviews] Error fetching user brand:', brandError)
-  }
+  // Get user's first brand via org (if they have one) for the review
+  const userBrands = await getUserBrands(user.id)
+  const firstBrand = userBrands.length > 0 ? userBrands[0] : null
 
   // Get member info for reviewer name
-  const { data: member, error: memberError } = await supabase
+  const { data: member, error: memberError } = await adminClient
     .from('Member')
     .select('firstName, lastName, company')
     .eq('userId', user.id)
@@ -177,14 +168,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   const reviewerName = member ? `${member.firstName} ${member.lastName}` : user.email.split('@')[0]
-  const reviewerCompany = userBrand?.name || member?.company || null
+  const reviewerCompany = firstBrand?.name || member?.company || null
 
   // Create the review
-  const { data: review, error } = await supabase
+  const { data: review, error } = await adminClient
     .from('SupplierReview')
     .insert({
       supplierId: supplier.id,
-      brandId: userBrand?.id || null,
+      brandId: firstBrand?.id || null,
       userId: user.id,
       reviewerName,
       reviewerCompany,
@@ -195,7 +186,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       serviceRating,
       valueRating,
       isVerified: false,
-      isPublic: true, // Reviews are public immediately
+      isPublic: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })

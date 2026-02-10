@@ -57,6 +57,7 @@ export async function GET(request: NextRequest) {
       offerClaimsResult,
       savedSuppliersResult,
       savedBrandsResult,
+      orgMembersResult,
     ] = await Promise.all([
       supabase.from('User').select('id, role, createdAt', { count: 'exact' }),
       supabase.from('Supplier').select('id, category, isPublic, isVerified, claimStatus, viewCount, createdAt', { count: 'exact' }),
@@ -69,6 +70,7 @@ export async function GET(request: NextRequest) {
       supabase.from('OfferClaim').select('id, claimedAt', { count: 'exact' }),
       supabase.from('SavedSupplier').select('id, createdAt', { count: 'exact' }),
       supabase.from('SavedBrand').select('id, createdAt', { count: 'exact' }),
+      supabase.from('OrganisationMember').select('userId, organisation:Organisation(type)', { count: 'exact' }),
     ])
 
     // Calculate stats
@@ -83,16 +85,25 @@ export async function GET(request: NextRequest) {
     const offerClaims = offerClaimsResult.data || []
     const savedSuppliers = savedSuppliersResult.data || []
     const savedBrands = savedBrandsResult.data || []
+    const orgMembers = (orgMembersResult.data || []) as any[]
 
     // Get date ranges
-    const { sevenDaysAgo, thirtyDaysAgo, ninetyDaysAgo, previousThirtyDays } = getDateRanges()
+    const { sevenDaysAgo, thirtyDaysAgo, previousThirtyDays } = getDateRanges()
     const now = new Date()
 
-    // Users by role
+    // Users by role (now just MEMBER and ADMIN)
     const usersByRole = {
       ADMIN: users.filter(u => u.role === 'ADMIN').length,
-      BRAND: users.filter(u => u.role === 'BRAND').length,
-      SUPPLIER: users.filter(u => u.role === 'SUPPLIER').length,
+      MEMBER: users.filter(u => u.role === 'MEMBER').length,
+    }
+
+    // Count users with brand/supplier affiliations via OrganisationMember
+    const usersWithBrandAffiliation = new Set<string>()
+    const usersWithSupplierAffiliation = new Set<string>()
+    for (const om of orgMembers) {
+      const org = Array.isArray(om.organisation) ? om.organisation[0] : om.organisation
+      if (org?.type === 'BRAND') usersWithBrandAffiliation.add(om.userId)
+      if (org?.type === 'SUPPLIER') usersWithSupplierAffiliation.add(om.userId)
     }
 
     // User growth
@@ -204,6 +215,8 @@ export async function GET(request: NextRequest) {
       },
       users: {
         byRole: usersByRole,
+        withBrandAffiliation: usersWithBrandAffiliation.size,
+        withSupplierAffiliation: usersWithSupplierAffiliation.size,
         recentSignups: recentUsers,
         growth: {
           last30Days: usersLast30,

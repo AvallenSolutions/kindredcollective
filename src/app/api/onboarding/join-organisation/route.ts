@@ -9,20 +9,6 @@ export async function POST(request: NextRequest) {
 
     const adminSupabase = createAdminClient()
 
-    // Check if user is already in an organisation
-    const { data: existingMembership } = await adminSupabase
-      .from('OrganisationMember')
-      .select('id')
-      .eq('userId', user.id)
-      .single()
-
-    if (existingMembership) {
-      return NextResponse.json(
-        { error: 'You are already a member of an organisation' },
-        { status: 400 }
-      )
-    }
-
     const body = await request.json()
     const { inviteToken } = body
 
@@ -71,15 +57,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check if user's role matches organisation type
     const org = invite.organisation
-    if ((org.type === 'BRAND' && user.role !== 'BRAND') ||
-        (org.type === 'SUPPLIER' && user.role !== 'SUPPLIER')) {
-      return NextResponse.json(
-        { error: `This invite is for a ${org.type.toLowerCase()} organisation, but your account is for ${user.role.toLowerCase()}s` },
-        { status: 400 }
-      )
-    }
 
     // Add user to organisation
     const { error: memberError } = await adminSupabase
@@ -105,7 +83,7 @@ export async function POST(request: NextRequest) {
       .update({ acceptedAt: new Date().toISOString() })
       .eq('id', invite.id)
 
-    // If organisation is linked to a brand, link user to brand
+    // If organisation is linked to a brand, include brand info
     if (org.brandId) {
       const { data: brand } = await adminSupabase
         .from('Brand')
@@ -120,7 +98,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // If organisation is linked to a supplier, link user to supplier
+    // If organisation is linked to a supplier, include supplier info
     if (org.supplierId) {
       const { data: supplier } = await adminSupabase
         .from('Supplier')

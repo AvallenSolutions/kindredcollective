@@ -3,61 +3,15 @@
 import { Suspense, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Building2, Wine, Users, ArrowRight, Check, Loader2 } from 'lucide-react'
-import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Badge } from '@/components/ui'
+import { Loader2 } from 'lucide-react'
+import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '@/components/ui'
 import { createClient } from '@/lib/supabase/client'
-import { cn } from '@/lib/utils'
-
-type UserRole = 'brand' | 'supplier' | 'member'
-
-const roleInfo = {
-  member: {
-    icon: Users,
-    title: 'I\'m a Member',
-    description: 'Industry professional looking to connect and discover',
-    benefits: [
-      'Attend industry events',
-      'Review suppliers',
-      'Connect with brands',
-      'Build your profile',
-    ],
-    color: 'yellow',
-  },
-  brand: {
-    icon: Wine,
-    title: 'I\'m a Brand',
-    description: 'Independent drinks producer looking for suppliers and community',
-    benefits: [
-      'Find verified suppliers',
-      'Access exclusive offers',
-      'Connect with other brands',
-      'Attend industry events',
-    ],
-    color: 'cyan',
-  },
-  supplier: {
-    icon: Building2,
-    title: 'I\'m a Supplier',
-    description: 'Service provider, manufacturer, or vendor serving drinks brands',
-    benefits: [
-      'Reach new customers',
-      'Showcase your services',
-      'Create exclusive offers',
-      'Get verified badge',
-    ],
-    color: 'coral',
-  },
-}
 
 function SignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const initialRole = searchParams.get('role') as UserRole | null
   const inviteToken = searchParams.get('invite')
 
-  const [step, setStep] = useState<'role' | 'details'>(initialRole ? 'details' : 'role')
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(initialRole)
-  const [lockedRole, setLockedRole] = useState<UserRole | null>(null)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -83,13 +37,6 @@ function SignupForm() {
       .then((data) => {
         if (data.success && data.data.valid) {
           setInviteValid(true)
-          // If invite has a target role, lock the user to that role
-          if (data.data.targetRole) {
-            const role = data.data.targetRole.toLowerCase() as UserRole
-            setSelectedRole(role)
-            setLockedRole(role)
-            setStep('details')
-          }
         } else {
           setInviteValid(false)
           setError(data.error || 'Invalid invite link')
@@ -141,14 +88,9 @@ function SignupForm() {
     )
   }
 
-  const handleRoleSelect = (role: UserRole) => {
-    setSelectedRole(role)
-    setStep('details')
-  }
-
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedRole || !inviteToken) return
+    if (!inviteToken) return
 
     setError(null)
     setLoading(true)
@@ -162,10 +104,9 @@ function SignupForm() {
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
-          role: selectedRole.toUpperCase(),
           firstName: formData.firstName,
           lastName: formData.lastName,
-          inviteToken: inviteToken, // Include invite token
+          inviteToken: inviteToken,
         }),
       })
 
@@ -200,104 +141,26 @@ function SignupForm() {
   }
 
   const handleOAuthSignup = async (provider: 'google' | 'linkedin_oidc') => {
-    if (!selectedRole || !inviteToken) return
+    if (!inviteToken) return
 
     const supabase = createClient()
 
     await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/api/auth/callback?role=${selectedRole}&invite=${inviteToken}`,
+        redirectTo: `${window.location.origin}/api/auth/callback?invite=${inviteToken}`,
       },
     })
   }
-
-  // Role Selection Step
-  if (step === 'role') {
-    return (
-      <div className="w-full max-w-2xl px-4">
-        <div className="text-center mb-8">
-          <h1 className="font-display text-3xl font-bold mb-2">Join Kindred</h1>
-          <p className="text-gray-600">Choose your account type to get started</p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          {(['member', 'brand', 'supplier'] as const).map((role) => {
-            const info = roleInfo[role]
-            const Icon = info.icon
-            const colorClasses = {
-              cyan: 'bg-cyan',
-              coral: 'bg-coral text-white',
-              yellow: 'bg-yellow',
-            }
-            return (
-              <button
-                key={role}
-                onClick={() => handleRoleSelect(role)}
-                className={cn(
-                  'text-left p-6 border-3 border-black bg-white shadow-brutal transition-all duration-200',
-                  'hover:shadow-brutal-lg hover:-translate-y-1',
-                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan focus-visible:ring-offset-2'
-                )}
-              >
-                <div className={cn(
-                  'w-12 h-12 border-3 border-black flex items-center justify-center mb-4',
-                  colorClasses[info.color as keyof typeof colorClasses]
-                )}>
-                  <Icon className="h-6 w-6" />
-                </div>
-                <h2 className="font-display text-xl font-bold mb-2">{info.title}</h2>
-                <p className="text-sm text-gray-600 mb-4">{info.description}</p>
-                <ul className="space-y-2">
-                  {info.benefits.map((benefit) => (
-                    <li key={benefit} className="flex items-center gap-2 text-sm">
-                      <Check className={cn(
-                        'w-4 h-4',
-                        info.color === 'cyan' ? 'text-cyan' : info.color === 'coral' ? 'text-coral' : 'text-yellow-600'
-                      )} />
-                      {benefit}
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-6 flex items-center font-display font-bold text-sm uppercase tracking-wide">
-                  Get Started <ArrowRight className="ml-2 h-4 w-4" />
-                </div>
-              </button>
-            )
-          })}
-        </div>
-
-        <p className="text-center text-sm text-gray-600 mt-8">
-          Already have an account?{' '}
-          <Link href="/login" className="font-bold text-black hover:text-cyan">
-            Sign in
-          </Link>
-        </p>
-      </div>
-    )
-  }
-
-  // Details Step
-  const roleData = selectedRole ? roleInfo[selectedRole] : null
 
   return (
     <div className="w-full max-w-md px-4">
       <Card className="shadow-brutal-lg">
         <CardHeader className="text-center pb-2">
-          <div className="flex justify-center mb-4">
-            <Badge variant={selectedRole === 'brand' ? 'cyan' : selectedRole === 'supplier' ? 'coral' : 'default'}>
-              {roleData?.title}
-            </Badge>
-          </div>
-          <CardTitle className="text-2xl">Create Your Account</CardTitle>
-          {!lockedRole && (
-            <button
-              onClick={() => setStep('role')}
-              className="text-sm text-gray-500 hover:text-cyan mt-2"
-            >
-              ← Change account type
-            </button>
-          )}
+          <CardTitle className="font-display text-2xl">Join Kindred Collective</CardTitle>
+          <p className="text-sm text-gray-600 mt-2">
+            Create your account to get started
+          </p>
         </CardHeader>
         <CardContent className="pt-6">
           {/* OAuth Buttons */}

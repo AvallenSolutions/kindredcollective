@@ -7,20 +7,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth()
 
-    // Check if user already has a supplier
     const adminSupabase = createAdminClient()
-    const { data: existingSupplier } = await adminSupabase
-      .from('Supplier')
-      .select('id')
-      .eq('userId', user.id)
-      .single()
-
-    if (existingSupplier) {
-      return NextResponse.json(
-        { error: 'You already have a supplier profile' },
-        { status: 400 }
-      )
-    }
 
     const body = await request.json()
     const { supplierId, verificationCode } = body
@@ -57,11 +44,10 @@ export async function POST(request: NextRequest) {
     // For now, we'll skip verification code and directly claim
     // In production, you'd want to verify ownership via email or other means
 
-    // Update supplier with user ID and claim status
+    // Update supplier claim status (no userId - access is through Organisation)
     const { error: updateError } = await adminSupabase
       .from('Supplier')
       .update({
-        userId: user.id,
         claimStatus: 'CLAIMED',
         updatedAt: new Date().toISOString(),
       })
@@ -117,7 +103,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      supplier: { ...supplier, userId: user.id, claimStatus: 'CLAIMED' },
+      supplier: { ...supplier, claimStatus: 'CLAIMED' },
       organisation,
     })
   } catch (error) {

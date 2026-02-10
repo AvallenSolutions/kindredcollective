@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireAuth } from '@/lib/auth'
-import { getSession } from '@/lib/auth/session'
+import { requireAuth, getUserBrands } from '@/lib/auth/session'
 import {
   successResponse,
   errorResponse,
@@ -9,18 +8,13 @@ import {
   serverErrorResponse,
 } from '@/lib/api/response'
 
-// POST /api/me/affiliate - Allow a MEMBER to claim/create a brand or supplier profile
+// POST /api/me/affiliate - Create a brand or claim a supplier profile (via Organisation)
 export async function POST(request: NextRequest) {
   let user
   try {
     user = await requireAuth()
   } catch {
     return unauthorizedResponse()
-  }
-
-  const session = await getSession()
-  if (!session.isMember) {
-    return errorResponse('Only members can affiliate with a brand or supplier', 403)
   }
 
   const adminSupabase = createAdminClient()
@@ -52,14 +46,13 @@ export async function POST(request: NextRequest) {
 
     const finalSlug = existing ? `${slug}-${Date.now()}` : slug
 
-    // Create brand
+    // Create brand (no userId)
     const { data: brand, error: brandError } = await adminSupabase
       .from('Brand')
       .insert({
         name: brandName,
         slug: finalSlug,
         category: brandCategory || 'OTHER',
-        userId: user.id,
         isPublic: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -72,21 +65,37 @@ export async function POST(request: NextRequest) {
       return serverErrorResponse('Failed to create brand')
     }
 
-    // Update user role to BRAND
-    const { error: roleError } = await adminSupabase
-      .from('User')
-      .update({ role: 'BRAND', updatedAt: new Date().toISOString() })
-      .eq('id', user.id)
+    // Create Organisation for brand
+    const { data: org, error: orgError } = await adminSupabase
+      .from('Organisation')
+      .insert({
+        name: brandName,
+        slug: finalSlug,
+        type: 'BRAND',
+        brandId: brand.id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      .select()
+      .single()
 
-    if (roleError) {
-      console.error('[Affiliate] Error updating role:', roleError)
-      return serverErrorResponse('Failed to update role')
+    if (orgError) {
+      console.error('[Affiliate] Error creating organisation:', orgError)
+      return serverErrorResponse('Failed to create organisation')
     }
+
+    // Add user as owner
+    await adminSupabase.from('OrganisationMember').insert({
+      organisationId: org.id,
+      userId: user.id,
+      role: 'OWNER',
+      joinedAt: new Date().toISOString(),
+    })
 
     return successResponse({
       brand,
-      newRole: 'BRAND',
-      message: 'Brand created and role updated. Please refresh the page.',
+      organisation: org,
+      message: 'Brand created with organisation. Please refresh the page.',
     }, 201)
   }
 
@@ -98,7 +107,7 @@ export async function POST(request: NextRequest) {
   // Check if supplier exists and is unclaimed
   const { data: supplier, error: supplierError } = await adminSupabase
     .from('Supplier')
-    .select('id, companyName, userId')
+    .select('id, companyName, slug, claimStatus')
     .eq('id', supplierId)
     .single()
 
@@ -106,14 +115,14 @@ export async function POST(request: NextRequest) {
     return errorResponse('Supplier not found', 404)
   }
 
-  if (supplier.userId) {
+  if (supplier.claimStatus === 'CLAIMED') {
     return errorResponse('This supplier profile has already been claimed')
   }
 
-  // Claim supplier
+  // Update claim status (no userId)
   const { error: claimError } = await adminSupabase
     .from('Supplier')
-    .update({ userId: user.id, updatedAt: new Date().toISOString() })
+    .update({ claimStatus: 'CLAIMED', updatedAt: new Date().toISOString() })
     .eq('id', supplierId)
 
   if (claimError) {
@@ -121,20 +130,36 @@ export async function POST(request: NextRequest) {
     return serverErrorResponse('Failed to claim supplier')
   }
 
-  // Update user role to SUPPLIER
-  const { error: roleError } = await adminSupabase
-    .from('User')
-    .update({ role: 'SUPPLIER', updatedAt: new Date().toISOString() })
-    .eq('id', user.id)
+  // Create Organisation for supplier
+  const { data: org, error: orgError } = await adminSupabase
+    .from('Organisation')
+    .insert({
+      name: supplier.companyName,
+      slug: supplier.slug,
+      type: 'SUPPLIER',
+      supplierId: supplier.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    .select()
+    .single()
 
-  if (roleError) {
-    console.error('[Affiliate] Error updating role:', roleError)
-    return serverErrorResponse('Failed to update role')
+  if (orgError) {
+    console.error('[Affiliate] Error creating organisation:', orgError)
+    return serverErrorResponse('Failed to create organisation')
   }
+
+  // Add user as owner
+  await adminSupabase.from('OrganisationMember').insert({
+    organisationId: org.id,
+    userId: user.id,
+    role: 'OWNER',
+    joinedAt: new Date().toISOString(),
+  })
 
   return successResponse({
     supplier,
-    newRole: 'SUPPLIER',
-    message: 'Supplier claimed and role updated. Please refresh the page.',
+    organisation: org,
+    message: 'Supplier claimed with organisation. Please refresh the page.',
   })
 }

@@ -12,10 +12,13 @@ datasource db {
 // ============= ENUMS =============
 
 enum UserRole {
+  MEMBER
+  ADMIN
+}
+
+enum OrganisationType {
   BRAND
   SUPPLIER
-  ADMIN
-  MEMBER
 }
 
 enum DrinkCategory {
@@ -127,8 +130,6 @@ model User {
   inviteLink      InviteLink? @relation("InviteSignups", fields: [inviteLinkToken], references: [token])
 
   // Relations
-  brand           Brand?
-  supplier        Supplier?
   member          Member?
   eventRsvps      EventRsvp[]
   savedSuppliers  SavedSupplier[]
@@ -169,7 +170,6 @@ model Member {
 
 model Brand {
   id            String        @id @default(cuid())
-  userId        String        @unique
   name          String
   slug          String        @unique
   tagline       String?
@@ -191,7 +191,6 @@ model Brand {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  user    User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   images  BrandImage[]
   savedBy SavedBrand[]
   reviews SupplierReview[]
@@ -219,7 +218,6 @@ model BrandImage {
 
 model Supplier {
   id              String           @id @default(cuid())
-  userId          String?          @unique  // Nullable for unclaimed profiles
   companyName     String
   slug            String           @unique
   tagline         String?
@@ -250,7 +248,6 @@ model Supplier {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
-  user            User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
   offers          Offer[]
   savedBy         SavedSupplier[]
   portfolioImages SupplierImage[]
@@ -491,12 +488,12 @@ model SearchQuery {
 // ============= ORGANISATIONS =============
 
 model Organisation {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   name      String
-  slug      String   @unique
-  type      UserRole // BRAND or SUPPLIER
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  slug      String           @unique
+  type      OrganisationType
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
   members OrganisationMember[]
   invites OrganisationInvite[]
@@ -555,7 +552,7 @@ model InviteLink {
   usedCount   Int       @default(0)
   isActive    Boolean   @default(true)
   notes       String?   @db.Text
-  targetRole  UserRole? // If set, user must sign up with this role
+  targetRole  String?   // Legacy field - kept for existing data
   email       String?   // Optional: targeted invite for specific email
   phone       String?   // Optional: for WhatsApp share tracking
 

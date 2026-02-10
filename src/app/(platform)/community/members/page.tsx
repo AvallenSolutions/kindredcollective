@@ -1,4 +1,4 @@
-import { Search, Users } from 'lucide-react'
+import { Users } from 'lucide-react'
 import { Badge } from '@/components/ui'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { MembersDirectory } from './members-directory'
@@ -75,34 +75,45 @@ async function getMembers() {
       return []
     }
 
-    // Fetch associated user data to get role and company info
+    // Fetch organisation affiliations via OrganisationMember (replaces old Brand.userId / Supplier.userId)
     const userIds = members.map((m) => m.userId)
-    const { data: users } = await supabase
-      .from('User')
-      .select('id, role')
-      .in('id', userIds)
-
-    const { data: brands } = await supabase
-      .from('Brand')
-      .select('userId, name, slug')
+    const { data: orgMemberships } = await supabase
+      .from('OrganisationMember')
+      .select(`
+        userId,
+        role,
+        organisation:Organisation(
+          id, name, slug, type,
+          brand:Brand(id, name, slug),
+          supplier:Supplier(id, companyName, slug)
+        )
+      `)
       .in('userId', userIds)
 
-    const { data: suppliers } = await supabase
-      .from('Supplier')
-      .select('userId, companyName, slug')
-      .in('userId', userIds)
+    // Build a map of userId -> primary affiliation
+    const affiliationMap = new Map<string, { company: string, companyType: 'BRAND' | 'SUPPLIER' }>()
 
-    const userMap = new Map(users?.map((u) => [u.id, u]) || [])
-    const brandMap = new Map(brands?.map((b) => [b.userId, b]) || [])
-    const supplierMap = new Map(suppliers?.map((s) => [s.userId, s]) || [])
+    if (orgMemberships) {
+      for (const membership of orgMemberships as any[]) {
+        const org = Array.isArray(membership.organisation) ? membership.organisation[0] : membership.organisation
+        if (!org) continue
+
+        const brand = org.brand ? (Array.isArray(org.brand) ? org.brand[0] : org.brand) : null
+        const supplier = org.supplier ? (Array.isArray(org.supplier) ? org.supplier[0] : org.supplier) : null
+        const companyName = brand?.name || supplier?.companyName || org.name
+
+        // Use first affiliation found as primary (don't overwrite)
+        if (!affiliationMap.has(membership.userId)) {
+          affiliationMap.set(membership.userId, {
+            company: companyName,
+            companyType: org.type as 'BRAND' | 'SUPPLIER',
+          })
+        }
+      }
+    }
 
     return members.map((member) => {
-      const user = userMap.get(member.userId)
-      const brand = brandMap.get(member.userId)
-      const supplier = supplierMap.get(member.userId)
-      const companyType = (user?.role === 'BRAND' || user?.role === 'SUPPLIER') ? user.role : 'BRAND'
-      const company = brand?.name || supplier?.companyName || ''
-
+      const affiliation = affiliationMap.get(member.userId)
       return {
         id: member.id,
         firstName: member.firstName,
@@ -112,8 +123,8 @@ async function getMembers() {
         avatarUrl: member.avatarUrl,
         linkedinUrl: member.linkedinUrl,
         location: null as string | null,
-        company,
-        companyType: companyType as 'BRAND' | 'SUPPLIER',
+        company: affiliation?.company || '',
+        companyType: (affiliation?.companyType || 'BRAND') as 'BRAND' | 'SUPPLIER',
       }
     })
   } catch (err) {

@@ -3,15 +3,16 @@ import Image from 'next/image'
 import { Twitter, Instagram, Linkedin } from 'lucide-react'
 
 const footerNavigation = {
-  platform: [
-    { name: 'Browse Suppliers', href: '/explore' },
+  community: [
+    { name: 'About', href: '/about' },
+    { name: 'Join', href: '/join' },
+    { name: 'Login', href: '/login' },
+  ],
+  members: [
+    { name: 'Dashboard', href: '/dashboard' },
+    { name: 'Explore Suppliers', href: '/explore' },
     { name: 'Events', href: '/events' },
     { name: 'Offers', href: '/offers' },
-  ],
-  company: [
-    { name: 'About Us', href: '/about' },
-    { name: 'Manifesto', href: '/manifesto' },
-    { name: 'Contact', href: '/contact' },
   ],
   social: [
     { name: 'Twitter', href: 'https://twitter.com/kindredcollect', icon: Twitter },
@@ -34,7 +35,7 @@ export function Footer() {
               <span className="text-xl font-display font-bold uppercase">Kindred Collective</span>
             </div>
             <p className="text-sm font-medium text-gray-600 mb-6">
-              Empowering independent makers to create exceptional liquids.
+              The private community for independent drinks brands and their suppliers.
             </p>
             <div className="flex gap-4">
               {footerNavigation.social.map((item) => (
@@ -52,11 +53,11 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Platform Links */}
+          {/* Community Links */}
           <div>
-            <h4 className="font-bold uppercase tracking-wide mb-6 border-b-2 border-black inline-block pb-1">Platform</h4>
+            <h4 className="font-bold uppercase tracking-wide mb-6 border-b-2 border-black inline-block pb-1">Community</h4>
             <ul className="space-y-3 text-sm font-medium text-gray-600">
-              {footerNavigation.platform.map((item) => (
+              {footerNavigation.community.map((item) => (
                 <li key={item.name}>
                   <Link href={item.href} className="hover:text-black hover:underline">
                     {item.name}
@@ -66,11 +67,11 @@ export function Footer() {
             </ul>
           </div>
 
-          {/* Company Links */}
+          {/* Members Links */}
           <div>
-            <h4 className="font-bold uppercase tracking-wide mb-6 border-b-2 border-black inline-block pb-1">Company</h4>
+            <h4 className="font-bold uppercase tracking-wide mb-6 border-b-2 border-black inline-block pb-1">Members</h4>
             <ul className="space-y-3 text-sm font-medium text-gray-600">
-              {footerNavigation.company.map((item) => (
+              {footerNavigation.members.map((item) => (
                 <li key={item.name}>
                   <Link href={item.href} className="hover:text-black hover:underline">
                     {item.name}
