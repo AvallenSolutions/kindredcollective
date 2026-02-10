@@ -36,7 +36,7 @@ export function Header({ user }: HeaderProps) {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group">
           <div className="w-10 h-10 flex items-center justify-center">
-            <Image src="/pineapple-logo.svg" alt="Kindred Collective logo" width={40} height={40} className="w-10 h-10" />
+            <Image src="/Kindred Spirits Awards_Logos-11 (edited).png" alt="Kindred Collective logo" width={40} height={40} className="w-10 h-10" />
           </div>
           <span className="font-display font-bold text-2xl tracking-tighter uppercase">Kindred Collective</span>
         </Link>
