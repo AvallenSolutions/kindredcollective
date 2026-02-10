@@ -3,20 +3,30 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, User, Wine, Shield, CreditCard, Trash2, CheckCircle, AlertCircle } from 'lucide-react'
+import { ArrowLeft, User, Wine, Building2, Shield, CreditCard, Trash2, CheckCircle, AlertCircle } from 'lucide-react'
 import { Button, Input, Label, Card, CardContent, Badge } from '@/components/ui'
 import { DRINK_CATEGORY_LABELS } from '@/types/database'
 import type { DrinkCategory } from '@prisma/client'
 import { cn } from '@/lib/utils'
 
-type SettingsTab = 'profile' | 'brand' | 'privacy' | 'billing'
+type SettingsTab = 'profile' | 'organisations' | 'privacy' | 'billing'
+
+interface UserOrganisation {
+  organisationId: string
+  organisationName: string
+  organisationType: 'BRAND' | 'SUPPLIER'
+  memberRole: string
+  brandId?: string
+  brandName?: string
+  supplierId?: string
+  supplierName?: string
+}
 
 interface SettingsContentProps {
   user: {
     id: string
     email: string
     role: string
-    isBrand: boolean
   }
   member: {
     id: string
@@ -29,34 +39,19 @@ interface SettingsContentProps {
     phone: string | null
     isPublic: boolean
   } | null
-  brand: {
-    id: string
-    name: string
-    slug: string
-    tagline: string | null
-    description: string | null
-    story: string | null
-    category: string
-    subcategories: string[]
-    yearFounded: number | null
-    location: string | null
-    country: string | null
-    websiteUrl: string | null
-    instagramUrl: string | null
-    linkedinUrl: string | null
-    twitterUrl: string | null
-    logoUrl: string | null
-    isPublic: boolean
-  } | null
+  organisations: UserOrganisation[]
 }
 
 const drinkCategories = Object.entries(DRINK_CATEGORY_LABELS) as [DrinkCategory, string][]
 
-export function SettingsContent({ user, member, brand }: SettingsContentProps) {
+export function SettingsContent({ user, member, organisations }: SettingsContentProps) {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  const brandOrgs = organisations.filter(o => o.organisationType === 'BRAND')
+  const supplierOrgs = organisations.filter(o => o.organisationType === 'SUPPLIER')
 
   // Profile form state
   const [profileData, setProfileData] = useState({
@@ -67,24 +62,6 @@ export function SettingsContent({ user, member, brand }: SettingsContentProps) {
     linkedinUrl: member?.linkedinUrl || '',
     phone: member?.phone || '',
     isPublic: member?.isPublic ?? true,
-  })
-
-  // Brand form state
-  const [brandData, setBrandData] = useState({
-    name: brand?.name || '',
-    tagline: brand?.tagline || '',
-    description: brand?.description || '',
-    story: brand?.story || '',
-    category: brand?.category || 'SPIRITS',
-    subcategories: brand?.subcategories?.join(', ') || '',
-    yearFounded: brand?.yearFounded?.toString() || '',
-    location: brand?.location || '',
-    country: brand?.country || '',
-    websiteUrl: brand?.websiteUrl || '',
-    instagramUrl: brand?.instagramUrl || '',
-    linkedinUrl: brand?.linkedinUrl || '',
-    twitterUrl: brand?.twitterUrl || '',
-    isPublic: brand?.isPublic ?? true,
   })
 
   const showMessage = (type: 'success' | 'error', text: string) => {
@@ -129,60 +106,9 @@ export function SettingsContent({ user, member, brand }: SettingsContentProps) {
     }
   }
 
-  const handleSaveBrand = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSaving(true)
-    setMessage(null)
-
-    try {
-      const slug = brandData.name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)/g, '')
-
-      const payload = {
-        name: brandData.name,
-        slug: brand?.slug || slug,
-        tagline: brandData.tagline || null,
-        description: brandData.description || null,
-        story: brandData.story || null,
-        category: brandData.category,
-        subcategories: brandData.subcategories
-          ? brandData.subcategories.split(',').map((s: string) => s.trim()).filter(Boolean)
-          : [],
-        yearFounded: brandData.yearFounded ? parseInt(brandData.yearFounded) : null,
-        location: brandData.location || null,
-        country: brandData.country || null,
-        websiteUrl: brandData.websiteUrl || null,
-        instagramUrl: brandData.instagramUrl || null,
-        linkedinUrl: brandData.linkedinUrl || null,
-        twitterUrl: brandData.twitterUrl || null,
-        isPublic: brandData.isPublic,
-      }
-
-      const res = await fetch('/api/me/brand', {
-        method: brand ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-
-      if (res.ok) {
-        showMessage('success', brand ? 'Brand updated successfully' : 'Brand profile created successfully')
-        router.refresh()
-      } else {
-        const data = await res.json()
-        showMessage('error', data.error || 'Failed to save brand')
-      }
-    } catch {
-      showMessage('error', 'Something went wrong')
-    } finally {
-      setSaving(false)
-    }
-  }
-
   const tabs = [
     { id: 'profile' as const, label: 'Personal Profile', icon: User },
-    ...(user.isBrand ? [{ id: 'brand' as const, label: 'Brand Profile', icon: Wine }] : []),
+    { id: 'organisations' as const, label: 'Organisations', icon: Building2 },
     { id: 'privacy' as const, label: 'Privacy', icon: Shield },
     { id: 'billing' as const, label: 'Billing', icon: CreditCard },
   ]
@@ -380,184 +306,88 @@ export function SettingsContent({ user, member, brand }: SettingsContentProps) {
               </Card>
             )}
 
-            {/* Brand Tab */}
-            {activeTab === 'brand' && user.isBrand && (
+            {/* Organisations Tab */}
+            {activeTab === 'organisations' && (
               <Card>
                 <CardContent className="p-6">
                   <h2 className="font-display text-xl font-bold mb-6">
-                    {brand ? 'Edit Brand Profile' : 'Create Brand Profile'}
+                    My Organisations
                   </h2>
                   <p className="text-sm text-gray-600 mb-6">
-                    Your brand will be listed in the Brand Directory for the community to discover.
+                    Manage your brand and supplier affiliations.
                   </p>
-                  <form onSubmit={handleSaveBrand} className="space-y-6">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="brandName">Brand Name *</Label>
-                        <Input
-                          id="brandName"
-                          required
-                          value={brandData.name}
-                          onChange={(e) => setBrandData({ ...brandData, name: e.target.value })}
-                          placeholder="e.g. Kindred Spirits"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="category">Category *</Label>
-                        <select
-                          id="category"
-                          value={brandData.category}
-                          onChange={(e) => setBrandData({ ...brandData, category: e.target.value })}
-                          className="w-full px-3 py-2 border-2 border-gray-200 focus:border-black focus:outline-none text-sm bg-white"
-                        >
-                          {drinkCategories.map(([value, label]) => (
-                            <option key={value} value={value}>{label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="tagline">Tagline</Label>
-                      <Input
-                        id="tagline"
-                        value={brandData.tagline}
-                        onChange={(e) => setBrandData({ ...brandData, tagline: e.target.value })}
-                        placeholder="A short description of your brand"
-                      />
+                  {organisations.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                      <p className="text-gray-500 mb-4">No organisations yet</p>
+                      <Link href="/onboarding">
+                        <Button>Add Brand or Supplier</Button>
+                      </Link>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Description</Label>
-                      <textarea
-                        id="description"
-                        value={brandData.description}
-                        onChange={(e) => setBrandData({ ...brandData, description: e.target.value })}
-                        placeholder="Tell people about your brand..."
-                        rows={4}
-                        className="w-full px-3 py-2 border-2 border-gray-200 focus:border-black focus:outline-none text-sm"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="story">Our Story</Label>
-                      <textarea
-                        id="story"
-                        value={brandData.story}
-                        onChange={(e) => setBrandData({ ...brandData, story: e.target.value })}
-                        placeholder="Share the story behind your brand..."
-                        rows={4}
-                        className="w-full px-3 py-2 border-2 border-gray-200 focus:border-black focus:outline-none text-sm"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="subcategories">Products (comma-separated)</Label>
-                      <Input
-                        id="subcategories"
-                        value={brandData.subcategories}
-                        onChange={(e) => setBrandData({ ...brandData, subcategories: e.target.value })}
-                        placeholder="e.g. Gin, Vodka, Rum"
-                      />
-                    </div>
-
-                    <div className="grid md:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="yearFounded">Year Founded</Label>
-                        <Input
-                          id="yearFounded"
-                          type="number"
-                          value={brandData.yearFounded}
-                          onChange={(e) => setBrandData({ ...brandData, yearFounded: e.target.value })}
-                          placeholder="e.g. 2020"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="brandLocation">Location</Label>
-                        <Input
-                          id="brandLocation"
-                          value={brandData.location}
-                          onChange={(e) => setBrandData({ ...brandData, location: e.target.value })}
-                          placeholder="e.g. London"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="country">Country</Label>
-                        <Input
-                          id="country"
-                          value={brandData.country}
-                          onChange={(e) => setBrandData({ ...brandData, country: e.target.value })}
-                          placeholder="e.g. United Kingdom"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="border-t pt-6">
-                      <h3 className="font-display font-bold mb-4">Social & Contact</h3>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="websiteUrl">Website</Label>
-                          <Input
-                            id="websiteUrl"
-                            value={brandData.websiteUrl}
-                            onChange={(e) => setBrandData({ ...brandData, websiteUrl: e.target.value })}
-                            placeholder="https://..."
-                          />
+                  ) : (
+                    <div className="space-y-4">
+                      {brandOrgs.length > 0 && (
+                        <div>
+                          <h3 className="font-display font-bold text-sm uppercase tracking-wide mb-3">Brands</h3>
+                          <div className="space-y-3">
+                            {brandOrgs.map((org) => (
+                              <div
+                                key={org.organisationId}
+                                className="p-4 border-2 border-black bg-white flex items-center justify-between"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-cyan border-2 border-black flex items-center justify-center">
+                                    <Wine className="w-5 h-5" />
+                                  </div>
+                                  <div>
+                                    <p className="font-bold">{org.brandName || org.organisationName}</p>
+                                    <Badge variant="cyan" className="text-xs">{org.memberRole}</Badge>
+                                  </div>
+                                </div>
+                                <Link href={`/dashboard/settings`}>
+                                  <Button variant="outline" size="sm">Manage</Button>
+                                </Link>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="brandInstagram">Instagram</Label>
-                          <Input
-                            id="brandInstagram"
-                            value={brandData.instagramUrl}
-                            onChange={(e) => setBrandData({ ...brandData, instagramUrl: e.target.value })}
-                            placeholder="https://instagram.com/..."
-                          />
+                      )}
+
+                      {supplierOrgs.length > 0 && (
+                        <div>
+                          <h3 className="font-display font-bold text-sm uppercase tracking-wide mb-3">Suppliers</h3>
+                          <div className="space-y-3">
+                            {supplierOrgs.map((org) => (
+                              <div
+                                key={org.organisationId}
+                                className="p-4 border-2 border-black bg-white flex items-center justify-between"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 bg-coral border-2 border-black flex items-center justify-center">
+                                    <Building2 className="w-5 h-5 text-white" />
+                                  </div>
+                                  <div>
+                                    <p className="font-bold">{org.supplierName || org.organisationName}</p>
+                                    <Badge variant="coral" className="text-xs">{org.memberRole}</Badge>
+                                  </div>
+                                </div>
+                                <Link href={`/dashboard/settings`}>
+                                  <Button variant="outline" size="sm">Manage</Button>
+                                </Link>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="brandLinkedin">LinkedIn</Label>
-                          <Input
-                            id="brandLinkedin"
-                            value={brandData.linkedinUrl}
-                            onChange={(e) => setBrandData({ ...brandData, linkedinUrl: e.target.value })}
-                            placeholder="https://linkedin.com/company/..."
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="brandTwitter">Twitter</Label>
-                          <Input
-                            id="brandTwitter"
-                            value={brandData.twitterUrl}
-                            onChange={(e) => setBrandData({ ...brandData, twitterUrl: e.target.value })}
-                            placeholder="https://twitter.com/..."
-                          />
-                        </div>
+                      )}
+
+                      <div className="pt-4 border-t">
+                        <Link href="/onboarding">
+                          <Button variant="outline">Add Another Organisation</Button>
+                        </Link>
                       </div>
                     </div>
-
-                    <div className="flex items-center justify-between p-4 bg-gray-50 border-2 border-gray-200">
-                      <div>
-                        <p className="font-bold">Public listing</p>
-                        <p className="text-sm text-gray-600">
-                          Show your brand in the Brand Directory
-                        </p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={brandData.isPublic}
-                          onChange={(e) => setBrandData({ ...brandData, isPublic: e.target.checked })}
-                        />
-                        <div className="w-11 h-6 bg-gray-300 peer-checked:bg-cyan border-2 border-black peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-2 after:border-black after:h-5 after:w-5 after:transition-all"></div>
-                      </label>
-                    </div>
-
-                    <div className="pt-4">
-                      <Button type="submit" disabled={saving}>
-                        {saving ? 'Saving...' : brand ? 'Save Brand' : 'Create Brand Profile'}
-                      </Button>
-                    </div>
-                  </form>
+                  )}
                 </CardContent>
               </Card>
             )}

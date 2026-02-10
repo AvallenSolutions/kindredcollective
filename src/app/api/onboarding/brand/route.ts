@@ -7,20 +7,7 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth()
 
-    // Check if user already has a brand
     const adminSupabase = createAdminClient()
-    const { data: existingBrand } = await adminSupabase
-      .from('Brand')
-      .select('id')
-      .eq('userId', user.id)
-      .single()
-
-    if (existingBrand) {
-      return NextResponse.json(
-        { error: 'You already have a brand profile' },
-        { status: 400 }
-      )
-    }
 
     const body = await request.json()
     const { name, category, description, logoUrl } = body
@@ -45,92 +32,19 @@ export async function POST(request: NextRequest) {
       .eq('slug', slug)
       .single()
 
+    let finalSlug = slug
     if (existingSlug) {
       // Add random suffix if slug exists
       const randomSuffix = Math.random().toString(36).substring(2, 7)
-      const uniqueSlug = `${slug}-${randomSuffix}`
-
-      // Create brand
-      const { data: brand, error: brandError } = await adminSupabase
-        .from('Brand')
-        .insert({
-          userId: user.id,
-          name,
-          slug: uniqueSlug,
-          category,
-          description,
-          logoUrl,
-          isPublic: true,
-          isVerified: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        })
-        .select()
-        .single()
-
-      if (brandError) {
-        console.error('Error creating brand:', brandError)
-        return NextResponse.json(
-          { error: 'Failed to create brand' },
-          { status: 500 }
-        )
-      }
-
-      // Create organisation for brand
-      const orgSlug = uniqueSlug
-      const { data: organisation, error: orgError } = await adminSupabase
-        .from('Organisation')
-        .insert({
-          name,
-          slug: orgSlug,
-          type: 'BRAND',
-          brandId: brand.id,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        })
-        .select()
-        .single()
-
-      if (orgError) {
-        console.error('Error creating organisation:', orgError)
-        return NextResponse.json(
-          { error: 'Failed to create organisation' },
-          { status: 500 }
-        )
-      }
-
-      // Add user as organisation owner
-      const { error: memberError } = await adminSupabase
-        .from('OrganisationMember')
-        .insert({
-          organisationId: organisation.id,
-          userId: user.id,
-          role: 'OWNER',
-          joinedAt: new Date().toISOString(),
-        })
-
-      if (memberError) {
-        console.error('Error adding organisation member:', memberError)
-        return NextResponse.json(
-          { error: 'Failed to add user to organisation' },
-          { status: 500 }
-        )
-      }
-
-      return NextResponse.json({
-        success: true,
-        brand,
-        organisation,
-      })
+      finalSlug = `${slug}-${randomSuffix}`
     }
 
-    // Create brand with original slug
+    // Create brand (no userId - access is through Organisation)
     const { data: brand, error: brandError } = await adminSupabase
       .from('Brand')
       .insert({
-        userId: user.id,
         name,
-        slug,
+        slug: finalSlug,
         category,
         description,
         logoUrl,
@@ -155,7 +69,7 @@ export async function POST(request: NextRequest) {
       .from('Organisation')
       .insert({
         name,
-        slug,
+        slug: finalSlug,
         type: 'BRAND',
         brandId: brand.id,
         createdAt: new Date().toISOString(),

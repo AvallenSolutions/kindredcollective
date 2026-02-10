@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { requireAuth } from '@/lib/auth'
-import { getSession } from '@/lib/auth/session'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAuth, getUserBrands, getUserSuppliers } from '@/lib/auth/session'
 import {
   successResponse,
   errorResponse,
@@ -14,6 +13,28 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
+/**
+ * Determine which side of a work relationship the user is on,
+ * based on whether the brand or supplier belongs to any of the user's orgs.
+ */
+async function getUserRelationshipAccess(userId: string, relationship: {
+  brandId: string
+  supplierId: string
+}) {
+  const [userBrands, userSuppliers] = await Promise.all([
+    getUserBrands(userId),
+    getUserSuppliers(userId),
+  ])
+
+  const userBrandIds = userBrands.map((b: any) => b.id)
+  const userSupplierIds = userSuppliers.map((s: any) => s.id)
+
+  const isBrandSide = userBrandIds.includes(relationship.brandId)
+  const isSupplierSide = userSupplierIds.includes(relationship.supplierId)
+
+  return { isBrandSide, isSupplierSide, hasAccess: isBrandSide || isSupplierSide }
+}
+
 // GET /api/me/verifications/[id] - Get single verification details
 export async function GET(request: NextRequest, { params }: RouteParams) {
   let user
@@ -24,21 +45,22 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 
   const { id } = await params
-  const session = await getSession()
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
 
-  const { data: relationship, error } = await supabase
+  const { data: relationship, error } = await adminClient
     .from('WorkRelationship')
     .select(`
       id,
+      brandId,
+      supplierId,
       brandVerified,
       supplierVerified,
       projectDate,
       projectDescription,
       createdAt,
       updatedAt,
-      brand:Brand(id, name, slug, logoUrl, category, isVerified, userId),
-      supplier:Supplier(id, companyName, slug, logoUrl, category, isVerified, userId)
+      brand:Brand(id, name, slug, logoUrl, category, isVerified),
+      supplier:Supplier(id, companyName, slug, logoUrl, category, isVerified)
     `)
     .eq('id', id)
     .single()
@@ -47,16 +69,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Verification not found')
   }
 
-  // Supabase returns nested relations as arrays
-  const brand = Array.isArray(relationship.brand) ? relationship.brand[0] : relationship.brand
-  const supplier = Array.isArray(relationship.supplier) ? relationship.supplier[0] : relationship.supplier
+  // Check if the user has access via org membership
+  const access = await getUserRelationshipAccess(user.id, {
+    brandId: relationship.brandId,
+    supplierId: relationship.supplierId,
+  })
 
-  // Verify user has access
-  const hasAccess =
-    (session.isBrand && brand?.userId === user.id) ||
-    (session.isSupplier && supplier?.userId === user.id)
-
-  if (!hasAccess) {
+  if (!access.hasAccess) {
     return notFoundResponse('Verification not found')
   }
 
@@ -78,22 +97,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 
   const { id } = await params
-  const session = await getSession()
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
   const body = await request.json()
 
   const { verified, projectDate, projectDescription } = body
 
   // Get the relationship
-  const { data: relationship } = await supabase
+  const { data: relationship } = await adminClient
     .from('WorkRelationship')
-    .select(`
-      id,
-      brandId,
-      supplierId,
-      brand:Brand(userId),
-      supplier:Supplier(userId)
-    `)
+    .select('id, brandId, supplierId')
     .eq('id', id)
     .single()
 
@@ -101,15 +113,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Verification not found')
   }
 
-  // Supabase returns nested relations as arrays
-  const brandData = Array.isArray(relationship.brand) ? relationship.brand[0] : relationship.brand
-  const supplierData = Array.isArray(relationship.supplier) ? relationship.supplier[0] : relationship.supplier
+  // Determine which side the user is on via org membership
+  const access = await getUserRelationshipAccess(user.id, {
+    brandId: relationship.brandId,
+    supplierId: relationship.supplierId,
+  })
 
-  // Determine which side the user is on
-  const isBrandSide = session.isBrand && brandData?.userId === user.id
-  const isSupplierSide = session.isSupplier && supplierData?.userId === user.id
-
-  if (!isBrandSide && !isSupplierSide) {
+  if (!access.hasAccess) {
     return notFoundResponse('Verification not found')
   }
 
@@ -119,7 +129,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 
   if (verified !== undefined) {
-    if (isBrandSide) {
+    if (access.isBrandSide) {
       updates.brandVerified = verified
     } else {
       updates.supplierVerified = verified
@@ -134,7 +144,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     updates.projectDescription = projectDescription
   }
 
-  const { data: updatedRelationship, error } = await supabase
+  const { data: updatedRelationship, error } = await adminClient
     .from('WorkRelationship')
     .update(updates)
     .eq('id', id)
@@ -177,17 +187,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   }
 
   const { id } = await params
-  const session = await getSession()
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
 
   // Get the relationship
-  const { data: relationship } = await supabase
+  const { data: relationship } = await adminClient
     .from('WorkRelationship')
-    .select(`
-      id,
-      brand:Brand(userId),
-      supplier:Supplier(userId)
-    `)
+    .select('id, brandId, supplierId')
     .eq('id', id)
     .single()
 
@@ -195,21 +200,18 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Verification not found')
   }
 
-  // Supabase returns nested relations as arrays
-  const delBrand = Array.isArray(relationship.brand) ? relationship.brand[0] : relationship.brand
-  const delSupplier = Array.isArray(relationship.supplier) ? relationship.supplier[0] : relationship.supplier
+  // Check if the user has access via org membership
+  const access = await getUserRelationshipAccess(user.id, {
+    brandId: relationship.brandId,
+    supplierId: relationship.supplierId,
+  })
 
-  // Verify user has access
-  const hasAccess =
-    (session.isBrand && delBrand?.userId === user.id) ||
-    (session.isSupplier && delSupplier?.userId === user.id)
-
-  if (!hasAccess) {
+  if (!access.hasAccess) {
     return notFoundResponse('Verification not found')
   }
 
   // Delete the relationship
-  const { error } = await supabase
+  const { error } = await adminClient
     .from('WorkRelationship')
     .delete()
     .eq('id', id)

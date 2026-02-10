@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import {
   successResponse,
   serverErrorResponse,
@@ -8,25 +9,6 @@ import { sanitizeFilterInput } from '@/lib/api/sanitize'
 import { parsePagination, paginationMeta } from '@/lib/api/pagination'
 import { applyRateLimit } from '@/lib/api/rate-limit'
 
-interface SupabaseMemberUser {
-  id?: string
-  role?: string
-  brand?: { id: string; name: string; slug: string; logoUrl: string | null; category: string } | Array<{ id: string; name: string; slug: string; logoUrl: string | null; category: string }>
-  supplier?: { id: string; companyName: string; slug: string; logoUrl: string | null; category: string } | Array<{ id: string; companyName: string; slug: string; logoUrl: string | null; category: string }>
-}
-
-interface SupabaseMember {
-  id: string
-  firstName: string
-  lastName: string
-  jobTitle: string | null
-  bio: string | null
-  avatarUrl: string | null
-  linkedinUrl: string | null
-  createdAt: string
-  user: SupabaseMemberUser | SupabaseMemberUser[]
-}
-
 // GET /api/members - Public member directory
 export async function GET(request: NextRequest) {
   // Rate limit: 60 requests per minute per IP
@@ -34,6 +16,7 @@ export async function GET(request: NextRequest) {
   if (rateLimitResponse) return rateLimitResponse
 
   const supabase = await createClient()
+  const adminClient = createAdminClient()
   const { searchParams } = new URL(request.url)
 
   // Pagination (clamped to [1, 100])
@@ -41,7 +24,7 @@ export async function GET(request: NextRequest) {
 
   // Filters
   const rawSearch = searchParams.get('search')
-  const role = searchParams.get('role') // Filter by user role (BRAND, SUPPLIER)
+  const affiliationType = searchParams.get('role') // Filter by affiliation type (BRAND, SUPPLIER)
 
   let query = supabase
     .from('Member')
@@ -54,12 +37,7 @@ export async function GET(request: NextRequest) {
       avatarUrl,
       linkedinUrl,
       createdAt,
-      user:User(
-        id,
-        role,
-        brand:Brand(id, name, slug, logoUrl, category),
-        supplier:Supplier(id, companyName, slug, logoUrl, category)
-      )
+      userId
     `, { count: 'exact' })
     .eq('isPublic', true)
     .order('createdAt', { ascending: false })
@@ -77,20 +55,63 @@ export async function GET(request: NextRequest) {
     return serverErrorResponse('Failed to fetch members')
   }
 
-  // Filter by role if specified - Supabase returns nested relations as arrays
-  let filteredMembers = (members || []) as SupabaseMember[]
-  if (role && (role === 'BRAND' || role === 'SUPPLIER')) {
+  const memberList = members || []
+
+  // Fetch org affiliations for all members via OrganisationMember
+  const userIds = memberList.map(m => m.userId)
+  const { data: orgMemberships } = await adminClient
+    .from('OrganisationMember')
+    .select(`
+      userId,
+      organisation:Organisation(
+        id, name, slug, type,
+        brand:Brand(id, name, slug, logoUrl, category),
+        supplier:Supplier(id, companyName, slug, logoUrl, category)
+      )
+    `)
+    .in('userId', userIds)
+
+  // Build userId -> affiliations map
+  const affiliationMap = new Map<string, { type: string, name: string, slug: string, logoUrl: string | null, category: string }[]>()
+  if (orgMemberships) {
+    for (const membership of orgMemberships as any[]) {
+      const org = Array.isArray(membership.organisation) ? membership.organisation[0] : membership.organisation
+      if (!org) continue
+
+      const brand = org.brand ? (Array.isArray(org.brand) ? org.brand[0] : org.brand) : null
+      const supplier = org.supplier ? (Array.isArray(org.supplier) ? org.supplier[0] : org.supplier) : null
+
+      const entry = brand
+        ? { type: 'brand', name: brand.name, slug: brand.slug, logoUrl: brand.logoUrl, category: brand.category }
+        : supplier
+          ? { type: 'supplier', name: supplier.companyName, slug: supplier.slug, logoUrl: supplier.logoUrl, category: supplier.category }
+          : null
+
+      if (entry) {
+        if (!affiliationMap.has(membership.userId)) {
+          affiliationMap.set(membership.userId, [entry])
+        } else {
+          affiliationMap.get(membership.userId)!.push(entry)
+        }
+      }
+    }
+  }
+
+  // Filter by affiliation type if specified
+  let filteredMembers = memberList
+  if (affiliationType && (affiliationType === 'BRAND' || affiliationType === 'SUPPLIER')) {
+    const targetType = affiliationType.toLowerCase()
     filteredMembers = filteredMembers.filter((m) => {
-      const user = Array.isArray(m.user) ? m.user[0] : m.user
-      return user?.role === role
+      const affiliations = affiliationMap.get(m.userId)
+      return affiliations?.some(a => a.type === targetType)
     })
   }
 
   // Process members to flatten the structure
   const processedMembers = filteredMembers.map((member) => {
-    const user = Array.isArray(member.user) ? member.user[0] : member.user
-    const brand = user?.brand ? (Array.isArray(user.brand) ? user.brand[0] : user.brand) : null
-    const supplier = user?.supplier ? (Array.isArray(user.supplier) ? user.supplier[0] : user.supplier) : null
+    const affiliations = affiliationMap.get(member.userId) || []
+    const primaryCompany = affiliations[0] || null
+
     return {
       id: member.id,
       firstName: member.firstName,
@@ -100,12 +121,8 @@ export async function GET(request: NextRequest) {
       bio: member.bio,
       avatarUrl: member.avatarUrl,
       linkedinUrl: member.linkedinUrl,
-      role: user?.role || null,
-      company: brand
-        ? { type: 'brand', ...brand }
-        : supplier
-          ? { type: 'supplier', ...supplier }
-          : null,
+      company: primaryCompany,
+      affiliations,
       createdAt: member.createdAt,
     }
   })

@@ -24,11 +24,35 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   const { id } = await params
   const supabase = createAdminClient()
 
-  const { data: user, error } = await supabase
-    .from('User')
-    .select('*, brand:Brand(*), supplier:Supplier(*), member:Member(*)')
-    .eq('id', id)
-    .single()
+  // Fetch user with member profile and org memberships
+  const [userResult, orgResult] = await Promise.all([
+    supabase
+      .from('User')
+      .select('*, member:Member(*)')
+      .eq('id', id)
+      .single(),
+    supabase
+      .from('OrganisationMember')
+      .select(`
+        role,
+        organisation:Organisation(
+          id, name, slug, type,
+          brand:Brand(id, name, slug),
+          supplier:Supplier(id, companyName, slug)
+        )
+      `)
+      .eq('userId', id),
+  ])
+
+  const { data: user, error } = userResult
+  const organisations = (orgResult.data || []).map((m: any) => {
+    const org = Array.isArray(m.organisation) ? m.organisation[0] : m.organisation
+    return org ? { ...org, memberRole: m.role } : null
+  }).filter(Boolean)
+
+  if (!error && user) {
+    ;(user as any).organisations = organisations
+  }
 
   if (error || !user) {
     return notFoundResponse('User not found')
@@ -55,7 +79,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     updatedAt: new Date().toISOString(),
   }
 
-  if (role && ['BRAND', 'SUPPLIER', 'ADMIN'].includes(role)) {
+  if (role && ['MEMBER', 'ADMIN'].includes(role)) {
     updates.role = role
   }
 

@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { requireSupplier } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAuth, getUserSupplierViaOrg } from '@/lib/auth/session'
 import { deleteImage, extractPathFromUrl } from '@/lib/storage/upload'
 import {
   successResponse,
+  errorResponse,
   unauthorizedResponse,
   notFoundResponse,
   serverErrorResponse,
@@ -13,32 +14,31 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-// DELETE /api/me/supplier/images/[id] - Delete supplier portfolio image
+// DELETE /api/me/supplier/images/[id]?orgId=xxx - Delete supplier portfolio image
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   let user
   try {
-    user = await requireSupplier()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Supplier access required')
+    return unauthorizedResponse('Authentication required')
+  }
+
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
+
+  const supplier = await getUserSupplierViaOrg(user.id, orgId)
+  if (!supplier) {
+    return notFoundResponse('Supplier not found or access denied')
   }
 
   const { id } = await params
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
 
   try {
-    // Get user's supplier
-    const { data: supplier } = await supabase
-      .from('Supplier')
-      .select('id')
-      .eq('userId', user.id)
-      .single()
-
-    if (!supplier) {
-      return notFoundResponse('Supplier profile not found')
-    }
-
     // Get the image and verify ownership
-    const { data: image } = await supabase
+    const { data: image } = await adminClient
       .from('SupplierImage')
       .select('id, url, supplierId')
       .eq('id', id)
@@ -63,7 +63,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // Delete record
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await adminClient
       .from('SupplierImage')
       .delete()
       .eq('id', id)
@@ -83,33 +83,32 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// PATCH /api/me/supplier/images/[id] - Update image (alt text, order)
+// PATCH /api/me/supplier/images/[id]?orgId=xxx - Update image (alt text, order)
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   let user
   try {
-    user = await requireSupplier()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Supplier access required')
+    return unauthorizedResponse('Authentication required')
+  }
+
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
+
+  const supplier = await getUserSupplierViaOrg(user.id, orgId)
+  if (!supplier) {
+    return notFoundResponse('Supplier not found or access denied')
   }
 
   const { id } = await params
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
   const body = await request.json()
 
   try {
-    // Get user's supplier
-    const { data: supplier } = await supabase
-      .from('Supplier')
-      .select('id')
-      .eq('userId', user.id)
-      .single()
-
-    if (!supplier) {
-      return notFoundResponse('Supplier profile not found')
-    }
-
     // Get the image and verify ownership
-    const { data: image } = await supabase
+    const { data: image } = await adminClient
       .from('SupplierImage')
       .select('id, supplierId')
       .eq('id', id)
@@ -128,7 +127,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.alt !== undefined) updates.alt = body.alt
     if (body.order !== undefined) updates.order = body.order
 
-    const { data: updatedImage, error: updateError } = await supabase
+    const { data: updatedImage, error: updateError } = await adminClient
       .from('SupplierImage')
       .update(updates)
       .eq('id', id)

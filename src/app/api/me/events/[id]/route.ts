@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { requireBrand } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAuth, getSession } from '@/lib/auth/session'
 import {
   successResponse,
   unauthorizedResponse,
@@ -17,15 +17,22 @@ interface RouteParams {
 export async function GET(request: NextRequest, { params }: RouteParams) {
   let user
   try {
-    user = await requireBrand()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Brand access required')
+    return unauthorizedResponse('Authentication required')
+  }
+
+  const session = await getSession()
+
+  // Only users with brand/supplier affiliations or admins can manage events
+  if (!session.hasBrandAffiliation && !session.hasSupplierAffiliation && !session.isAdmin) {
+    return unauthorizedResponse('Brand or Supplier affiliation required')
   }
 
   const { id } = await params
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
 
-  const { data: event, error } = await supabase
+  const { data: event, error } = await adminClient
     .from('Event')
     .select('*, rsvps:EventRsvp(*, user:User(email))')
     .eq('id', id)
@@ -35,8 +42,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Event not found')
   }
 
-  // Check ownership
-  if (event.createdById !== user.id && user.role !== 'ADMIN') {
+  // Check ownership (events use createdById)
+  if (event.createdById !== user.id && !session.isAdmin) {
     return forbiddenResponse('You can only view your own events')
   }
 
@@ -47,17 +54,23 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   let user
   try {
-    user = await requireBrand()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Brand access required')
+    return unauthorizedResponse('Authentication required')
+  }
+
+  const session = await getSession()
+
+  if (!session.hasBrandAffiliation && !session.hasSupplierAffiliation && !session.isAdmin) {
+    return unauthorizedResponse('Brand or Supplier affiliation required')
   }
 
   const { id } = await params
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
   const body = await request.json()
 
   // Verify ownership
-  const { data: existing } = await supabase
+  const { data: existing } = await adminClient
     .from('Event')
     .select('createdById')
     .eq('id', id)
@@ -67,7 +80,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Event not found')
   }
 
-  if (existing.createdById !== user.id && user.role !== 'ADMIN') {
+  if (existing.createdById !== user.id && !session.isAdmin) {
     return forbiddenResponse('You can only update your own events')
   }
 
@@ -107,7 +120,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     updates.price = null
   }
 
-  const { data: event, error } = await supabase
+  const { data: event, error } = await adminClient
     .from('Event')
     .update(updates)
     .eq('id', id)
@@ -126,16 +139,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   let user
   try {
-    user = await requireBrand()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Brand access required')
+    return unauthorizedResponse('Authentication required')
+  }
+
+  const session = await getSession()
+
+  if (!session.hasBrandAffiliation && !session.hasSupplierAffiliation && !session.isAdmin) {
+    return unauthorizedResponse('Brand or Supplier affiliation required')
   }
 
   const { id } = await params
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
 
   // Verify ownership
-  const { data: existing } = await supabase
+  const { data: existing } = await adminClient
     .from('Event')
     .select('createdById')
     .eq('id', id)
@@ -145,11 +164,11 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Event not found')
   }
 
-  if (existing.createdById !== user.id && user.role !== 'ADMIN') {
+  if (existing.createdById !== user.id && !session.isAdmin) {
     return forbiddenResponse('You can only delete your own events')
   }
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from('Event')
     .delete()
     .eq('id', id)

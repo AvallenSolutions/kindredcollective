@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { requireBrand } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAuth, getUserBrandViaOrg } from '@/lib/auth/session'
 import { uploadImage, validateFile } from '@/lib/storage/upload'
 import {
   successResponse,
@@ -10,30 +10,27 @@ import {
   serverErrorResponse,
 } from '@/lib/api/response'
 
-// GET /api/me/brand/images - List brand images
-export async function GET() {
+// GET /api/me/brand/images?orgId=xxx - List brand images
+export async function GET(request: NextRequest) {
   let user
   try {
-    user = await requireBrand()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Brand access required')
+    return unauthorizedResponse('Authentication required')
   }
 
-  const supabase = await createClient()
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
 
-  // Get user's brand
-  const { data: brand } = await supabase
-    .from('Brand')
-    .select('id')
-    .eq('userId', user.id)
-    .single()
-
+  const brand = await getUserBrandViaOrg(user.id, orgId)
   if (!brand) {
-    return notFoundResponse('Brand profile not found')
+    return notFoundResponse('Brand not found or access denied')
   }
 
-  // Get brand images
-  const { data: images, error } = await supabase
+  const adminClient = createAdminClient()
+  const { data: images, error } = await adminClient
     .from('BrandImage')
     .select('id, url, alt, order, createdAt')
     .eq('brandId', brand.id)
@@ -50,29 +47,28 @@ export async function GET() {
   })
 }
 
-// POST /api/me/brand/images - Upload brand image
+// POST /api/me/brand/images?orgId=xxx - Upload brand image
 export async function POST(request: NextRequest) {
   let user
   try {
-    user = await requireBrand()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Brand access required')
+    return unauthorizedResponse('Authentication required')
   }
 
-  const supabase = await createClient()
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
+
+  const brand = await getUserBrandViaOrg(user.id, orgId)
+  if (!brand) {
+    return notFoundResponse('Brand not found or access denied')
+  }
+
+  const adminClient = createAdminClient()
 
   try {
-    // Get user's brand
-    const { data: brand } = await supabase
-      .from('Brand')
-      .select('id')
-      .eq('userId', user.id)
-      .single()
-
-    if (!brand) {
-      return notFoundResponse('Brand profile not found')
-    }
-
     const formData = await request.formData()
     const file = formData.get('file') as File | null
     const alt = formData.get('alt') as string | null
@@ -81,14 +77,12 @@ export async function POST(request: NextRequest) {
       return errorResponse('No file provided')
     }
 
-    // Validate file
     const validation = validateFile(file)
     if (!validation.valid) {
       return errorResponse(validation.error || 'Invalid file')
     }
 
-    // Get current max order
-    const { data: existingImages } = await supabase
+    const { data: existingImages } = await adminClient
       .from('BrandImage')
       .select('order')
       .eq('brandId', brand.id)
@@ -99,11 +93,9 @@ export async function POST(request: NextRequest) {
       ? (existingImages[0].order || 0) + 1
       : 0
 
-    // Upload image
     const { url } = await uploadImage(file, 'brand-images', brand.id)
 
-    // Create image record
-    const { data: image, error: insertError } = await supabase
+    const { data: image, error: insertError } = await adminClient
       .from('BrandImage')
       .insert({
         brandId: brand.id,

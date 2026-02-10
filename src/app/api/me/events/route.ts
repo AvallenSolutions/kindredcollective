@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { requireRole } from '@/lib/auth'
+import { getSession, requireAuth } from '@/lib/auth/session'
 import {
   successResponse,
   errorResponse,
@@ -11,11 +11,14 @@ import { parsePagination, paginationMeta } from '@/lib/api/pagination'
 
 // GET /api/me/events - Get current user's events
 export async function GET(request: NextRequest) {
-  let user
-  try {
-    user = await requireRole(['BRAND', 'SUPPLIER', 'ADMIN'])
-  } catch {
-    return unauthorizedResponse('Brand or Supplier access required')
+  const session = await getSession()
+  if (!session.isAuthenticated || !session.user) {
+    return unauthorizedResponse('Authentication required')
+  }
+
+  // Only users with brand/supplier affiliations or admins can manage events
+  if (!session.hasBrandAffiliation && !session.hasSupplierAffiliation && !session.isAdmin) {
+    return unauthorizedResponse('Brand or Supplier affiliation required')
   }
 
   const supabase = await createClient()
@@ -27,7 +30,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('Event')
     .select('*, rsvps:EventRsvp(count)', { count: 'exact' })
-    .eq('createdById', user.id)
+    .eq('createdById', session.user.id)
     .order('startDate', { ascending: true })
     .range(from, to)
 
@@ -50,65 +53,38 @@ export async function GET(request: NextRequest) {
 
 // POST /api/me/events - Create a new event
 export async function POST(request: NextRequest) {
-  let user
-  try {
-    user = await requireRole(['BRAND', 'SUPPLIER', 'ADMIN'])
-  } catch {
-    return unauthorizedResponse('Brand or Supplier access required')
+  const session = await getSession()
+  if (!session.isAuthenticated || !session.user) {
+    return unauthorizedResponse('Authentication required')
+  }
+
+  if (!session.hasBrandAffiliation && !session.hasSupplierAffiliation && !session.isAdmin) {
+    return unauthorizedResponse('Brand or Supplier affiliation required')
   }
 
   const supabase = await createClient()
   const body = await request.json()
 
   const {
-    title,
-    slug,
-    description,
-    type,
-    startDate,
-    endDate,
-    isVirtual = false,
-    venueName,
-    address,
-    city,
-    country,
-    virtualUrl,
-    imageUrl,
-    capacity,
-    isFree = true,
-    price,
-    registrationUrl,
+    title, description, type, startDate, endDate,
+    location, isOnline, onlineUrl, capacity,
+    imageUrl, tags,
   } = body
 
-  if (!title || !slug || !type || !startDate) {
-    return errorResponse('Title, slug, type, and start date are required')
+  if (!title || !type || !startDate) {
+    return errorResponse('Title, type, and start date are required')
   }
 
   const { data: event, error } = await supabase
     .from('Event')
     .insert({
-      title,
-      slug,
-      description,
-      type,
-      status: 'DRAFT', // User events start as draft
-      startDate,
-      endDate,
-      isVirtual,
-      venueName,
-      address,
-      city,
-      country,
-      virtualUrl,
+      createdById: session.user.id,
+      title, description, type,
+      startDate, endDate,
+      location, isOnline, onlineUrl, capacity,
       imageUrl,
-      capacity,
-      isFree,
-      price: isFree ? null : price,
-      registrationUrl,
-      showAttendees: true,
-      isFeatured: false, // Only admins can feature events
-      timezone: 'Europe/London',
-      createdById: user.id,
+      tags: tags || [],
+      status: 'DRAFT',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
@@ -117,9 +93,6 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     console.error('[MyEvents] Error creating event:', error)
-    if (error.code === '23505') {
-      return errorResponse('Slug already exists')
-    }
     return serverErrorResponse('Failed to create event')
   }
 

@@ -1,7 +1,12 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { requireAuth } from '@/lib/auth'
-import { getSession } from '@/lib/auth/session'
+import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  requireAuth,
+  getUserBrandViaOrg,
+  getUserSupplierViaOrg,
+  getUserBrands,
+  getUserSuppliers,
+} from '@/lib/auth/session'
 import {
   successResponse,
   errorResponse,
@@ -10,7 +15,7 @@ import {
   serverErrorResponse,
 } from '@/lib/api/response'
 
-// GET /api/me/verifications - List user's work relationships/verifications
+// GET /api/me/verifications - List user's work relationships/verifications across all orgs
 export async function GET() {
   let user
   try {
@@ -19,77 +24,78 @@ export async function GET() {
     return unauthorizedResponse()
   }
 
-  const session = await getSession()
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
+
+  // Get all user's brands and suppliers
+  const [userBrands, userSuppliers] = await Promise.all([
+    getUserBrands(user.id),
+    getUserSuppliers(user.id),
+  ])
 
   let relationships: unknown[] = []
 
-  if (session.isBrand) {
-    // Get brand's work relationships
-    const { data: brand } = await supabase
-      .from('Brand')
-      .select('id')
-      .eq('userId', user.id)
-      .single()
+  // Fetch work relationships for all user's brands
+  const brandIds = userBrands.map((b: any) => b.id)
+  if (brandIds.length > 0) {
+    const { data } = await adminClient
+      .from('WorkRelationship')
+      .select(`
+        id,
+        brandVerified,
+        supplierVerified,
+        projectDate,
+        projectDescription,
+        createdAt,
+        updatedAt,
+        brandId,
+        supplier:Supplier(id, companyName, slug, logoUrl, category, isVerified)
+      `)
+      .in('brandId', brandIds)
+      .order('createdAt', { ascending: false })
 
-    if (brand) {
-      const { data } = await supabase
-        .from('WorkRelationship')
-        .select(`
-          id,
-          brandVerified,
-          supplierVerified,
-          projectDate,
-          projectDescription,
-          createdAt,
-          updatedAt,
-          supplier:Supplier(id, companyName, slug, logoUrl, category, isVerified)
-        `)
-        .eq('brandId', brand.id)
-        .order('createdAt', { ascending: false })
+    const brandRelationships = (data || []).map(r => ({
+      ...r,
+      myVerification: r.brandVerified,
+      theirVerification: r.supplierVerified,
+      isFullyVerified: r.brandVerified && r.supplierVerified,
+      partner: r.supplier,
+      partnerType: 'supplier',
+      myRole: 'brand',
+    }))
 
-      relationships = (data || []).map(r => ({
-        ...r,
-        myVerification: r.brandVerified,
-        theirVerification: r.supplierVerified,
-        isFullyVerified: r.brandVerified && r.supplierVerified,
-        partner: r.supplier,
-        partnerType: 'supplier',
-      }))
-    }
-  } else if (session.isSupplier) {
-    // Get supplier's work relationships
-    const { data: supplier } = await supabase
-      .from('Supplier')
-      .select('id')
-      .eq('userId', user.id)
-      .single()
+    relationships = [...relationships, ...brandRelationships]
+  }
 
-    if (supplier) {
-      const { data } = await supabase
-        .from('WorkRelationship')
-        .select(`
-          id,
-          brandVerified,
-          supplierVerified,
-          projectDate,
-          projectDescription,
-          createdAt,
-          updatedAt,
-          brand:Brand(id, name, slug, logoUrl, category, isVerified)
-        `)
-        .eq('supplierId', supplier.id)
-        .order('createdAt', { ascending: false })
+  // Fetch work relationships for all user's suppliers
+  const supplierIds = userSuppliers.map((s: any) => s.id)
+  if (supplierIds.length > 0) {
+    const { data } = await adminClient
+      .from('WorkRelationship')
+      .select(`
+        id,
+        brandVerified,
+        supplierVerified,
+        projectDate,
+        projectDescription,
+        createdAt,
+        updatedAt,
+        supplierId,
+        brand:Brand(id, name, slug, logoUrl, category, isVerified)
+      `)
+      .in('supplierId', supplierIds)
+      .order('createdAt', { ascending: false })
 
-      relationships = (data || []).map(r => ({
-        ...r,
-        myVerification: r.supplierVerified,
-        theirVerification: r.brandVerified,
-        isFullyVerified: r.brandVerified && r.supplierVerified,
-        partner: r.brand,
-        partnerType: 'brand',
-      }))
-    }
+    const supplierRelationships = (data || []).map(r => ({
+      ...r,
+      myVerification: r.supplierVerified,
+      theirVerification: r.brandVerified,
+      isFullyVerified: r.brandVerified && r.supplierVerified,
+      partner: r.brand,
+      partnerType: 'brand',
+      myRole: 'supplier',
+    }))
+
+    relationships = [...relationships, ...supplierRelationships]
   }
 
   const stats = {
@@ -105,7 +111,7 @@ export async function GET() {
   })
 }
 
-// POST /api/me/verifications - Request a verification (create work relationship)
+// POST /api/me/verifications?orgId=xxx&type=brand|supplier - Request a verification (create work relationship)
 export async function POST(request: NextRequest) {
   let user
   try {
@@ -114,8 +120,17 @@ export async function POST(request: NextRequest) {
     return unauthorizedResponse()
   }
 
-  const session = await getSession()
-  const supabase = await createClient()
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
+
+  const type = request.nextUrl.searchParams.get('type')
+  if (!type || (type !== 'brand' && type !== 'supplier')) {
+    return errorResponse('type query parameter is required (brand or supplier)')
+  }
+
+  const adminClient = createAdminClient()
   const body = await request.json()
 
   const { partnerId, projectDate, projectDescription } = body
@@ -126,22 +141,17 @@ export async function POST(request: NextRequest) {
 
   let brandId: string | null = null
   let supplierId: string | null = null
-  let myVerification = false
+  let isBrandSide = false
 
-  if (session.isBrand) {
-    // Brand is requesting verification with a supplier
-    const { data: brand } = await supabase
-      .from('Brand')
-      .select('id')
-      .eq('userId', user.id)
-      .single()
-
+  if (type === 'brand') {
+    // User is acting as a brand, requesting verification with a supplier
+    const brand = await getUserBrandViaOrg(user.id, orgId)
     if (!brand) {
-      return notFoundResponse('Brand profile not found')
+      return notFoundResponse('Brand not found or access denied')
     }
 
     // Verify supplier exists
-    const { data: supplier } = await supabase
+    const { data: supplier } = await adminClient
       .from('Supplier')
       .select('id, isPublic')
       .eq('id', partnerId)
@@ -153,21 +163,16 @@ export async function POST(request: NextRequest) {
 
     brandId = brand.id
     supplierId = partnerId
-    myVerification = true // Brand is verifying they worked with this supplier
-  } else if (session.isSupplier) {
-    // Supplier is requesting verification with a brand
-    const { data: supplier } = await supabase
-      .from('Supplier')
-      .select('id')
-      .eq('userId', user.id)
-      .single()
-
+    isBrandSide = true
+  } else {
+    // User is acting as a supplier, requesting verification with a brand
+    const supplier = await getUserSupplierViaOrg(user.id, orgId)
     if (!supplier) {
-      return notFoundResponse('Supplier profile not found')
+      return notFoundResponse('Supplier not found or access denied')
     }
 
     // Verify brand exists
-    const { data: brand } = await supabase
+    const { data: brand } = await adminClient
       .from('Brand')
       .select('id, isPublic')
       .eq('id', partnerId)
@@ -179,13 +184,11 @@ export async function POST(request: NextRequest) {
 
     brandId = partnerId
     supplierId = supplier.id
-    myVerification = true // Supplier is verifying they worked with this brand
-  } else {
-    return errorResponse('Only brand or supplier users can create verifications', 403)
+    isBrandSide = false
   }
 
   // Check if relationship already exists
-  const { data: existing } = await supabase
+  const { data: existing } = await adminClient
     .from('WorkRelationship')
     .select('id, brandVerified, supplierVerified')
     .eq('brandId', brandId)
@@ -198,7 +201,7 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     }
 
-    if (session.isBrand) {
+    if (isBrandSide) {
       updates.brandVerified = true
     } else {
       updates.supplierVerified = true
@@ -207,7 +210,7 @@ export async function POST(request: NextRequest) {
     if (projectDate) updates.projectDate = projectDate
     if (projectDescription) updates.projectDescription = projectDescription
 
-    const { data: relationship, error } = await supabase
+    const { data: relationship, error } = await adminClient
       .from('WorkRelationship')
       .update(updates)
       .eq('id', existing.id)
@@ -227,13 +230,13 @@ export async function POST(request: NextRequest) {
   }
 
   // Create new relationship
-  const { data: relationship, error } = await supabase
+  const { data: relationship, error } = await adminClient
     .from('WorkRelationship')
     .insert({
       brandId,
       supplierId,
-      brandVerified: session.isBrand,
-      supplierVerified: session.isSupplier,
+      brandVerified: isBrandSide,
+      supplierVerified: !isBrandSide,
       projectDate: projectDate || null,
       projectDescription: projectDescription || null,
       createdAt: new Date().toISOString(),

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { requireSupplier } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAuth, getUserSupplierViaOrg, getUserSuppliers } from '@/lib/auth/session'
 import {
   successResponse,
   errorResponse,
@@ -9,115 +9,84 @@ import {
   serverErrorResponse,
 } from '@/lib/api/response'
 
-// GET /api/me/supplier - Get current user's supplier profile
-export async function GET() {
+// GET /api/me/supplier?orgId=xxx - Get a specific supplier via org, or list all user's suppliers
+export async function GET(request: NextRequest) {
   let user
   try {
-    user = await requireSupplier()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Supplier access required')
+    return unauthorizedResponse('Authentication required')
   }
 
-  const supabase = await createClient()
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  const adminClient = createAdminClient()
 
-  const { data: supplier, error } = await supabase
-    .from('Supplier')
-    .select(`
-      *,
-      images:SupplierImage(*),
-      offers:Offer(*),
-      reviews:SupplierReview(*)
-    `)
-    .eq('userId', user.id)
-    .single()
+  if (orgId) {
+    const supplier = await getUserSupplierViaOrg(user.id, orgId)
+    if (!supplier) {
+      return notFoundResponse('Supplier not found or access denied')
+    }
 
-  if (error || !supplier) {
-    return notFoundResponse('Supplier profile not found')
+    // Get related data
+    const [imagesResult, offersResult, reviewsResult] = await Promise.all([
+      adminClient.from('SupplierImage').select('*').eq('supplierId', supplier.id).order('order'),
+      adminClient.from('Offer').select('*').eq('supplierId', supplier.id),
+      adminClient.from('SupplierReview').select('*').eq('supplierId', supplier.id).eq('isPublic', true),
+    ])
+
+    return successResponse({
+      ...supplier,
+      images: imagesResult.data || [],
+      offers: offersResult.data || [],
+      reviews: reviewsResult.data || [],
+    })
   }
 
-  return successResponse(supplier)
+  // No orgId: return all user's suppliers
+  const suppliers = await getUserSuppliers(user.id)
+  return successResponse(suppliers)
 }
 
-// POST /api/me/supplier - Create supplier profile (or claim existing)
+// POST /api/me/supplier - Create supplier profile + organisation
 export async function POST(request: NextRequest) {
   let user
   try {
-    user = await requireSupplier()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Supplier access required')
+    return unauthorizedResponse('Authentication required')
   }
 
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
   const body = await request.json()
 
-  // Check if user already has a supplier profile
-  const { data: existing } = await supabase
-    .from('Supplier')
-    .select('id')
-    .eq('userId', user.id)
-    .single()
-
-  if (existing) {
-    return errorResponse('Supplier profile already exists')
-  }
-
   const {
-    companyName,
-    slug,
-    tagline,
-    description,
-    category,
-    services,
-    subcategories,
-    certifications,
-    location,
-    country,
-    serviceRegions,
-    websiteUrl,
-    linkedinUrl,
-    instagramUrl,
-    portfolioUrl,
-    logoUrl,
-    heroImageUrl,
-    contactName,
-    contactEmail,
-    contactPhone,
-    moqMin,
-    moqMax,
-    leadTimeDays,
+    companyName, slug, tagline, description, category,
+    services, subcategories, certifications,
+    location, country, serviceRegions,
+    websiteUrl, linkedinUrl, instagramUrl, portfolioUrl,
+    logoUrl, heroImageUrl,
+    contactName, contactEmail, contactPhone,
+    moqMin, moqMax, leadTimeDays,
   } = body
 
   if (!companyName || !slug || !category) {
     return errorResponse('Company name, slug, and category are required')
   }
 
-  const { data: supplier, error } = await supabase
+  // Create supplier (no userId)
+  const { data: supplier, error } = await adminClient
     .from('Supplier')
     .insert({
-      userId: user.id,
-      companyName,
-      slug,
-      tagline,
-      description,
-      category,
+      companyName, slug, tagline, description, category,
       services: services || [],
       subcategories: subcategories || [],
       certifications: certifications || [],
-      location,
-      country,
+      location, country,
       serviceRegions: serviceRegions || [],
-      websiteUrl,
-      linkedinUrl,
-      instagramUrl,
-      portfolioUrl,
-      logoUrl,
-      heroImageUrl,
-      contactName,
-      contactEmail,
-      contactPhone,
-      moqMin,
-      moqMax,
-      leadTimeDays,
+      websiteUrl, linkedinUrl, instagramUrl, portfolioUrl,
+      logoUrl, heroImageUrl,
+      contactName, contactEmail, contactPhone,
+      moqMin, moqMax, leadTimeDays,
       isPublic: true,
       isVerified: false,
       claimStatus: 'CLAIMED',
@@ -129,52 +98,73 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    console.error('Error creating supplier:', error)
+    console.error('[MeSupplier] Error creating supplier:', error)
     if (error.code === '23505') {
       return errorResponse('Slug already exists')
     }
     return serverErrorResponse('Failed to create supplier')
   }
 
+  // Create Organisation
+  const { data: org, error: orgError } = await adminClient
+    .from('Organisation')
+    .insert({
+      name: supplier.companyName,
+      slug: supplier.slug,
+      type: 'SUPPLIER',
+      supplierId: supplier.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    .select()
+    .single()
+
+  if (orgError) {
+    console.error('[MeSupplier] Error creating organisation:', orgError)
+  }
+
+  if (org) {
+    await adminClient.from('OrganisationMember').insert({
+      organisationId: org.id,
+      userId: user.id,
+      role: 'OWNER',
+      joinedAt: new Date().toISOString(),
+    })
+  }
+
   return successResponse(supplier, 201)
 }
 
-// PATCH /api/me/supplier - Update supplier profile
+// PATCH /api/me/supplier?orgId=xxx - Update supplier profile
 export async function PATCH(request: NextRequest) {
   let user
   try {
-    user = await requireSupplier()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Supplier access required')
+    return unauthorizedResponse('Authentication required')
   }
 
-  const supabase = await createClient()
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
+
+  const supplier = await getUserSupplierViaOrg(user.id, orgId)
+  if (!supplier) {
+    return notFoundResponse('Supplier not found or access denied')
+  }
+
+  const adminClient = createAdminClient()
   const body = await request.json()
 
   const allowedFields = [
-    'companyName',
-    'tagline',
-    'description',
-    'category',
-    'services',
-    'subcategories',
-    'certifications',
-    'location',
-    'country',
-    'serviceRegions',
-    'websiteUrl',
-    'linkedinUrl',
-    'instagramUrl',
-    'portfolioUrl',
-    'logoUrl',
-    'heroImageUrl',
-    'contactName',
-    'contactEmail',
-    'contactPhone',
-    'moqMin',
-    'moqMax',
-    'leadTimeDays',
-    'isPublic',
+    'companyName', 'tagline', 'description', 'category',
+    'services', 'subcategories', 'certifications',
+    'location', 'country', 'serviceRegions',
+    'websiteUrl', 'linkedinUrl', 'instagramUrl', 'portfolioUrl',
+    'logoUrl', 'heroImageUrl',
+    'contactName', 'contactEmail', 'contactPhone',
+    'moqMin', 'moqMax', 'leadTimeDays', 'isPublic',
   ]
 
   const updates: Record<string, unknown> = {
@@ -187,43 +177,49 @@ export async function PATCH(request: NextRequest) {
     }
   }
 
-  const { data: supplier, error } = await supabase
+  const { data: updated, error } = await adminClient
     .from('Supplier')
     .update(updates)
-    .eq('userId', user.id)
+    .eq('id', supplier.id)
     .select()
     .single()
 
   if (error) {
-    console.error('Error updating supplier:', error)
+    console.error('[MeSupplier] Error updating supplier:', error)
     return serverErrorResponse('Failed to update supplier')
   }
 
-  if (!supplier) {
-    return notFoundResponse('Supplier profile not found')
-  }
-
-  return successResponse(supplier)
+  return successResponse(updated)
 }
 
-// DELETE /api/me/supplier - Delete supplier profile
-export async function DELETE() {
+// DELETE /api/me/supplier?orgId=xxx - Delete supplier profile
+export async function DELETE(request: NextRequest) {
   let user
   try {
-    user = await requireSupplier()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Supplier access required')
+    return unauthorizedResponse('Authentication required')
   }
 
-  const supabase = await createClient()
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
 
-  const { error } = await supabase
+  const supplier = await getUserSupplierViaOrg(user.id, orgId)
+  if (!supplier) {
+    return notFoundResponse('Supplier not found or access denied')
+  }
+
+  const adminClient = createAdminClient()
+
+  const { error } = await adminClient
     .from('Supplier')
     .delete()
-    .eq('userId', user.id)
+    .eq('id', supplier.id)
 
   if (error) {
-    console.error('Error deleting supplier:', error)
+    console.error('[MeSupplier] Error deleting supplier:', error)
     return serverErrorResponse('Failed to delete supplier')
   }
 

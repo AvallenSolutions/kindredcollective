@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
 
   // Get session to check if user is a brand (for brand-only offers)
   const session = await getSession()
-  const isBrandUser = session.isBrand
+  const isBrandUser = session.hasBrandAffiliation
 
   // Pagination (clamped to [1, 100])
   const { page, limit, from, to } = parsePagination(searchParams)

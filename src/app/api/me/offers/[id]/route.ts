@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { requireSupplier, getUserSupplier } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAuth, getSession, getUserSupplierViaOrg } from '@/lib/auth/session'
 import {
   successResponse,
   errorResponse,
@@ -14,25 +14,46 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-// GET /api/me/offers/[id] - Get single offer with claims
+// GET /api/me/offers/[id]?orgId=xxx - Get single offer with claims
 export async function GET(request: NextRequest, { params }: RouteParams) {
   let user
   try {
-    user = await requireSupplier()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Supplier access required')
+    return unauthorizedResponse('Authentication required')
   }
 
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  const session = await getSession()
   const { id } = await params
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
 
-  // Get user's supplier
-  const supplier = await getUserSupplier(user.id)
-  if (!supplier) {
-    return errorResponse('No supplier profile found')
+  // Admin override: admins can view any offer
+  if (session.isAdmin) {
+    const { data: offer, error } = await adminClient
+      .from('Offer')
+      .select('*, claims:OfferClaim(*, user:User(email))')
+      .eq('id', id)
+      .single()
+
+    if (error || !offer) {
+      return notFoundResponse('Offer not found')
+    }
+
+    return successResponse(offer)
   }
 
-  const { data: offer, error } = await supabase
+  // Non-admin: orgId is required
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
+
+  const supplier = await getUserSupplierViaOrg(user.id, orgId)
+  if (!supplier) {
+    return notFoundResponse('Supplier not found or access denied')
+  }
+
+  const { data: offer, error } = await adminClient
     .from('Offer')
     .select('*, claims:OfferClaim(*, user:User(email))')
     .eq('id', id)
@@ -43,33 +64,29 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 
   // Check ownership
-  if (offer.supplierId !== supplier.id && user.role !== 'ADMIN') {
+  if (offer.supplierId !== supplier.id) {
     return forbiddenResponse('You can only view your own offers')
   }
 
   return successResponse(offer)
 }
 
-// PATCH /api/me/offers/[id] - Update offer
+// PATCH /api/me/offers/[id]?orgId=xxx - Update offer
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   let user
   try {
-    user = await requireSupplier()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Supplier access required')
+    return unauthorizedResponse('Authentication required')
   }
 
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  const session = await getSession()
   const { id } = await params
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
 
-  // Get user's supplier
-  const supplier = await getUserSupplier(user.id)
-  if (!supplier) {
-    return errorResponse('No supplier profile found')
-  }
-
-  // Verify ownership
-  const { data: existing } = await supabase
+  // Verify ownership (or admin)
+  const { data: existing } = await adminClient
     .from('Offer')
     .select('supplierId')
     .eq('id', id)
@@ -79,8 +96,19 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Offer not found')
   }
 
-  if (existing.supplierId !== supplier.id && user.role !== 'ADMIN') {
-    return forbiddenResponse('You can only update your own offers')
+  if (!session.isAdmin) {
+    if (!orgId) {
+      return errorResponse('orgId query parameter is required')
+    }
+
+    const supplier = await getUserSupplierViaOrg(user.id, orgId)
+    if (!supplier) {
+      return notFoundResponse('Supplier not found or access denied')
+    }
+
+    if (existing.supplierId !== supplier.id) {
+      return forbiddenResponse('You can only update your own offers')
+    }
   }
 
   const body = await request.json()
@@ -110,7 +138,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
   }
 
-  const { data: offer, error } = await supabase
+  const { data: offer, error } = await adminClient
     .from('Offer')
     .update(updates)
     .eq('id', id)
@@ -125,26 +153,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   return successResponse(offer)
 }
 
-// DELETE /api/me/offers/[id] - Delete offer
+// DELETE /api/me/offers/[id]?orgId=xxx - Delete offer
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   let user
   try {
-    user = await requireSupplier()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Supplier access required')
+    return unauthorizedResponse('Authentication required')
   }
 
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  const session = await getSession()
   const { id } = await params
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
 
-  // Get user's supplier
-  const supplier = await getUserSupplier(user.id)
-  if (!supplier) {
-    return errorResponse('No supplier profile found')
-  }
-
-  // Verify ownership
-  const { data: existing } = await supabase
+  // Verify ownership (or admin)
+  const { data: existing } = await adminClient
     .from('Offer')
     .select('supplierId')
     .eq('id', id)
@@ -154,11 +178,22 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Offer not found')
   }
 
-  if (existing.supplierId !== supplier.id && user.role !== 'ADMIN') {
-    return forbiddenResponse('You can only delete your own offers')
+  if (!session.isAdmin) {
+    if (!orgId) {
+      return errorResponse('orgId query parameter is required')
+    }
+
+    const supplier = await getUserSupplierViaOrg(user.id, orgId)
+    if (!supplier) {
+      return notFoundResponse('Supplier not found or access denied')
+    }
+
+    if (existing.supplierId !== supplier.id) {
+      return forbiddenResponse('You can only delete your own offers')
+    }
   }
 
-  const { error } = await supabase
+  const { error } = await adminClient
     .from('Offer')
     .delete()
     .eq('id', id)

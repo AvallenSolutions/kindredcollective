@@ -75,10 +75,8 @@ export async function POST(request: NextRequest) {
 
     const { expiresAt, maxUses, notes, targetRole, email, phone } = body
 
-    // Validate targetRole if provided
-    if (targetRole && !['BRAND', 'SUPPLIER', 'MEMBER'].includes(targetRole)) {
-      return errorResponse('Invalid target role. Must be BRAND, SUPPLIER, or MEMBER')
-    }
+    // targetRole is a legacy/informational field — store any value for admin reference
+    // All new signups are MEMBER regardless of targetRole
 
     // Generate a secure random token using standardized utility
     const token = generateSecureToken(24)

@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAuth } from '@/lib/auth'
-import { getSession } from '@/lib/auth/session'
 import {
   successResponse,
   errorResponse,
@@ -23,7 +23,7 @@ function generateVerificationCode(): string {
 async function getSupplierBySlug(supabase: Awaited<ReturnType<typeof createClient>>, slug: string) {
   const { data: supplier } = await supabase
     .from('Supplier')
-    .select('id, companyName, claimStatus, contactEmail, userId')
+    .select('id, companyName, slug, claimStatus, contactEmail')
     .eq('slug', slug)
     .single()
   return supplier
@@ -36,11 +36,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     user = await requireAuth()
   } catch {
     return unauthorizedResponse()
-  }
-
-  const session = await getSession()
-  if (!session.isSupplier && !session.isAdmin) {
-    return errorResponse('Only supplier users can claim supplier profiles', 403)
   }
 
   const { slug } = await params
@@ -60,8 +55,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Supplier not found')
   }
 
-  // Check if supplier is already claimed
-  if (supplier.claimStatus === 'CLAIMED' || supplier.userId) {
+  // Check if supplier is already claimed (by claimStatus only)
+  if (supplier.claimStatus === 'CLAIMED') {
     return errorResponse('This supplier profile has already been claimed')
   }
 
@@ -80,17 +75,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (existingClaim.status === 'REJECTED') {
       return errorResponse('Your previous claim for this supplier was rejected')
     }
-  }
-
-  // Check if user already owns a supplier profile
-  const { data: userSupplier } = await supabase
-    .from('Supplier')
-    .select('id')
-    .eq('userId', user.id)
-    .single()
-
-  if (userSupplier) {
-    return errorResponse('You already have a supplier profile')
   }
 
   // Generate verification code
@@ -150,6 +134,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   const { slug } = await params
   const supabase = await createClient()
+  const adminSupabase = createAdminClient()
   const body = await request.json()
 
   const { verificationCode } = body
@@ -197,11 +182,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return serverErrorResponse('Failed to verify claim')
   }
 
-  // Update the supplier to link it to the user
-  const { data: updatedSupplier, error: supplierError } = await supabase
+  // Update the supplier claim status (no userId - access is through Organisation)
+  const { data: updatedSupplier, error: supplierError } = await adminSupabase
     .from('Supplier')
     .update({
-      userId: user.id,
       claimStatus: 'CLAIMED',
       updatedAt: new Date().toISOString(),
     })
@@ -211,11 +195,46 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   if (supplierError) {
     console.error('Error updating supplier:', supplierError)
-    return serverErrorResponse('Failed to update supplier ownership')
+    return serverErrorResponse('Failed to update supplier')
+  }
+
+  // Create organisation for the claimed supplier
+  const { data: organisation, error: orgError } = await adminSupabase
+    .from('Organisation')
+    .insert({
+      name: supplier.companyName,
+      slug: supplier.slug,
+      type: 'SUPPLIER',
+      supplierId: supplier.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    })
+    .select()
+    .single()
+
+  if (orgError) {
+    console.error('Error creating organisation:', orgError)
+    return serverErrorResponse('Failed to create organisation')
+  }
+
+  // Add the claiming user as organisation owner
+  const { error: memberError } = await adminSupabase
+    .from('OrganisationMember')
+    .insert({
+      organisationId: organisation.id,
+      userId: user.id,
+      role: 'OWNER',
+      joinedAt: new Date().toISOString(),
+    })
+
+  if (memberError) {
+    console.error('Error adding organisation member:', memberError)
+    return serverErrorResponse('Failed to add user to organisation')
   }
 
   return successResponse({
     supplier: updatedSupplier,
+    organisation,
     message: 'Supplier profile claimed successfully! You can now manage this profile.',
   })
 }

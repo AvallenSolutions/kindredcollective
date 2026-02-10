@@ -1,6 +1,6 @@
-import { UserRole } from '@prisma/client'
+import { UserRole, OrganisationMemberRole } from '@prisma/client'
 
-export type { UserRole }
+export type { UserRole, OrganisationMemberRole }
 
 export interface AuthUser {
   id: string
@@ -16,73 +16,74 @@ export interface SessionUser {
   role: UserRole
 }
 
+export interface UserOrganisation {
+  organisationId: string
+  organisationName: string
+  organisationSlug: string
+  organisationType: 'BRAND' | 'SUPPLIER'
+  memberRole: OrganisationMemberRole
+  brandId?: string
+  brandName?: string
+  brandSlug?: string
+  supplierId?: string
+  supplierName?: string
+  supplierSlug?: string
+}
+
 export interface AuthSession {
   user: SessionUser | null
   isAuthenticated: boolean
   isAdmin: boolean
-  isBrand: boolean
-  isSupplier: boolean
-  isMember: boolean
+  organisations: UserOrganisation[]
+  hasBrandAffiliation: boolean
+  hasSupplierAffiliation: boolean
 }
 
-// Permission checks
-export const permissions = {
-  // Admin permissions
-  admin: {
-    manageUsers: ['ADMIN'] as UserRole[],
-    manageAllSuppliers: ['ADMIN'] as UserRole[],
-    manageAllBrands: ['ADMIN'] as UserRole[],
-    manageAllEvents: ['ADMIN'] as UserRole[],
-    manageAllOffers: ['ADMIN'] as UserRole[],
-    viewAnalytics: ['ADMIN'] as UserRole[],
-  },
-  // Supplier permissions
-  supplier: {
-    manageOwnProfile: ['SUPPLIER', 'ADMIN'] as UserRole[],
-    manageOwnOffers: ['SUPPLIER', 'ADMIN'] as UserRole[],
-    manageOwnEvents: ['SUPPLIER', 'ADMIN'] as UserRole[],
-    viewOfferClaims: ['SUPPLIER', 'ADMIN'] as UserRole[],
-  },
-  // Brand/User permissions
-  brand: {
-    manageOwnProfile: ['BRAND', 'ADMIN'] as UserRole[],
-    manageOwnEvents: ['BRAND', 'ADMIN'] as UserRole[],
-    claimOffers: ['BRAND', 'SUPPLIER', 'ADMIN', 'MEMBER'] as UserRole[],
-  },
-  // Member permissions
-  member: {
-    manageOwnProfile: ['MEMBER', 'BRAND', 'ADMIN'] as UserRole[],
-    attendEvents: ['MEMBER', 'BRAND', 'SUPPLIER', 'ADMIN'] as UserRole[],
-    writeReviews: ['MEMBER', 'BRAND', 'ADMIN'] as UserRole[],
-    joinOrganisation: ['MEMBER', 'BRAND', 'SUPPLIER', 'ADMIN'] as UserRole[],
-  },
-  // Common permissions
-  common: {
-    viewPublicSuppliers: ['BRAND', 'SUPPLIER', 'ADMIN', 'MEMBER'] as UserRole[],
-    viewPublicBrands: ['BRAND', 'SUPPLIER', 'ADMIN', 'MEMBER'] as UserRole[],
-    viewPublicEvents: ['BRAND', 'SUPPLIER', 'ADMIN', 'MEMBER'] as UserRole[],
-    saveSuppliers: ['BRAND', 'SUPPLIER', 'ADMIN', 'MEMBER'] as UserRole[],
-    writeReviews: ['BRAND', 'ADMIN', 'MEMBER'] as UserRole[],
-  },
-} as const
-
-export function hasPermission(userRole: UserRole | undefined, allowedRoles: readonly UserRole[]): boolean {
-  if (!userRole) return false
-  return allowedRoles.includes(userRole)
-}
+// ============= Permission Helpers =============
 
 export function isAdmin(role: UserRole | undefined): boolean {
   return role === 'ADMIN'
 }
 
-export function isBrand(role: UserRole | undefined): boolean {
-  return role === 'BRAND'
+export function canManageOrganisation(
+  session: AuthSession,
+  organisationId: string
+): boolean {
+  if (!session.isAuthenticated) return false
+  if (session.isAdmin) return true
+  const org = session.organisations.find(o => o.organisationId === organisationId)
+  return org?.memberRole === 'OWNER' || org?.memberRole === 'ADMIN'
 }
 
-export function isSupplier(role: UserRole | undefined): boolean {
-  return role === 'SUPPLIER'
+export function canManageBrand(
+  session: AuthSession,
+  brandId: string
+): boolean {
+  if (!session.isAuthenticated) return false
+  if (session.isAdmin) return true
+  const org = session.organisations.find(o => o.brandId === brandId)
+  return org?.memberRole === 'OWNER' || org?.memberRole === 'ADMIN'
 }
 
-export function isMember(role: UserRole | undefined): boolean {
-  return role === 'MEMBER'
+export function canManageSupplier(
+  session: AuthSession,
+  supplierId: string
+): boolean {
+  if (!session.isAuthenticated) return false
+  if (session.isAdmin) return true
+  const org = session.organisations.find(o => o.supplierId === supplierId)
+  return org?.memberRole === 'OWNER' || org?.memberRole === 'ADMIN'
+}
+
+export function getUserBrandOrgs(session: AuthSession): UserOrganisation[] {
+  return session.organisations.filter(o => o.organisationType === 'BRAND')
+}
+
+export function getUserSupplierOrgs(session: AuthSession): UserOrganisation[] {
+  return session.organisations.filter(o => o.organisationType === 'SUPPLIER')
+}
+
+export function hasPermission(userRole: UserRole | undefined, allowedRoles: readonly UserRole[]): boolean {
+  if (!userRole) return false
+  return allowedRoles.includes(userRole)
 }

@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
       .limit(limit)
 
     // Filter out brand-only offers for non-brand users
-    if (!session.isBrand) {
+    if (!session.hasBrandAffiliation) {
       offersQuery = offersQuery.eq('forBrandsOnly', false)
     }
 

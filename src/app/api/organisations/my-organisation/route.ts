@@ -2,31 +2,36 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAuth } from '@/lib/auth/session'
 
-// GET /api/organisations/my-organisation - Get current user's organisation
+// GET /api/organisations/my-organisation - Get all of the current user's organisations
 export async function GET() {
   try {
     const user = await requireAuth()
     const adminSupabase = createAdminClient()
 
-    // Get user's organisation membership
-    const { data: membership, error: membershipError } = await adminSupabase
+    // Get all of the user's organisation memberships
+    const { data: memberships, error: membershipError } = await adminSupabase
       .from('OrganisationMember')
       .select('*, organisation:Organisation(*)')
       .eq('userId', user.id)
-      .single()
 
-    if (membershipError || !membership) {
+    if (membershipError) {
+      console.error('Error fetching organisations:', membershipError)
       return NextResponse.json(
-        { error: 'You are not a member of any organisation' },
-        { status: 404 }
+        { error: 'Failed to fetch organisations' },
+        { status: 500 }
       )
     }
 
+    const organisations = (memberships || []).map((membership) => ({
+      ...membership.organisation,
+      userRole: membership.role,
+      joinedAt: membership.joinedAt,
+    }))
+
     return NextResponse.json({
       success: true,
-      organisation: membership.organisation,
-      userRole: membership.role,
-      membership,
+      organisations,
+      total: organisations.length,
     })
   } catch (error) {
     console.error('Error in GET /api/organisations/my-organisation:', error)

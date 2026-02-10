@@ -1,36 +1,40 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { requireSupplier, getUserSupplier } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAuth, getUserSupplierViaOrg } from '@/lib/auth/session'
 import {
   successResponse,
   errorResponse,
   unauthorizedResponse,
+  notFoundResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
 import { parsePagination, paginationMeta } from '@/lib/api/pagination'
 
-// GET /api/me/offers - Get current supplier's offers
+// GET /api/me/offers?orgId=xxx - Get supplier's offers
 export async function GET(request: NextRequest) {
   let user
   try {
-    user = await requireSupplier()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Supplier access required')
+    return unauthorizedResponse('Authentication required')
   }
 
-  const supabase = await createClient()
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
 
-  // Get user's supplier
-  const supplier = await getUserSupplier(user.id)
+  const supplier = await getUserSupplierViaOrg(user.id, orgId)
   if (!supplier) {
-    return errorResponse('No supplier profile found')
+    return notFoundResponse('Supplier not found or access denied')
   }
 
+  const adminClient = createAdminClient()
   const { searchParams } = new URL(request.url)
   const { page, limit, from, to } = parsePagination(searchParams)
   const status = searchParams.get('status')
 
-  let query = supabase
+  let query = adminClient
     .from('Offer')
     .select('*, claims:OfferClaim(count)', { count: 'exact' })
     .eq('supplierId', supplier.id)
@@ -54,59 +58,46 @@ export async function GET(request: NextRequest) {
   })
 }
 
-// POST /api/me/offers - Create a new offer
+// POST /api/me/offers?orgId=xxx - Create a new offer
 export async function POST(request: NextRequest) {
   let user
   try {
-    user = await requireSupplier()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Supplier access required')
+    return unauthorizedResponse('Authentication required')
   }
 
-  const supabase = await createClient()
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
 
-  // Get user's supplier
-  const supplier = await getUserSupplier(user.id)
+  const supplier = await getUserSupplierViaOrg(user.id, orgId)
   if (!supplier) {
-    return errorResponse('No supplier profile found. Create a supplier profile first.')
+    return notFoundResponse('Supplier not found or access denied')
   }
 
+  const adminClient = createAdminClient()
   const body = await request.json()
 
   const {
-    title,
-    description,
-    type,
-    discountValue,
-    code,
-    termsConditions,
-    startDate,
-    endDate,
-    forBrandsOnly = false,
-    minOrderValue,
-    imageUrl,
+    title, description, type, discountValue, code,
+    termsConditions, startDate, endDate,
+    forBrandsOnly = false, minOrderValue, imageUrl,
   } = body
 
   if (!title || !type) {
     return errorResponse('Title and type are required')
   }
 
-  const { data: offer, error } = await supabase
+  const { data: offer, error } = await adminClient
     .from('Offer')
     .insert({
       supplierId: supplier.id,
-      title,
-      description,
-      type,
-      discountValue,
-      code,
+      title, description, type, discountValue, code,
       termsConditions,
       status: 'DRAFT',
-      startDate,
-      endDate,
-      forBrandsOnly,
-      minOrderValue,
-      imageUrl,
+      startDate, endDate, forBrandsOnly, minOrderValue, imageUrl,
       viewCount: 0,
       claimCount: 0,
       createdAt: new Date().toISOString(),

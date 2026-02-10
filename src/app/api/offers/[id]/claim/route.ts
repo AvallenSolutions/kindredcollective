@@ -58,7 +58,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   // Check if offer is for brands only
-  if (offer.forBrandsOnly && !session.isBrand) {
+  if (offer.forBrandsOnly && !session.hasBrandAffiliation) {
     return errorResponse('This offer is only available to brand users')
   }
 

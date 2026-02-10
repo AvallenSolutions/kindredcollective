@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/auth'
 import {
   successResponse,
@@ -19,6 +20,7 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createClient()
+  const adminClient = createAdminClient()
   const { searchParams } = new URL(request.url)
 
   const { page, limit, from, to } = parsePagination(searchParams)
@@ -29,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('Brand')
-    .select('*, user:User(email), images:BrandImage(url, alt, order)', { count: 'exact' })
+    .select('*, images:BrandImage(url, alt, order), organisation:Organisation(id, name, slug, members:OrganisationMember(userId, role))', { count: 'exact' })
     .order('createdAt', { ascending: false })
     .range(from, to)
 
@@ -62,7 +64,7 @@ export async function GET(request: NextRequest) {
   })
 }
 
-// POST /api/admin/brands - Create a new brand (without user association)
+// POST /api/admin/brands - Create a new brand (optionally with org + owner)
 export async function POST(request: NextRequest) {
   try {
     await requireAdmin()
@@ -70,7 +72,7 @@ export async function POST(request: NextRequest) {
     return unauthorizedResponse('Admin access required')
   }
 
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
   const body = await request.json()
 
   const {
@@ -92,7 +94,7 @@ export async function POST(request: NextRequest) {
     heroImageUrl,
     isPublic = true,
     isVerified = false,
-    userId,
+    ownerId, // Optional: userId of the owner
   } = body
 
   if (!name || !slug || !category) {
@@ -100,7 +102,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Check if slug already exists
-  const { data: existingBrand } = await supabase
+  const { data: existingBrand } = await adminClient
     .from('Brand')
     .select('id')
     .eq('slug', slug)
@@ -110,20 +112,8 @@ export async function POST(request: NextRequest) {
     return errorResponse('A brand with this slug already exists')
   }
 
-  // If userId is provided, check if the user already has a brand
-  if (userId) {
-    const { data: existingUserBrand } = await supabase
-      .from('Brand')
-      .select('id')
-      .eq('userId', userId)
-      .single()
-
-    if (existingUserBrand) {
-      return errorResponse('This user already has a brand associated')
-    }
-  }
-
-  const { data: brand, error } = await supabase
+  // Create the brand
+  const { data: brand, error } = await adminClient
     .from('Brand')
     .insert({
       name,
@@ -144,7 +134,6 @@ export async function POST(request: NextRequest) {
       heroImageUrl,
       isPublic,
       isVerified,
-      userId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
@@ -154,6 +143,31 @@ export async function POST(request: NextRequest) {
   if (error) {
     console.error('[AdminBrands] Error creating brand:', error)
     return serverErrorResponse('Failed to create brand')
+  }
+
+  // If ownerId is provided, create Organisation + OrganisationMember
+  if (ownerId && brand) {
+    const { data: org, error: orgError } = await adminClient
+      .from('Organisation')
+      .insert({
+        name: brand.name,
+        slug: brand.slug,
+        type: 'BRAND',
+        brandId: brand.id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      })
+      .select()
+      .single()
+
+    if (org && !orgError) {
+      await adminClient.from('OrganisationMember').insert({
+        organisationId: org.id,
+        userId: ownerId,
+        role: 'OWNER',
+        joinedAt: new Date().toISOString(),
+      })
+    }
   }
 
   return successResponse(brand, 201)

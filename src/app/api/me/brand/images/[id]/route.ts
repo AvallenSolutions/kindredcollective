@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
-import { requireBrand } from '@/lib/auth'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAuth, getUserBrandViaOrg } from '@/lib/auth/session'
 import { deleteImage, extractPathFromUrl } from '@/lib/storage/upload'
 import {
   successResponse,
+  errorResponse,
   unauthorizedResponse,
   notFoundResponse,
   serverErrorResponse,
@@ -13,32 +14,31 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-// DELETE /api/me/brand/images/[id] - Delete brand image
+// DELETE /api/me/brand/images/[id]?orgId=xxx - Delete brand image
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   let user
   try {
-    user = await requireBrand()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Brand access required')
+    return unauthorizedResponse('Authentication required')
+  }
+
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
+
+  const brand = await getUserBrandViaOrg(user.id, orgId)
+  if (!brand) {
+    return notFoundResponse('Brand not found or access denied')
   }
 
   const { id } = await params
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
 
   try {
-    // Get user's brand
-    const { data: brand } = await supabase
-      .from('Brand')
-      .select('id')
-      .eq('userId', user.id)
-      .single()
-
-    if (!brand) {
-      return notFoundResponse('Brand profile not found')
-    }
-
     // Get the image and verify ownership
-    const { data: image } = await supabase
+    const { data: image } = await adminClient
       .from('BrandImage')
       .select('id, url, brandId')
       .eq('id', id)
@@ -63,7 +63,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // Delete record
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await adminClient
       .from('BrandImage')
       .delete()
       .eq('id', id)
@@ -83,33 +83,32 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// PATCH /api/me/brand/images/[id] - Update image (alt text, order)
+// PATCH /api/me/brand/images/[id]?orgId=xxx - Update image (alt text, order)
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   let user
   try {
-    user = await requireBrand()
+    user = await requireAuth()
   } catch {
-    return unauthorizedResponse('Brand access required')
+    return unauthorizedResponse('Authentication required')
+  }
+
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  if (!orgId) {
+    return errorResponse('orgId query parameter is required')
+  }
+
+  const brand = await getUserBrandViaOrg(user.id, orgId)
+  if (!brand) {
+    return notFoundResponse('Brand not found or access denied')
   }
 
   const { id } = await params
-  const supabase = await createClient()
+  const adminClient = createAdminClient()
   const body = await request.json()
 
   try {
-    // Get user's brand
-    const { data: brand } = await supabase
-      .from('Brand')
-      .select('id')
-      .eq('userId', user.id)
-      .single()
-
-    if (!brand) {
-      return notFoundResponse('Brand profile not found')
-    }
-
     // Get the image and verify ownership
-    const { data: image } = await supabase
+    const { data: image } = await adminClient
       .from('BrandImage')
       .select('id, brandId')
       .eq('id', id)
@@ -128,7 +127,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.alt !== undefined) updates.alt = body.alt
     if (body.order !== undefined) updates.order = body.order
 
-    const { data: updatedImage, error: updateError } = await supabase
+    const { data: updatedImage, error: updateError } = await adminClient
       .from('BrandImage')
       .update(updates)
       .eq('id', id)
