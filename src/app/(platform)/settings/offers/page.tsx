@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { Suspense, useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { Loader2 } from 'lucide-react'
 import {
   ArrowLeft,
   Plus,
@@ -159,7 +161,10 @@ function formatDiscountValue(offer: Offer) {
 // Component
 // ---------------------------------------------------------------------------
 
-export default function OffersManagementPage() {
+function OffersManagementContent() {
+  const searchParams = useSearchParams()
+  const queryOrgId = searchParams.get('orgId')
+
   // Organisation / auth state
   const [orgId, setOrgId] = useState<string | null>(null)
   const [orgName, setOrgName] = useState<string>('')
@@ -190,17 +195,38 @@ export default function OffersManagementPage() {
 
   useEffect(() => {
     fetchOrganisation()
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryOrgId])
 
   const fetchOrganisation = async () => {
     try {
       const response = await fetch('/api/organisations/my-organisation')
       const data = await response.json()
 
-      if (data.success) {
-        setOrgId(data.organisation.id)
-        setOrgName(data.organisation.name)
-        setUserRole(data.userRole)
+      if (data.success && data.organisations?.length > 0) {
+        // Find supplier org matching the query param, or pick the first supplier org
+        const supplierOrgs = data.organisations.filter(
+          (org: { type: string }) => org.type === 'SUPPLIER'
+        )
+
+        let targetOrg = null
+        if (queryOrgId) {
+          targetOrg = data.organisations.find(
+            (org: { id: string }) => org.id === queryOrgId
+          )
+        }
+        if (!targetOrg && supplierOrgs.length > 0) {
+          targetOrg = supplierOrgs[0]
+        }
+
+        if (targetOrg) {
+          setOrgId(targetOrg.id)
+          setOrgName(targetOrg.name)
+          setUserRole(targetOrg.userRole)
+        } else {
+          setError('No supplier organisation found. Please link a supplier to your profile first.')
+          setLoading(false)
+        }
       } else {
         setError('No organisation found. Please complete onboarding first.')
         setLoading(false)
@@ -1021,5 +1047,19 @@ export default function OffersManagementPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function OffersManagementPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="w-8 h-8 animate-spin text-cyan" />
+        </div>
+      }
+    >
+      <OffersManagementContent />
+    </Suspense>
   )
 }
