@@ -13,6 +13,7 @@ import {
   Plus,
   Shield,
   Store,
+  Tag as TagIcon,
 } from 'lucide-react'
 import { Badge, Button, Card, CardContent } from '@/components/ui'
 import { SupplierCard } from '@/components/suppliers'
@@ -243,29 +244,39 @@ export function DashboardContent({
               </Card>
             ))}
             {supplierOrgs.map((org) => (
-              <Link
-                key={org.organisationId}
-                href={org.supplierSlug ? `/explore/${org.supplierSlug}` : '#'}
-              >
-                <Card className="hover:shadow-brutal-lg hover:-translate-y-1 transition-all cursor-pointer h-full">
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-coral border-2 border-black flex items-center justify-center shrink-0">
-                        <Store className="w-5 h-5 text-white" />
+              <Card key={org.organisationId} className="h-full">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 bg-coral border-2 border-black flex items-center justify-center shrink-0">
+                      <Store className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-display font-bold text-sm truncate">
+                        {org.supplierName || org.organisationName}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge variant="coral" className="text-xs">Supplier</Badge>
+                        <span className="text-xs text-gray-500 capitalize">{org.memberRole.toLowerCase()}</span>
                       </div>
-                      <div className="min-w-0">
-                        <h3 className="font-display font-bold text-sm truncate">
-                          {org.supplierName || org.organisationName}
-                        </h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="coral" className="text-xs">Supplier</Badge>
-                          <span className="text-xs text-gray-500 capitalize">{org.memberRole.toLowerCase()}</span>
-                        </div>
+                      <div className="flex items-center gap-2 mt-3">
+                        {org.supplierSlug && (
+                          <Link href={`/explore/${org.supplierSlug}`}>
+                            <Button size="sm" variant="outline" className="text-xs">
+                              View Profile
+                            </Button>
+                          </Link>
+                        )}
+                        <Link href={`/settings/offers?orgId=${org.organisationId}`}>
+                          <Button size="sm" variant="outline" className="text-xs">
+                            <TagIcon className="w-3 h-3 mr-1" />
+                            Manage Offers
+                          </Button>
+                        </Link>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </section>

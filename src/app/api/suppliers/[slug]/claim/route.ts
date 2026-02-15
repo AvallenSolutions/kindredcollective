@@ -9,6 +9,7 @@ import {
   notFoundResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { sendClaimVerificationEmail } from '@/lib/email'
 
 interface RouteParams {
   params: Promise<{ slug: string }>
@@ -106,9 +107,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     .update({ claimStatus: 'PENDING' })
     .eq('id', supplier.id)
 
-  // In a production app, you would send an email with the verification code
-  // For now, we'll return a message indicating the process
-  // TODO: Integrate with Supabase Email or Resend
+  // Send verification email
+  try {
+    await sendClaimVerificationEmail(companyEmail, verificationCode, supplier.companyName)
+  } catch (emailError) {
+    console.error('[SupplierClaim] Failed to send verification email:', emailError)
+    // Don't fail the claim if email fails
+  }
 
   return successResponse({
     claim: {

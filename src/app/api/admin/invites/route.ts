@@ -9,6 +9,7 @@ import {
 } from '@/lib/api/response'
 import { parsePagination, paginationMeta } from '@/lib/api/pagination'
 import { generateSecureToken } from '@/lib/api/token'
+import { sendInviteEmail } from '@/lib/email'
 
 // GET /api/admin/invites - List all invite links
 export async function GET(request: NextRequest) {
@@ -124,6 +125,16 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('[AdminInvites] Error creating invite link:', error)
       return serverErrorResponse('Failed to create invite link')
+    }
+
+    // Send invite email if email is provided
+    if (email) {
+      try {
+        await sendInviteEmail(email, token, { notes: notes || undefined })
+      } catch (emailError) {
+        console.error('[AdminInvites] Failed to send invite email:', emailError)
+        // Don't fail the invite creation if email fails
+      }
     }
 
     return successResponse(invite, 201)

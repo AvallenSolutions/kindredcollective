@@ -17,6 +17,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { SUPPLIER_CATEGORY_LABELS, CERTIFICATION_LABELS } from '@/types/database'
 import type { SupplierCategory, Certification } from '@prisma/client'
 import { ContactSupplierButton } from '@/components/suppliers/contact-supplier-button'
+import { SupplierReviews } from '@/components/suppliers/supplier-reviews'
 
 // Force dynamic rendering to always fetch fresh data from Supabase
 export const dynamic = 'force-dynamic'
@@ -268,6 +269,12 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
                 </CardContent>
               </Card>
             )}
+
+            {/* Reviews */}
+            <SupplierReviews
+              supplierSlug={supplier.slug}
+              supplierName={supplier.companyName}
+            />
           </div>
 
           {/* Sidebar */}
