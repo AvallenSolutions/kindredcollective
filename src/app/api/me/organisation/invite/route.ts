@@ -9,6 +9,7 @@ import {
   serverErrorResponse,
 } from '@/lib/api/response'
 import { generateSecureToken } from '@/lib/api/token'
+import { sendOrgInviteEmail } from '@/lib/email'
 
 // RFC 5322 simplified email validation - more permissive than the old regex
 // to support plus addressing, subdomains, and internationalized TLDs
@@ -136,6 +137,26 @@ export async function POST(request: NextRequest) {
   }
 
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/invite/${token}`
+
+  // Send invite email
+  const orgData = membership.organisation as unknown as { name: string } | { name: string }[] | null
+  const orgName = (Array.isArray(orgData) ? orgData[0]?.name : orgData?.name) || 'your organisation'
+  try {
+    // Get inviter's name
+    const { data: inviterMember } = await supabase
+      .from('Member')
+      .select('firstName, lastName')
+      .eq('userId', user.id)
+      .single()
+    const inviterName = inviterMember
+      ? `${inviterMember.firstName} ${inviterMember.lastName}`
+      : user.email || 'A team member'
+
+    await sendOrgInviteEmail(email, token, orgName, inviterName, 'Member')
+  } catch (emailError) {
+    console.error('[OrgInvite] Failed to send invite email:', emailError)
+    // Don't fail the invite creation if email fails
+  }
 
   return successResponse({
     invite: {
