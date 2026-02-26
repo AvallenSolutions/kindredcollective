@@ -21,9 +21,9 @@ export async function GET(request: NextRequest) {
   const orgId = request.nextUrl.searchParams.get('orgId')
   const adminClient = createAdminClient()
 
-  // If orgId provided, get specific brand
+  // If orgId provided, get specific brand (read-only: MEMBER access sufficient)
   if (orgId) {
-    const brand = await getUserBrandViaOrg(user.id, orgId)
+    const brand = await getUserBrandViaOrg(user.id, orgId, 'MEMBER')
     if (!brand) {
       return notFoundResponse('Brand not found or access denied')
     }
@@ -170,7 +170,8 @@ export async function PATCH(request: NextRequest) {
     return errorResponse('orgId query parameter is required')
   }
 
-  const brand = await getUserBrandViaOrg(user.id, orgId)
+  // PATCH requires ADMIN or OWNER role
+  const brand = await getUserBrandViaOrg(user.id, orgId, 'ADMIN')
   if (!brand) {
     return notFoundResponse('Brand not found or access denied')
   }
@@ -223,7 +224,8 @@ export async function DELETE(request: NextRequest) {
     return errorResponse('orgId query parameter is required')
   }
 
-  const brand = await getUserBrandViaOrg(user.id, orgId)
+  // DELETE requires OWNER role
+  const brand = await getUserBrandViaOrg(user.id, orgId, 'OWNER')
   if (!brand) {
     return notFoundResponse('Brand not found or access denied')
   }

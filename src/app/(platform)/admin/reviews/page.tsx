@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import {
   Star,
@@ -13,10 +13,8 @@ import {
   MessageSquare,
   Shield,
   Clock,
-  BarChart3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 
 interface Review {
   id: string
@@ -74,17 +72,16 @@ export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([])
   const [statistics, setStatistics] = useState<Statistics>({ total: 0, published: 0, pending: 0, verified: 0 })
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 0 })
   const [filterPublic, setFilterPublic] = useState<string>('')
   const [filterVerified, setFilterVerified] = useState<string>('')
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchReviews()
-  }, [pagination.page, filterPublic, filterVerified])
-
-  async function fetchReviews() {
+  const fetchReviews = useCallback(async () => {
     setLoading(true)
+    setFetchError(null)
     const params = new URLSearchParams({
       page: pagination.page.toString(),
       limit: '20',
@@ -95,6 +92,10 @@ export default function AdminReviewsPage() {
 
     try {
       const res = await fetch(`/api/admin/reviews?${params}`)
+      if (!res.ok) {
+        setFetchError('Failed to load reviews')
+        return
+      }
       const data = await res.json()
 
       if (data.success) {
@@ -107,41 +108,66 @@ export default function AdminReviewsPage() {
         }))
       }
     } catch {
-      // Handle silently
+      setFetchError('Failed to load reviews. Please check your connection and try again.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [pagination.page, filterPublic, filterVerified])
+
+  useEffect(() => {
+    fetchReviews()
+  }, [fetchReviews])
 
   async function toggleVisibility(id: string, currentlyPublic: boolean) {
-    const res = await fetch(`/api/admin/reviews/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isPublic: !currentlyPublic }),
-    })
-    if (res.ok) {
-      fetchReviews()
+    setActionError(null)
+    try {
+      const res = await fetch(`/api/admin/reviews/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPublic: !currentlyPublic }),
+      })
+      if (res.ok) {
+        fetchReviews()
+      } else {
+        setActionError('Failed to update review visibility')
+      }
+    } catch {
+      setActionError('Failed to update review visibility')
     }
   }
 
   async function toggleVerified(id: string, currentlyVerified: boolean) {
-    const res = await fetch(`/api/admin/reviews/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isVerified: !currentlyVerified }),
-    })
-    if (res.ok) {
-      fetchReviews()
+    setActionError(null)
+    try {
+      const res = await fetch(`/api/admin/reviews/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isVerified: !currentlyVerified }),
+      })
+      if (res.ok) {
+        fetchReviews()
+      } else {
+        setActionError('Failed to update review verification')
+      }
+    } catch {
+      setActionError('Failed to update review verification')
     }
   }
 
   async function deleteReview(id: string) {
-    const res = await fetch(`/api/admin/reviews/${id}`, { method: 'DELETE' })
-    if (res.ok) {
+    setActionError(null)
+    try {
+      const res = await fetch(`/api/admin/reviews/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setDeleteConfirm(null)
+        fetchReviews()
+      } else {
+        setActionError('Failed to delete review')
+        setDeleteConfirm(null)
+      }
+    } catch {
+      setActionError('Failed to delete review')
       setDeleteConfirm(null)
-      fetchReviews()
-    } else {
-      alert('Failed to delete review')
     }
   }
 
@@ -157,6 +183,20 @@ export default function AdminReviewsPage() {
           <p className="text-gray-600">Moderate supplier reviews</p>
         </div>
       </div>
+
+      {/* Error Banners */}
+      {fetchError && (
+        <div className="bg-coral/10 border-2 border-coral text-coral px-4 py-3 text-sm mb-6 flex items-center justify-between">
+          <span>{fetchError}</span>
+          <button onClick={() => fetchReviews()} className="ml-4 underline font-bold">Retry</button>
+        </div>
+      )}
+      {actionError && (
+        <div className="bg-coral/10 border-2 border-coral text-coral px-4 py-3 text-sm mb-6 flex items-center justify-between">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError(null)} className="ml-4 font-bold">&times;</button>
+        </div>
+      )}
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -240,139 +280,71 @@ export default function AdminReviewsPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b-2 border-black">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide">
-                  Reviewer
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide">
-                  Supplier
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide">
-                  Rating
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide">
-                  Content
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide">
-                  Actions
-                </th>
+                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide">Reviewer</th>
+                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide">Supplier</th>
+                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide">Rating</th>
+                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide">Content</th>
+                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide">Status</th>
+                <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                    Loading...
-                  </td>
-                </tr>
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Loading...</td></tr>
               ) : reviews.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                    No reviews found
-                  </td>
-                </tr>
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No reviews found</td></tr>
               ) : (
                 reviews.map((review) => (
                   <tr key={review.id} className="hover:bg-gray-50">
-                    {/* Reviewer */}
                     <td className="px-6 py-4">
                       <div>
                         <p className="font-bold text-sm">{review.reviewerName}</p>
-                        {review.reviewerCompany && (
-                          <p className="text-xs text-gray-500">{review.reviewerCompany}</p>
-                        )}
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {new Date(review.createdAt).toLocaleDateString()}
-                        </p>
+                        {review.reviewerCompany && <p className="text-xs text-gray-500">{review.reviewerCompany}</p>}
+                        <p className="text-xs text-gray-400 mt-0.5">{new Date(review.createdAt).toLocaleDateString()}</p>
                       </div>
                     </td>
-
-                    {/* Supplier */}
                     <td className="px-6 py-4">
                       {review.supplier ? (
-                        <Link
-                          href={`/admin/suppliers/${review.supplier.id}`}
-                          className="text-sm font-bold hover:underline"
-                        >
+                        <Link href={`/admin/suppliers/${review.supplier.id}`} className="text-sm font-bold hover:underline">
                           {review.supplier.companyName}
                         </Link>
                       ) : (
                         <span className="text-sm text-gray-400">-</span>
                       )}
                     </td>
-
-                    {/* Rating */}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <StarDisplay rating={review.rating} />
                         <span className="text-sm font-bold">{review.rating}</span>
                       </div>
                     </td>
-
-                    {/* Content Preview */}
                     <td className="px-6 py-4 max-w-[300px]">
-                      {review.title && (
-                        <p className="text-sm font-bold truncate mb-0.5">{review.title}</p>
-                      )}
+                      {review.title && <p className="text-sm font-bold truncate mb-0.5">{review.title}</p>}
                       <p className="text-sm text-gray-600 line-clamp-2">{review.content}</p>
                     </td>
-
-                    {/* Status */}
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
                         {review.isPublic ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-green-100 text-green-800 border border-green-800">
-                            <Eye className="w-3 h-3" /> Public
-                          </span>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-green-100 text-green-800 border border-green-800"><Eye className="w-3 h-3" /> Public</span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-gray-100 text-gray-800 border border-gray-800">
-                            <EyeOff className="w-3 h-3" /> Hidden
-                          </span>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-gray-100 text-gray-800 border border-gray-800"><EyeOff className="w-3 h-3" /> Hidden</span>
                         )}
                         {review.isVerified ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-cyan text-black border border-black">
-                            <CheckCircle className="w-3 h-3" /> Verified
-                          </span>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-cyan text-black border border-black"><CheckCircle className="w-3 h-3" /> Verified</span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-800">
-                            <XCircle className="w-3 h-3" /> Unverified
-                          </span>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-800"><XCircle className="w-3 h-3" /> Unverified</span>
                         )}
                       </div>
                     </td>
-
-                    {/* Actions */}
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => toggleVisibility(review.id, review.isPublic)}
-                          className="p-2 border-2 border-black hover:bg-gray-100 transition-colors"
-                          title={review.isPublic ? 'Hide review' : 'Publish review'}
-                        >
-                          {review.isPublic ? (
-                            <EyeOff className="w-4 h-4" />
-                          ) : (
-                            <Eye className="w-4 h-4" />
-                          )}
+                        <button onClick={() => toggleVisibility(review.id, review.isPublic)} className="p-2 border-2 border-black hover:bg-gray-100 transition-colors" title={review.isPublic ? 'Hide review' : 'Publish review'}>
+                          {review.isPublic ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
-                        <button
-                          onClick={() => toggleVerified(review.id, review.isVerified)}
-                          className={`p-2 border-2 border-black transition-colors ${
-                            review.isVerified
-                              ? 'bg-cyan hover:bg-gray-100'
-                              : 'hover:bg-cyan'
-                          }`}
-                          title={review.isVerified ? 'Remove verification' : 'Mark as verified'}
-                        >
+                        <button onClick={() => toggleVerified(review.id, review.isVerified)} className={`p-2 border-2 border-black transition-colors ${review.isVerified ? 'bg-cyan hover:bg-gray-100' : 'hover:bg-cyan'}`} title={review.isVerified ? 'Remove verification' : 'Mark as verified'}>
                           <CheckCircle className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => setDeleteConfirm(review.id)}
-                          className="p-2 border-2 border-black hover:bg-red-500 hover:text-white transition-colors"
-                          title="Delete review"
-                        >
+                        <button onClick={() => setDeleteConfirm(review.id)} className="p-2 border-2 border-black hover:bg-red-500 hover:text-white transition-colors" title="Delete review">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -384,29 +356,14 @@ export default function AdminReviewsPage() {
           </table>
         </div>
 
-        {/* Pagination */}
         {pagination.totalPages > 1 && (
           <div className="px-6 py-4 border-t-2 border-black flex items-center justify-between">
             <p className="text-sm text-gray-600">
               Showing page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
             </p>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPagination((prev) => ({ ...prev, page: prev.page - 1 }))}
-                disabled={pagination.page === 1}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
-                disabled={pagination.page === pagination.totalPages}
-              >
-                Next
-              </Button>
+              <Button variant="outline" size="sm" onClick={() => setPagination((prev) => ({ ...prev, page: prev.page - 1 }))} disabled={pagination.page === 1}>Previous</Button>
+              <Button variant="outline" size="sm" onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))} disabled={pagination.page === pagination.totalPages}>Next</Button>
             </div>
           </div>
         )}
@@ -414,30 +371,33 @@ export default function AdminReviewsPage() {
 
       {/* Delete Confirmation Dialog */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-review-title"
+          onClick={(e) => { if (e.target === e.currentTarget) setDeleteConfirm(null) }}
+          onKeyDown={(e) => { if (e.key === 'Escape') setDeleteConfirm(null) }}
+        >
           <div className="bg-white border-2 border-black neo-shadow max-w-md w-full">
             <div className="p-6 border-b-2 border-black">
-              <h2 className="font-display text-xl font-bold uppercase">Confirm Delete</h2>
+              <h2 id="delete-review-title" className="font-display text-xl font-bold uppercase">Confirm Delete</h2>
             </div>
             <div className="p-6">
               <p className="text-sm text-gray-700 mb-6">
                 Are you sure you want to permanently delete this review? This action cannot be undone.
               </p>
               <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={() => setDeleteConfirm(null)}>
+                  Cancel
+                </Button>
                 <Button
                   variant="secondary"
-                  className="flex-1"
+                  className="flex-1 bg-red-500 text-white hover:bg-red-600 border-red-500"
                   onClick={() => deleteReview(deleteConfirm)}
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setDeleteConfirm(null)}
-                >
-                  Cancel
                 </Button>
               </div>
             </div>

@@ -56,12 +56,19 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Check if max uses reached
-  if (invite.maxUses && invite.usedCount >= invite.maxUses) {
-    return NextResponse.json(
-      { error: 'This invite link has reached its maximum usage limit' },
-      { status: 403 }
-    )
+  // Check if max uses reached - use actual user count to avoid TOCTOU race
+  if (invite.maxUses) {
+    const { count: currentUsage } = await adminSupabase
+      .from('User')
+      .select('id', { count: 'exact', head: true })
+      .eq('inviteLinkToken', inviteToken)
+
+    if ((currentUsage || 0) >= invite.maxUses) {
+      return NextResponse.json(
+        { error: 'This invite link has reached its maximum usage limit' },
+        { status: 403 }
+      )
+    }
   }
 
   // Create auth user - always as MEMBER

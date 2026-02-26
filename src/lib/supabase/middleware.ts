@@ -60,6 +60,19 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith(path)
   )
 
+  // Protected API routes - return 401 JSON if not authenticated
+  const protectedApiPaths = ['/api/me', '/api/admin']
+  const isProtectedApiPath = protectedApiPaths.some((path) =>
+    pathname.startsWith(path)
+  )
+
+  if (isProtectedApiPath && !user) {
+    return NextResponse.json(
+      { error: 'Authentication required' },
+      { status: 401 }
+    )
+  }
+
   if (isProtectedPath && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
@@ -68,7 +81,8 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Admin routes - check if user has admin role
-  if (pathname.startsWith('/admin') && user) {
+  const isAdminPath = pathname.startsWith('/admin') || pathname.startsWith('/api/admin')
+  if (isAdminPath && user) {
     // Use admin client to bypass RLS when checking user role
     const adminClient = createAdminClient()
     const { data: dbUser } = await adminClient
@@ -78,6 +92,12 @@ export async function updateSession(request: NextRequest) {
       .single()
 
     if (!dbUser || dbUser.role !== 'ADMIN') {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { error: 'Admin access required' },
+          { status: 403 }
+        )
+      }
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)

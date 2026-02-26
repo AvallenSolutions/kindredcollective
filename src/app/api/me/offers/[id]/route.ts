@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireAuth, getSession, getUserSupplierViaOrg } from '@/lib/auth/session'
+import { getSession, getUserSupplierViaOrg } from '@/lib/auth/session'
 import {
   successResponse,
   errorResponse,
@@ -16,15 +16,12 @@ interface RouteParams {
 
 // GET /api/me/offers/[id]?orgId=xxx - Get single offer with claims
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  let user
-  try {
-    user = await requireAuth()
-  } catch {
+  const session = await getSession()
+  if (!session.isAuthenticated || !session.user) {
     return unauthorizedResponse('Authentication required')
   }
 
   const orgId = request.nextUrl.searchParams.get('orgId')
-  const session = await getSession()
   const { id } = await params
   const adminClient = createAdminClient()
 
@@ -32,7 +29,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   if (session.isAdmin) {
     const { data: offer, error } = await adminClient
       .from('Offer')
-      .select('*, claims:OfferClaim(*, user:User(email))')
+      .select('*, claims:OfferClaim(id, claimedAt, user:User(email))')
       .eq('id', id)
       .single()
 
@@ -48,14 +45,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return errorResponse('orgId query parameter is required')
   }
 
-  const supplier = await getUserSupplierViaOrg(user.id, orgId)
+  // GET is read-only: MEMBER access sufficient
+  const supplier = await getUserSupplierViaOrg(session.user.id, orgId, 'MEMBER')
   if (!supplier) {
     return notFoundResponse('Supplier not found or access denied')
   }
 
   const { data: offer, error } = await adminClient
     .from('Offer')
-    .select('*, claims:OfferClaim(*, user:User(email))')
+    .select('*, claims:OfferClaim(id, claimedAt, user:User(email))')
     .eq('id', id)
     .single()
 
@@ -73,22 +71,19 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // PATCH /api/me/offers/[id]?orgId=xxx - Update offer
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  let user
-  try {
-    user = await requireAuth()
-  } catch {
+  const session = await getSession()
+  if (!session.isAuthenticated || !session.user) {
     return unauthorizedResponse('Authentication required')
   }
 
   const orgId = request.nextUrl.searchParams.get('orgId')
-  const session = await getSession()
   const { id } = await params
   const adminClient = createAdminClient()
 
   // Verify ownership (or admin)
   const { data: existing } = await adminClient
     .from('Offer')
-    .select('supplierId')
+    .select('supplierId, type')
     .eq('id', id)
     .single()
 
@@ -101,7 +96,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return errorResponse('orgId query parameter is required')
     }
 
-    const supplier = await getUserSupplierViaOrg(user.id, orgId)
+    // PATCH requires ADMIN or OWNER role
+    const supplier = await getUserSupplierViaOrg(session.user.id, orgId, 'ADMIN')
     if (!supplier) {
       return notFoundResponse('Supplier not found or access denied')
     }
@@ -111,7 +107,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
   }
 
-  const body = await request.json()
+  let body
+  try {
+    body = await request.json()
+  } catch {
+    return errorResponse('Invalid JSON body')
+  }
 
   const allowedFields = [
     'title',
@@ -127,6 +128,40 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     'minOrderValue',
     'imageUrl',
   ]
+
+  // Validate values before applying
+  const validOfferTypes = ['PERCENTAGE_DISCOUNT', 'FIXED_DISCOUNT', 'FREE_TRIAL', 'BUNDLE', 'OTHER']
+  const validStatuses = ['DRAFT', 'ACTIVE', 'EXPIRED', 'PAUSED']
+
+  if (body.type !== undefined && !validOfferTypes.includes(body.type)) {
+    return errorResponse('Invalid offer type')
+  }
+  if (body.status !== undefined && !validStatuses.includes(body.status)) {
+    return errorResponse('Invalid offer status')
+  }
+  if (body.title !== undefined && body.title.length > 200) {
+    return errorResponse('Title must be less than 200 characters')
+  }
+  if (body.description !== undefined && body.description && body.description.length > 5000) {
+    return errorResponse('Description must be less than 5000 characters')
+  }
+  if (body.discountValue !== undefined && body.discountValue !== null) {
+    if (typeof body.discountValue !== 'number' || body.discountValue < 0) {
+      return errorResponse('Discount value must be a non-negative number')
+    }
+    const effectiveType = body.type || existing.type
+    if (effectiveType === 'PERCENTAGE_DISCOUNT' && body.discountValue > 100) {
+      return errorResponse('Percentage discount cannot exceed 100%')
+    }
+  }
+  if (body.minOrderValue !== undefined && body.minOrderValue !== null) {
+    if (typeof body.minOrderValue !== 'number' || body.minOrderValue < 0) {
+      return errorResponse('Minimum order value must be a non-negative number')
+    }
+  }
+  if (body.imageUrl !== undefined && body.imageUrl && !body.imageUrl.startsWith('https://')) {
+    return errorResponse('Image URL must use HTTPS')
+  }
 
   const updates: Record<string, unknown> = {
     updatedAt: new Date().toISOString(),
@@ -155,15 +190,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 // DELETE /api/me/offers/[id]?orgId=xxx - Delete offer
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  let user
-  try {
-    user = await requireAuth()
-  } catch {
+  const session = await getSession()
+  if (!session.isAuthenticated || !session.user) {
     return unauthorizedResponse('Authentication required')
   }
 
   const orgId = request.nextUrl.searchParams.get('orgId')
-  const session = await getSession()
   const { id } = await params
   const adminClient = createAdminClient()
 
@@ -183,7 +215,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return errorResponse('orgId query parameter is required')
     }
 
-    const supplier = await getUserSupplierViaOrg(user.id, orgId)
+    // DELETE requires OWNER role
+    const supplier = await getUserSupplierViaOrg(session.user.id, orgId, 'OWNER')
     if (!supplier) {
       return notFoundResponse('Supplier not found or access denied')
     }

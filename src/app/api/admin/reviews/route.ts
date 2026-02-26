@@ -59,16 +59,19 @@ export async function GET(request: NextRequest) {
     return serverErrorResponse('Failed to fetch reviews')
   }
 
-  // Calculate statistics
-  const { data: stats } = await supabase
-    .from('SupplierReview')
-    .select('isPublic, isVerified')
+  // Calculate statistics using count queries (efficient, no full-table scan)
+  const [totalResult, publishedResult, pendingResult, verifiedResult] = await Promise.all([
+    supabase.from('SupplierReview').select('*', { count: 'exact', head: true }),
+    supabase.from('SupplierReview').select('*', { count: 'exact', head: true }).eq('isPublic', true),
+    supabase.from('SupplierReview').select('*', { count: 'exact', head: true }).eq('isPublic', false),
+    supabase.from('SupplierReview').select('*', { count: 'exact', head: true }).eq('isVerified', true),
+  ])
 
   const statistics = {
-    total: stats?.length || 0,
-    published: stats?.filter(r => r.isPublic).length || 0,
-    pending: stats?.filter(r => !r.isPublic).length || 0,
-    verified: stats?.filter(r => r.isVerified).length || 0,
+    total: totalResult.count || 0,
+    published: publishedResult.count || 0,
+    pending: pendingResult.count || 0,
+    verified: verifiedResult.count || 0,
   }
 
   return successResponse({

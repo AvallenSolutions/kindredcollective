@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
     return errorResponse('orgId query parameter is required')
   }
 
-  const supplier = await getUserSupplierViaOrg(user.id, orgId)
+  // GET is read-only: MEMBER access sufficient
+  const supplier = await getUserSupplierViaOrg(user.id, orgId, 'MEMBER')
   if (!supplier) {
     return notFoundResponse('Supplier not found or access denied')
   }
@@ -72,13 +73,20 @@ export async function POST(request: NextRequest) {
     return errorResponse('orgId query parameter is required')
   }
 
-  const supplier = await getUserSupplierViaOrg(user.id, orgId)
+  // POST requires ADMIN or OWNER role
+  const supplier = await getUserSupplierViaOrg(user.id, orgId, 'ADMIN')
   if (!supplier) {
     return notFoundResponse('Supplier not found or access denied')
   }
 
   const adminClient = createAdminClient()
-  const body = await request.json()
+
+  let body
+  try {
+    body = await request.json()
+  } catch {
+    return errorResponse('Invalid JSON body')
+  }
 
   const {
     title, description, type, discountValue, code,
@@ -88,6 +96,48 @@ export async function POST(request: NextRequest) {
 
   if (!title || !type) {
     return errorResponse('Title and type are required')
+  }
+
+  // Validate type enum
+  const validOfferTypes = ['PERCENTAGE_DISCOUNT', 'FIXED_DISCOUNT', 'FREE_TRIAL', 'BUNDLE', 'OTHER']
+  if (!validOfferTypes.includes(type)) {
+    return errorResponse('Invalid offer type')
+  }
+
+  // Validate string lengths
+  if (title.length > 200) {
+    return errorResponse('Title must be less than 200 characters')
+  }
+  if (description && description.length > 5000) {
+    return errorResponse('Description must be less than 5000 characters')
+  }
+  if (code && code.length > 50) {
+    return errorResponse('Code must be less than 50 characters')
+  }
+
+  // Validate numeric values
+  if (discountValue !== undefined && discountValue !== null) {
+    if (typeof discountValue !== 'number' || discountValue < 0) {
+      return errorResponse('Discount value must be a non-negative number')
+    }
+    if (type === 'PERCENTAGE_DISCOUNT' && discountValue > 100) {
+      return errorResponse('Percentage discount cannot exceed 100%')
+    }
+  }
+  if (minOrderValue !== undefined && minOrderValue !== null) {
+    if (typeof minOrderValue !== 'number' || minOrderValue < 0) {
+      return errorResponse('Minimum order value must be a non-negative number')
+    }
+  }
+
+  // Validate date ordering
+  if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+    return errorResponse('End date must be after start date')
+  }
+
+  // Validate imageUrl format
+  if (imageUrl && typeof imageUrl === 'string' && !imageUrl.startsWith('https://')) {
+    return errorResponse('Image URL must use HTTPS')
   }
 
   const { data: offer, error } = await adminClient

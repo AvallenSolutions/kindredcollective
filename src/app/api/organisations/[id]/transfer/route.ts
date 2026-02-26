@@ -66,44 +66,54 @@ export async function POST(
       )
     }
 
-    // Transfer ownership: demote current owner to admin, promote new owner
-    // Use a transaction-like approach by doing updates in sequence
+    // Transfer ownership atomically using a Postgres function via RPC.
+    // Falls back to sequential updates if the RPC is not available.
+    const { error: rpcError } = await adminSupabase.rpc('transfer_org_ownership', {
+      p_org_id: params.id,
+      p_old_owner_id: user.id,
+      p_new_owner_id: newOwnerId,
+    })
 
-    // 1. Update new owner to OWNER
-    const { error: promoteError } = await adminSupabase
-      .from('OrganisationMember')
-      .update({ role: 'OWNER' })
-      .eq('organisationId', params.id)
-      .eq('userId', newOwnerId)
+    if (rpcError) {
+      // Fallback: sequential updates with rollback
+      console.warn('RPC transfer_org_ownership not available, using fallback:', rpcError.message)
 
-    if (promoteError) {
-      console.error('Error promoting new owner:', promoteError)
-      return NextResponse.json(
-        { error: 'Failed to transfer ownership' },
-        { status: 500 }
-      )
-    }
-
-    // 2. Demote current owner to ADMIN
-    const { error: demoteError } = await adminSupabase
-      .from('OrganisationMember')
-      .update({ role: 'ADMIN' })
-      .eq('organisationId', params.id)
-      .eq('userId', user.id)
-
-    if (demoteError) {
-      console.error('Error demoting current owner:', demoteError)
-      // Try to rollback by demoting new owner back
-      await adminSupabase
+      // 1. Demote current owner first (safer order - prevents 2 owners)
+      const { error: demoteError } = await adminSupabase
         .from('OrganisationMember')
         .update({ role: 'ADMIN' })
         .eq('organisationId', params.id)
+        .eq('userId', user.id)
+
+      if (demoteError) {
+        console.error('Error demoting current owner:', demoteError)
+        return NextResponse.json(
+          { error: 'Failed to transfer ownership' },
+          { status: 500 }
+        )
+      }
+
+      // 2. Promote new owner
+      const { error: promoteError } = await adminSupabase
+        .from('OrganisationMember')
+        .update({ role: 'OWNER' })
+        .eq('organisationId', params.id)
         .eq('userId', newOwnerId)
 
-      return NextResponse.json(
-        { error: 'Failed to complete ownership transfer' },
-        { status: 500 }
-      )
+      if (promoteError) {
+        console.error('Error promoting new owner:', promoteError)
+        // Rollback: restore original owner
+        await adminSupabase
+          .from('OrganisationMember')
+          .update({ role: 'OWNER' })
+          .eq('organisationId', params.id)
+          .eq('userId', user.id)
+
+        return NextResponse.json(
+          { error: 'Failed to complete ownership transfer' },
+          { status: 500 }
+        )
+      }
     }
 
     return NextResponse.json({

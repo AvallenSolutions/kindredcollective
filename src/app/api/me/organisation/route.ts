@@ -94,6 +94,33 @@ export async function POST(request: NextRequest) {
     return errorResponse('Type must be BRAND or SUPPLIER')
   }
 
+  // Validate ownership of brandId/supplierId if provided
+  if (brandId) {
+    // Verify the brand exists and is not already linked to another org
+    const { data: existingBrandOrg } = await adminClient
+      .from('Organisation')
+      .select('id')
+      .eq('brandId', brandId)
+      .single()
+
+    if (existingBrandOrg) {
+      return errorResponse('This brand is already linked to an organisation', 409)
+    }
+  }
+
+  if (supplierId) {
+    // Verify the supplier exists and is not already linked to another org
+    const { data: existingSupplierOrg } = await adminClient
+      .from('Organisation')
+      .select('id')
+      .eq('supplierId', supplierId)
+      .single()
+
+    if (existingSupplierOrg) {
+      return errorResponse('This supplier is already linked to an organisation', 409)
+    }
+  }
+
   // Generate unique slug
   let slug = generateSlug(name)
   const { data: existingOrg } = await adminClient

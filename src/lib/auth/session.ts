@@ -157,9 +157,15 @@ export async function getUserMember(userId: string) {
 }
 
 /**
- * Get a brand the user can manage via organisation membership
+ * Get a brand the user can access via organisation membership.
+ * By default requires OWNER or ADMIN role for write operations.
+ * Pass requiredRole='MEMBER' for read-only access.
  */
-export async function getUserBrandViaOrg(userId: string, orgId: string) {
+export async function getUserBrandViaOrg(
+  userId: string,
+  orgId: string,
+  requiredRole: 'OWNER' | 'ADMIN' | 'MEMBER' = 'ADMIN'
+) {
   const adminClient = createAdminClient()
 
   // Verify user is a member of this org with sufficient permissions
@@ -172,10 +178,20 @@ export async function getUserBrandViaOrg(userId: string, orgId: string) {
 
   if (memberError || !membership) return null
 
+  // Enforce role hierarchy: OWNER > ADMIN > MEMBER
+  const roleHierarchy: Record<string, number> = { OWNER: 3, ADMIN: 2, MEMBER: 1 }
+  if ((roleHierarchy[membership.role] || 0) < (roleHierarchy[requiredRole] || 0)) {
+    return null
+  }
+
   // Fetch the org's brand
   const { data: org, error: orgError } = await adminClient
     .from('Organisation')
-    .select('brandId, brand:Brand(*)')
+    .select(`brandId, brand:Brand(
+      id, name, slug, tagline, description, story, logoUrl, heroImageUrl,
+      websiteUrl, instagramUrl, linkedinUrl, twitterUrl, category, subcategories,
+      yearFounded, location, country, isVerified, isPublic, createdAt, updatedAt
+    )`)
     .eq('id', orgId)
     .eq('type', 'BRAND')
     .single()
@@ -187,9 +203,15 @@ export async function getUserBrandViaOrg(userId: string, orgId: string) {
 }
 
 /**
- * Get a supplier the user can manage via organisation membership
+ * Get a supplier the user can access via organisation membership.
+ * By default requires OWNER or ADMIN role for write operations.
+ * Pass requiredRole='MEMBER' for read-only access.
  */
-export async function getUserSupplierViaOrg(userId: string, orgId: string) {
+export async function getUserSupplierViaOrg(
+  userId: string,
+  orgId: string,
+  requiredRole: 'OWNER' | 'ADMIN' | 'MEMBER' = 'ADMIN'
+) {
   const adminClient = createAdminClient()
 
   const { data: membership, error: memberError } = await adminClient
@@ -201,9 +223,21 @@ export async function getUserSupplierViaOrg(userId: string, orgId: string) {
 
   if (memberError || !membership) return null
 
+  // Enforce role hierarchy: OWNER > ADMIN > MEMBER
+  const roleHierarchy: Record<string, number> = { OWNER: 3, ADMIN: 2, MEMBER: 1 }
+  if ((roleHierarchy[membership.role] || 0) < (roleHierarchy[requiredRole] || 0)) {
+    return null
+  }
+
   const { data: org, error: orgError } = await adminClient
     .from('Organisation')
-    .select('supplierId, supplier:Supplier(*)')
+    .select(`supplierId, supplier:Supplier(
+      id, companyName, slug, tagline, description, logoUrl, heroImageUrl,
+      websiteUrl, linkedinUrl, instagramUrl, portfolioUrl, category, subcategories,
+      services, certifications, moqMin, moqMax, leadTimeDays, location, country,
+      serviceRegions, contactName, contactEmail, contactPhone, isVerified, isPublic,
+      claimStatus, viewCount, createdAt, updatedAt
+    )`)
     .eq('id', orgId)
     .eq('type', 'SUPPLIER')
     .single()

@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireAuth, getSession } from '@/lib/auth/session'
+import { getSession } from '@/lib/auth/session'
 import {
   successResponse,
+  errorResponse,
   unauthorizedResponse,
   notFoundResponse,
   forbiddenResponse,
@@ -15,16 +16,11 @@ interface RouteParams {
 
 // GET /api/me/events/[id] - Get single event with RSVPs
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  let user
-  try {
-    user = await requireAuth()
-  } catch {
+  const session = await getSession()
+  if (!session.isAuthenticated || !session.user) {
     return unauthorizedResponse('Authentication required')
   }
 
-  const session = await getSession()
-
-  // Only users with brand/supplier affiliations or admins can manage events
   if (!session.hasBrandAffiliation && !session.hasSupplierAffiliation && !session.isAdmin) {
     return unauthorizedResponse('Brand or Supplier affiliation required')
   }
@@ -34,7 +30,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   const { data: event, error } = await adminClient
     .from('Event')
-    .select('*, rsvps:EventRsvp(*, user:User(email))')
+    .select('*, rsvps:EventRsvp(id, status, createdAt, user:User(email))')
     .eq('id', id)
     .single()
 
@@ -43,7 +39,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 
   // Check ownership (events use createdById)
-  if (event.createdById !== user.id && !session.isAdmin) {
+  if (event.createdById !== session.user.id && !session.isAdmin) {
     return forbiddenResponse('You can only view your own events')
   }
 
@@ -52,14 +48,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 // PATCH /api/me/events/[id] - Update event
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
-  let user
-  try {
-    user = await requireAuth()
-  } catch {
+  const session = await getSession()
+  if (!session.isAuthenticated || !session.user) {
     return unauthorizedResponse('Authentication required')
   }
-
-  const session = await getSession()
 
   if (!session.hasBrandAffiliation && !session.hasSupplierAffiliation && !session.isAdmin) {
     return unauthorizedResponse('Brand or Supplier affiliation required')
@@ -67,7 +59,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
   const { id } = await params
   const adminClient = createAdminClient()
-  const body = await request.json()
+
+  let body
+  try {
+    body = await request.json()
+  } catch {
+    return errorResponse('Invalid JSON body')
+  }
 
   // Verify ownership
   const { data: existing } = await adminClient
@@ -80,7 +78,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Event not found')
   }
 
-  if (existing.createdById !== user.id && !session.isAdmin) {
+  if (existing.createdById !== session.user.id && !session.isAdmin) {
     return forbiddenResponse('You can only update your own events')
   }
 
@@ -137,14 +135,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 // DELETE /api/me/events/[id] - Delete event
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
-  let user
-  try {
-    user = await requireAuth()
-  } catch {
+  const session = await getSession()
+  if (!session.isAuthenticated || !session.user) {
     return unauthorizedResponse('Authentication required')
   }
-
-  const session = await getSession()
 
   if (!session.hasBrandAffiliation && !session.hasSupplierAffiliation && !session.isAdmin) {
     return unauthorizedResponse('Brand or Supplier affiliation required')
@@ -164,7 +158,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Event not found')
   }
 
-  if (existing.createdById !== user.id && !session.isAdmin) {
+  if (existing.createdById !== session.user.id && !session.isAdmin) {
     return forbiddenResponse('You can only delete your own events')
   }
 

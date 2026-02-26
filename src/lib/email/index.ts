@@ -7,6 +7,19 @@ const resend = process.env.RESEND_API_KEY
 const FROM_EMAIL = 'Kindred Collective <noreply@kindredcollective.co.uk>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+}
+
+function sanitizeSubject(str: string): string {
+  return str.replace(/[\r\n\0]/g, '')
+}
+
 interface SendEmailOptions {
   to: string
   subject: string
@@ -57,7 +70,7 @@ export async function sendInviteEmail(
         <div style="padding: 32px 24px; border: 3px solid #000; border-top: 0;">
           <h2 style="margin-top: 0;">You&rsquo;re Invited!</h2>
           <p>You&rsquo;ve been invited to join Kindred Collective &ndash; the private community for the independent drinks industry.</p>
-          ${opts?.notes ? `<p style="color: #666; font-style: italic;">&ldquo;${opts.notes}&rdquo;</p>` : ''}
+          ${opts?.notes ? `<p style="color: #666; font-style: italic;">&ldquo;${escapeHtml(opts.notes)}&rdquo;</p>` : ''}
           <a href="${signupUrl}" style="display: inline-block; background: #00D9FF; color: #000; font-weight: bold; text-transform: uppercase; padding: 12px 32px; border: 3px solid #000; text-decoration: none; margin: 16px 0;">
             Accept Invitation
           </a>
@@ -83,7 +96,7 @@ export async function sendOrgInviteEmail(
 
   return sendEmail({
     to,
-    subject: `Join ${orgName} on Kindred Collective`,
+    subject: sanitizeSubject(`Join ${orgName} on Kindred Collective`),
     html: `
       <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: #00D9FF; padding: 24px; border: 3px solid #000;">
@@ -93,7 +106,7 @@ export async function sendOrgInviteEmail(
         </div>
         <div style="padding: 32px 24px; border: 3px solid #000; border-top: 0;">
           <h2 style="margin-top: 0;">Team Invitation</h2>
-          <p><strong>${inviterName}</strong> has invited you to join <strong>${orgName}</strong> as a <strong>${role.toLowerCase()}</strong> on Kindred Collective.</p>
+          <p><strong>${escapeHtml(inviterName)}</strong> has invited you to join <strong>${escapeHtml(orgName)}</strong> as a <strong>${escapeHtml(role.toLowerCase())}</strong> on Kindred Collective.</p>
           <a href="${acceptUrl}" style="display: inline-block; background: #00D9FF; color: #000; font-weight: bold; text-transform: uppercase; padding: 12px 32px; border: 3px solid #000; text-decoration: none; margin: 16px 0;">
             Accept Invitation
           </a>
@@ -118,7 +131,7 @@ export async function sendClaimVerificationEmail(
 ) {
   return sendEmail({
     to,
-    subject: `Verify your claim for ${supplierName} on Kindred Collective`,
+    subject: sanitizeSubject(`Verify your claim for ${supplierName} on Kindred Collective`),
     html: `
       <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: #00D9FF; padding: 24px; border: 3px solid #000;">
@@ -128,7 +141,7 @@ export async function sendClaimVerificationEmail(
         </div>
         <div style="padding: 32px 24px; border: 3px solid #000; border-top: 0;">
           <h2 style="margin-top: 0;">Verify Your Supplier Claim</h2>
-          <p>You&rsquo;re claiming the profile for <strong>${supplierName}</strong> on Kindred Collective.</p>
+          <p>You&rsquo;re claiming the profile for <strong>${escapeHtml(supplierName)}</strong> on Kindred Collective.</p>
           <p>Your verification code is:</p>
           <div style="background: #f5f5f5; border: 3px solid #000; padding: 16px; text-align: center; margin: 16px 0;">
             <span style="font-family: monospace; font-size: 32px; letter-spacing: 8px; font-weight: bold;">

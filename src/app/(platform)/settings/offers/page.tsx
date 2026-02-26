@@ -173,7 +173,8 @@ function OffersManagementContent() {
   // Offers state
   const [offers, setOffers] = useState<Offer[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [pageError, setPageError] = useState<string | null>(null)
+  const [modalError, setModalError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   // Filter
@@ -224,16 +225,16 @@ function OffersManagementContent() {
           setOrgName(targetOrg.name)
           setUserRole(targetOrg.userRole)
         } else {
-          setError('No supplier organisation found. Please link a supplier to your profile first.')
+          setPageError('No supplier organisation found. Please link a supplier to your profile first.')
           setLoading(false)
         }
       } else {
-        setError('No organisation found. Please complete onboarding first.')
+        setPageError('No organisation found. Please complete onboarding first.')
         setLoading(false)
       }
     } catch (err) {
       console.error('Error fetching organisation:', err)
-      setError('Failed to load organisation')
+      setPageError('Failed to load organisation')
       setLoading(false)
     }
   }
@@ -256,7 +257,7 @@ function OffersManagementContent() {
       }
     } catch (err) {
       console.error('Error fetching offers:', err)
-      setError('Failed to load offers')
+      setPageError('Failed to load offers')
     } finally {
       setLoading(false)
     }
@@ -286,7 +287,7 @@ function OffersManagementContent() {
   const openCreateModal = () => {
     setEditingOffer(null)
     setFormData(EMPTY_FORM)
-    setError(null)
+    setModalError(null)
     setShowModal(true)
   }
 
@@ -305,19 +306,19 @@ function OffersManagementContent() {
       minOrderValue: offer.minOrderValue != null ? String(offer.minOrderValue) : '',
       imageUrl: offer.imageUrl || '',
     })
-    setError(null)
+    setModalError(null)
     setShowModal(true)
   }
 
   const handleSave = async () => {
     if (!orgId) return
     if (!formData.title.trim()) {
-      setError('Title is required')
+      setModalError('Title is required')
       return
     }
 
     setSaving(true)
-    setError(null)
+    setModalError(null)
 
     const body: Record<string, unknown> = {
       title: formData.title.trim(),
@@ -355,7 +356,7 @@ function OffersManagementContent() {
       const data = await response.json()
 
       if (!response.ok) {
-        setError(data.error || data.message || 'Something went wrong')
+        setModalError(data.error || data.message || 'Something went wrong')
         return
       }
 
@@ -366,7 +367,7 @@ function OffersManagementContent() {
       fetchOffers()
     } catch (err) {
       console.error('Error saving offer:', err)
-      setError('An error occurred while saving the offer')
+      setModalError('An error occurred while saving the offer')
     } finally {
       setSaving(false)
     }
@@ -387,7 +388,7 @@ function OffersManagementContent() {
 
       if (!response.ok) {
         const data = await response.json()
-        setError(data.error || 'Failed to delete offer')
+        setPageError(data.error || 'Failed to delete offer')
         return
       }
 
@@ -396,7 +397,7 @@ function OffersManagementContent() {
       fetchOffers()
     } catch (err) {
       console.error('Error deleting offer:', err)
-      setError('An error occurred while deleting the offer')
+      setPageError('An error occurred while deleting the offer')
     } finally {
       setDeleting(false)
     }
@@ -418,7 +419,7 @@ function OffersManagementContent() {
 
       if (!response.ok) {
         const data = await response.json()
-        setError(data.error || 'Failed to update status')
+        setPageError(data.error || 'Failed to update status')
         return
       }
 
@@ -426,7 +427,7 @@ function OffersManagementContent() {
       fetchOffers()
     } catch (err) {
       console.error('Error updating status:', err)
-      setError('An error occurred while updating the status')
+      setPageError('An error occurred while updating the status')
     }
   }
 
@@ -470,12 +471,12 @@ function OffersManagementContent() {
     )
   }
 
-  if (error && !orgId) {
+  if (pageError && !orgId) {
     return (
       <div className="max-w-7xl mx-auto px-6 py-8">
         <Card className="shadow-brutal-lg">
           <CardContent className="pt-6">
-            <p className="text-center text-gray-600">{error}</p>
+            <p className="text-center text-gray-600">{pageError}</p>
             <p className="text-center text-sm text-gray-500 mt-2">
               Complete your onboarding to create or join an organisation.
             </p>
@@ -527,10 +528,10 @@ function OffersManagementContent() {
       {/* ---------------------------------------------------------------- */}
       {/* Messages                                                         */}
       {/* ---------------------------------------------------------------- */}
-      {error && orgId && (
+      {pageError && orgId && (
         <div className="bg-coral/10 border-2 border-coral text-coral px-4 py-3 text-sm mb-6 flex items-center justify-between">
-          <span>{error}</span>
-          <button onClick={() => setError(null)}>
+          <span>{pageError}</span>
+          <button onClick={() => setPageError(null)}>
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -781,11 +782,18 @@ function OffersManagementContent() {
       {/* Create / Edit Modal                                              */}
       {/* ---------------------------------------------------------------- */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-start justify-center z-50 p-4 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="offer-modal-title"
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowModal(false); setEditingOffer(null); setFormData(EMPTY_FORM); setModalError(null) } }}
+          onKeyDown={(e) => { if (e.key === 'Escape') { setShowModal(false); setEditingOffer(null); setFormData(EMPTY_FORM); setModalError(null) } }}
+        >
           <Card className="max-w-2xl w-full my-8">
             <CardHeader className="border-b-2 border-black">
               <div className="flex items-center justify-between">
-                <CardTitle>
+                <CardTitle id="offer-modal-title">
                   {editingOffer ? 'Edit Offer' : 'Create New Offer'}
                 </CardTitle>
                 <button
@@ -793,7 +801,7 @@ function OffersManagementContent() {
                     setShowModal(false)
                     setEditingOffer(null)
                     setFormData(EMPTY_FORM)
-                    setError(null)
+                    setModalError(null)
                   }}
                   className="p-1 hover:bg-gray-100 border-2 border-black"
                 >
@@ -972,9 +980,9 @@ function OffersManagementContent() {
               </div>
 
               {/* Error inside modal */}
-              {error && (
+              {modalError && (
                 <div className="bg-coral/10 border-2 border-coral text-coral px-4 py-3 text-sm">
-                  {error}
+                  {modalError}
                 </div>
               )}
 
@@ -986,7 +994,7 @@ function OffersManagementContent() {
                     setShowModal(false)
                     setEditingOffer(null)
                     setFormData(EMPTY_FORM)
-                    setError(null)
+                    setModalError(null)
                   }}
                   className="flex-1"
                 >
@@ -1013,10 +1021,17 @@ function OffersManagementContent() {
       {/* Delete Confirmation Modal                                        */}
       {/* ---------------------------------------------------------------- */}
       {deletingId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-offer-title"
+          onClick={(e) => { if (e.target === e.currentTarget) setDeletingId(null) }}
+          onKeyDown={(e) => { if (e.key === 'Escape') setDeletingId(null) }}
+        >
           <Card className="max-w-md w-full">
             <CardHeader className="border-b-2 border-black">
-              <CardTitle className="text-coral">Delete Offer</CardTitle>
+              <CardTitle id="delete-offer-title" className="text-coral">Delete Offer</CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               <div className="bg-coral/10 border-2 border-coral text-coral px-4 py-3 text-sm">

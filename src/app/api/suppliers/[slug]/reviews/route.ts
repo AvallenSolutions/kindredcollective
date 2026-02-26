@@ -116,7 +116,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { slug } = await params
   const supabase = await createClient()
   const adminClient = createAdminClient()
-  const body = await request.json()
+
+  let body
+  try {
+    body = await request.json()
+  } catch {
+    return errorResponse('Invalid JSON body')
+  }
 
   const {
     rating,
@@ -132,8 +138,16 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return errorResponse('Rating is required and must be between 1 and 5')
   }
 
-  if (!content || content.length < 10) {
+  if (!content || content.trim().length < 10) {
     return errorResponse('Review content is required and must be at least 10 characters')
+  }
+
+  if (content.length > 5000) {
+    return errorResponse('Review content must be less than 5000 characters')
+  }
+
+  if (title && title.length > 120) {
+    return errorResponse('Review title must be less than 120 characters')
   }
 
   // Validate optional ratings
@@ -150,6 +164,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   if (!supplier) {
     return notFoundResponse('Supplier not found')
+  }
+
+  // Check for duplicate review from this user
+  const { data: existingReview } = await adminClient
+    .from('SupplierReview')
+    .select('id')
+    .eq('supplierId', supplier.id)
+    .eq('userId', user.id)
+    .single()
+
+  if (existingReview) {
+    return errorResponse('You have already reviewed this supplier')
   }
 
   // Get user's first brand via org (if they have one) for the review
@@ -186,7 +212,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       serviceRating,
       valueRating,
       isVerified: false,
-      isPublic: true,
+      isPublic: false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
@@ -200,6 +226,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
   return successResponse({
     ...review,
-    message: 'Review submitted successfully and is now public.',
+    message: 'Review submitted successfully and is pending moderation.',
   }, 201)
 }

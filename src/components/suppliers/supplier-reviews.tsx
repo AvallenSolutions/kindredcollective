@@ -116,6 +116,7 @@ export function SupplierReviews({ supplierSlug, supplierName }: SupplierReviewsP
   const [reviews, setReviews] = useState<Review[]>([])
   const [stats, setStats] = useState<ReviewStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [fetchError, setFetchError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
@@ -133,6 +134,7 @@ export function SupplierReviews({ supplierSlug, supplierName }: SupplierReviewsP
 
   const fetchReviews = useCallback(async () => {
     setLoading(true)
+    setFetchError(null)
     try {
       const params = new URLSearchParams({
         page: pagination.page.toString(),
@@ -140,6 +142,10 @@ export function SupplierReviews({ supplierSlug, supplierName }: SupplierReviewsP
       })
 
       const res = await fetch(`/api/suppliers/${supplierSlug}/reviews?${params}`)
+      if (!res.ok) {
+        setFetchError('Failed to load reviews')
+        return
+      }
       const data = await res.json()
 
       if (data.success) {
@@ -152,7 +158,7 @@ export function SupplierReviews({ supplierSlug, supplierName }: SupplierReviewsP
         }))
       }
     } catch {
-      // Silently handle fetch error
+      setFetchError('Failed to load reviews. Please try again later.')
     } finally {
       setLoading(false)
     }
@@ -210,6 +216,7 @@ export function SupplierReviews({ supplierSlug, supplierName }: SupplierReviewsP
         setTimeout(() => {
           setShowForm(false)
           setSubmitSuccess(false)
+          setPagination((prev) => ({ ...prev, page: 1 }))
           fetchReviews()
         }, 2000)
       } else {
@@ -340,7 +347,7 @@ export function SupplierReviews({ supplierSlug, supplierName }: SupplierReviewsP
 
             {submitSuccess && (
               <div className="p-4 mb-4 bg-green-100 border-2 border-green-500 text-green-700 text-sm">
-                Review submitted successfully! It is now public.
+                Review submitted successfully! It is pending moderation.
               </div>
             )}
 
@@ -457,10 +464,18 @@ export function SupplierReviews({ supplierSlug, supplierName }: SupplierReviewsP
         </Card>
       )}
 
+      {/* Fetch Error */}
+      {fetchError && (
+        <div className="bg-red-100 border-2 border-red-500 text-red-700 text-sm p-4 mb-6 flex items-center justify-between">
+          <span>{fetchError}</span>
+          <button onClick={() => fetchReviews()} className="ml-4 underline font-bold">Retry</button>
+        </div>
+      )}
+
       {/* Reviews List */}
       {loading ? (
         <div className="text-center py-12 text-gray-500">Loading reviews...</div>
-      ) : reviews.length === 0 ? (
+      ) : reviews.length === 0 && !fetchError ? (
         <div className="text-center py-12 border-3 border-dashed border-gray-300 bg-gray-50">
           <Star className="w-10 h-10 text-gray-300 mx-auto mb-3" />
           <p className="font-display text-lg font-bold text-gray-400 uppercase">No reviews yet</p>
@@ -515,7 +530,7 @@ export function SupplierReviews({ supplierSlug, supplierName }: SupplierReviewsP
 
               {/* Supplementary Ratings & Recommend */}
               <div className="flex flex-wrap items-center gap-4 pt-3 border-t border-gray-200">
-                {review.serviceRating && (
+                {review.serviceRating != null && review.serviceRating > 0 && (
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
                       Service:
@@ -523,7 +538,7 @@ export function SupplierReviews({ supplierSlug, supplierName }: SupplierReviewsP
                     <StarRating rating={review.serviceRating} size="sm" />
                   </div>
                 )}
-                {review.valueRating && (
+                {review.valueRating != null && review.valueRating > 0 && (
                   <div className="flex items-center gap-1.5">
                     <span className="text-xs font-bold uppercase tracking-wide text-gray-500">
                       Value:
