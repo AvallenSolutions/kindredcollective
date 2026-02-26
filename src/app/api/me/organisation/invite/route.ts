@@ -13,7 +13,8 @@ import { sendOrgInviteEmail } from '@/lib/email'
 
 // RFC 5322 simplified email validation - more permissive than the old regex
 // to support plus addressing, subdomains, and internationalized TLDs
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+// Improved email validation: requires non-empty local part, non-empty domain, and valid TLD
+const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/
 
 // POST /api/me/organisation/invite - Send invite
 export async function POST(request: NextRequest) {
@@ -27,10 +28,15 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const body = await request.json()
 
-  const { email } = body
+  const { email, role = 'MEMBER' } = body
 
   if (!email) {
     return errorResponse('Email is required')
+  }
+
+  // Validate role
+  if (!['ADMIN', 'MEMBER'].includes(role)) {
+    return errorResponse('Invalid role. Can only invite as ADMIN or MEMBER')
   }
 
   // Validate email format
@@ -39,23 +45,42 @@ export async function POST(request: NextRequest) {
   }
 
   // Get user's organisation membership
-  const { data: membership, error: membershipError } = await supabase
+  // Support orgId query param for users with multiple organisations
+  const orgId = request.nextUrl.searchParams.get('orgId')
+  const query = supabase
     .from('OrganisationMember')
     .select('id, role, organisationId, organisation:Organisation(name)')
     .eq('userId', user.id)
-    .single()
 
-  if (membershipError && membershipError.code !== 'PGRST116') {
+  if (orgId) {
+    query.eq('organisationId', orgId)
+  }
+
+  const { data: memberships, error: membershipError } = await query
+
+  if (membershipError) {
     console.error('[OrgInvite] Error fetching membership:', membershipError)
     return serverErrorResponse('Failed to verify membership')
   }
 
-  if (!membership) {
+  if (!memberships || memberships.length === 0) {
     return notFoundResponse('You are not a member of any organisation')
   }
 
-  if (membership.role !== 'OWNER') {
-    return errorResponse('Only the organisation owner can send invites', 403)
+  // If multiple memberships and no orgId specified, require orgId
+  if (memberships.length > 1 && !orgId) {
+    return errorResponse('You belong to multiple organisations. Please specify orgId query parameter.')
+  }
+
+  const membership = memberships[0]
+
+  if (!['OWNER', 'ADMIN'].includes(membership.role)) {
+    return errorResponse('Only owners and admins can send invites', 403)
+  }
+
+  // Only owners can invite admins
+  if (role === 'ADMIN' && membership.role !== 'OWNER') {
+    return errorResponse('Only the organisation owner can invite admins', 403)
   }
 
   // Check if email is already a member
@@ -124,6 +149,7 @@ export async function POST(request: NextRequest) {
       organisationId: membership.organisationId,
       email,
       token,
+      role,
       expiresAt: expiresAt.toISOString(),
       createdAt: new Date().toISOString(),
       createdById: user.id,
@@ -152,7 +178,7 @@ export async function POST(request: NextRequest) {
       ? `${inviterMember.firstName} ${inviterMember.lastName}`
       : user.email || 'A team member'
 
-    await sendOrgInviteEmail(email, token, orgName, inviterName, 'Member')
+    await sendOrgInviteEmail(email, token, orgName, inviterName, role === 'ADMIN' ? 'Admin' : 'Member')
   } catch (emailError) {
     console.error('[OrgInvite] Failed to send invite email:', emailError)
     // Don't fail the invite creation if email fails
@@ -169,8 +195,8 @@ export async function POST(request: NextRequest) {
   }, 201)
 }
 
-// GET /api/me/organisation/invite - List pending invites
-export async function GET() {
+// GET /api/me/organisation/invite?orgId=xxx - List pending invites
+export async function GET(request: NextRequest) {
   let user
   try {
     user = await requireAuth()
@@ -179,25 +205,37 @@ export async function GET() {
   }
 
   const supabase = await createClient()
+  const orgId = request.nextUrl.searchParams.get('orgId')
 
   // Get user's organisation membership
-  const { data: membership, error: membershipError } = await supabase
+  const query = supabase
     .from('OrganisationMember')
     .select('id, role, organisationId')
     .eq('userId', user.id)
-    .single()
 
-  if (membershipError && membershipError.code !== 'PGRST116') {
+  if (orgId) {
+    query.eq('organisationId', orgId)
+  }
+
+  const { data: memberships, error: membershipError } = await query
+
+  if (membershipError) {
     console.error('[OrgInvite] Error fetching membership:', membershipError)
     return serverErrorResponse('Failed to verify membership')
   }
 
-  if (!membership) {
+  if (!memberships || memberships.length === 0) {
     return notFoundResponse('You are not a member of any organisation')
   }
 
-  if (membership.role !== 'OWNER') {
-    return errorResponse('Only the organisation owner can view invites', 403)
+  if (memberships.length > 1 && !orgId) {
+    return errorResponse('You belong to multiple organisations. Please specify orgId query parameter.')
+  }
+
+  const membership = memberships[0]
+
+  if (!['OWNER', 'ADMIN'].includes(membership.role)) {
+    return errorResponse('Only owners and admins can view invites', 403)
   }
 
   // Get pending invites

@@ -108,18 +108,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return serverErrorResponse('Failed to claim offer')
   }
 
-  // Update claim count using a count query to avoid race conditions.
-  // The old read-modify-write pattern (claimCount + 1) loses increments
-  // when two requests read the same value concurrently.
-  const { count } = await supabase
+  // Update claim count atomically using the actual count of claims.
+  // The @@unique([offerId, userId]) constraint on OfferClaim prevents
+  // duplicate claims, and we sync the denormalized count from the source.
+  const { count: claimTotal } = await supabase
     .from('OfferClaim')
     .select('id', { count: 'exact', head: true })
     .eq('offerId', id)
 
-  await supabase
-    .from('Offer')
-    .update({ claimCount: count || 0 })
-    .eq('id', id)
+  if (claimTotal !== null) {
+    await supabase
+      .from('Offer')
+      .update({ claimCount: claimTotal })
+      .eq('id', id)
+  }
 
   return successResponse(claim, 201)
 }

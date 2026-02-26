@@ -15,9 +15,10 @@ interface RouteParams {
   params: Promise<{ slug: string }>
 }
 
-// Generate a random 6-digit verification code
+// Generate a cryptographically secure 6-digit verification code
 function generateVerificationCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString()
+  const { randomInt } = require('crypto')
+  return randomInt(100000, 999999).toString()
 }
 
 // Helper to get supplier by slug

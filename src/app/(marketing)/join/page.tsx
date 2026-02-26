@@ -7,6 +7,8 @@ import { Button } from '@/components/ui'
 
 export default function JoinPage() {
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -15,11 +17,30 @@ export default function JoinPage() {
     message: '',
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // For now, just show success state
-    // TODO: connect to an API endpoint or email service
-    setSubmitted(true)
+    setSubmitting(true)
+    setError('')
+
+    try {
+      const res = await fetch('/api/join-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Failed to submit request')
+        return
+      }
+
+      setSubmitted(true)
+    } catch {
+      setError('Failed to submit request. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -170,8 +191,18 @@ export default function JoinPage() {
                 />
               </div>
 
-              <Button type="submit" className="w-full py-3 bg-cyan text-black font-bold uppercase border-2 border-black neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">
-                Submit Request
+              {error && (
+                <div className="p-4 bg-red-100 border-2 border-red-500 text-red-700 text-sm">
+                  {error}
+                </div>
+              )}
+
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="w-full py-3 bg-cyan text-black font-bold uppercase border-2 border-black neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+              >
+                {submitting ? 'Submitting...' : 'Submit Request'}
               </Button>
             </form>
           )}

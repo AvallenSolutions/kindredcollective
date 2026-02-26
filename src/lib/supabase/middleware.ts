@@ -55,15 +55,16 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
   // Protected routes - redirect to login if not authenticated
-  const protectedPaths = ['/dashboard', '/profile', '/settings', '/admin']
+  // Use exact path or path + '/' to avoid matching unintended routes (e.g., /administration)
+  const protectedPaths = ['/dashboard', '/profile', '/settings', '/admin', '/onboarding']
   const isProtectedPath = protectedPaths.some((path) =>
-    pathname.startsWith(path)
+    pathname === path || pathname.startsWith(path + '/')
   )
 
   // Protected API routes - return 401 JSON if not authenticated
   const protectedApiPaths = ['/api/me', '/api/admin']
   const isProtectedApiPath = protectedApiPaths.some((path) =>
-    pathname.startsWith(path)
+    pathname === path || pathname.startsWith(path + '/')
   )
 
   if (isProtectedApiPath && !user) {
@@ -81,7 +82,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Admin routes - check if user has admin role
-  const isAdminPath = pathname.startsWith('/admin') || pathname.startsWith('/api/admin')
+  const isAdminPath = pathname === '/admin' || pathname.startsWith('/admin/') || pathname.startsWith('/api/admin/')
   if (isAdminPath && user) {
     // Use admin client to bypass RLS when checking user role
     const adminClient = createAdminClient()

@@ -69,8 +69,8 @@ interface DashboardContentProps {
     id: string
     offer: {
       title: string
-      discountType: string
-      discountValue: number
+      type: string
+      discountValue: number | null
       supplier: {
         companyName: string
         slug: string
@@ -363,9 +363,9 @@ export function DashboardContent({
                         <p className="text-xs text-gray-500">
                           {claim.offer.supplier.companyName}
                           {' - '}
-                          {claim.offer.discountType === 'PERCENTAGE'
+                          {claim.offer.type === 'PERCENTAGE_DISCOUNT'
                             ? `${claim.offer.discountValue}% off`
-                            : `$${claim.offer.discountValue} off`}
+                            : `£${claim.offer.discountValue} off`}
                         </p>
                       </CardContent>
                     </Card>

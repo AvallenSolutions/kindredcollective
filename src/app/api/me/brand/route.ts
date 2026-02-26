@@ -78,7 +78,8 @@ export async function POST(request: NextRequest) {
     return errorResponse('Name, slug, and category are required')
   }
 
-  // Check if slug already exists
+  // Check if slug already exists, auto-generate unique suffix if needed
+  let finalSlug = slug
   const { data: existingBrand } = await adminClient
     .from('Brand')
     .select('id')
@@ -86,7 +87,8 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (existingBrand) {
-    return errorResponse('A brand with this slug already exists')
+    const { randomBytes } = require('crypto')
+    finalSlug = `${slug}-${randomBytes(3).toString('hex')}`
   }
 
   // Create brand (no userId)
@@ -94,7 +96,7 @@ export async function POST(request: NextRequest) {
     .from('Brand')
     .insert({
       name,
-      slug,
+      slug: finalSlug,
       tagline,
       description,
       story,

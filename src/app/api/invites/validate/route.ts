@@ -5,9 +5,13 @@ import {
   errorResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { applyRateLimit } from '@/lib/api/rate-limit'
 
 // GET /api/invites/validate?token=xxx - Validate an invite token (public endpoint)
 export async function GET(request: NextRequest) {
+  // Rate limit: 10 validation attempts per minute per IP
+  const rateLimited = applyRateLimit(request, 10, 60_000)
+  if (rateLimited) return rateLimited
   const { searchParams } = new URL(request.url)
   const token = searchParams.get('token')
 

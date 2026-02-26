@@ -139,9 +139,11 @@ model User {
   reviews         SupplierReview[]
   organisationMembers OrganisationMember[]
   createdInvites  InviteLink[] @relation("AdminInvites")
+  createdEvents   Event[]     @relation("EventCreator")
 
   @@index([email])
   @@index([role])
+  @@index([inviteLinkToken])
 }
 
 // ============= MEMBER PROFILES =============
@@ -300,6 +302,7 @@ model SupplierReview {
 
   @@index([supplierId])
   @@index([rating])
+  @@index([userId])
 }
 
 // ============= SUPPLIER CLAIMS =============
@@ -364,6 +367,7 @@ model OfferClaim {
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([offerId, userId])
+  @@index([userId])
 }
 
 // ============= EVENTS =============
@@ -394,6 +398,7 @@ model Event {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   createdById     String?
+  createdBy       User?   @relation("EventCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   rsvps EventRsvp[]
 

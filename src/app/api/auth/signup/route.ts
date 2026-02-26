@@ -1,8 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
+import { applyRateLimit } from '@/lib/api/rate-limit'
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 5 signup attempts per minute per IP
+  const rateLimited = applyRateLimit(request, 5, 60_000)
+  if (rateLimited) return rateLimited
+
   const supabase = await createClient()
   const adminSupabase = createAdminClient()
   const body = await request.json()
@@ -147,6 +152,18 @@ export async function POST(request: NextRequest) {
     .from('User')
     .select('id', { count: 'exact', head: true })
     .eq('inviteLinkToken', inviteToken)
+
+  // Post-insert enforcement: if we exceeded maxUses due to a race, roll back
+  if (invite.maxUses && (usageCount || 0) > invite.maxUses) {
+    console.warn('[Signup] Race condition detected: maxUses exceeded, rolling back')
+    await adminSupabase.from('Member').delete().eq('userId', authData.user.id)
+    await adminSupabase.from('User').delete().eq('id', authData.user.id)
+    await adminSupabase.auth.admin.deleteUser(authData.user.id)
+    return NextResponse.json(
+      { error: 'This invite link has reached its maximum usage limit' },
+      { status: 403 }
+    )
+  }
 
   await adminSupabase
     .from('InviteLink')

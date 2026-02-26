@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAuth } from '@/lib/auth/session'
-import { randomBytes } from 'crypto'
+import { generateSecureToken } from '@/lib/api/token'
 
 // GET /api/organisations/[id]/invites - List organisation invites
 export async function GET(
@@ -153,7 +153,7 @@ export async function POST(
     }
 
     // Generate secure token
-    const token = randomBytes(24).toString('base64url')
+    const token = generateSecureToken()
 
     // Create invite (expires in 7 days)
     const expiresAt = new Date()

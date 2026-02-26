@@ -14,6 +14,7 @@ interface EventRsvpButtonProps {
   registrationUrl?: string
   isPast: boolean
   capacity?: number
+  price?: number | string | null
   currentAttendees: number
 }
 
@@ -28,6 +29,7 @@ export function EventRsvpButton({
   registrationUrl,
   isPast,
   capacity,
+  price,
   currentAttendees,
 }: EventRsvpButtonProps) {
   const router = useRouter()
@@ -181,7 +183,7 @@ export function EventRsvpButton({
               <div>
                 <h3 className="font-bold mb-1">{eventTitle}</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  {isFree ? 'This is a free event.' : `Ticket price: £${capacity}`}
+                  {isFree ? 'This is a free event.' : `Ticket price: £${price ?? 'TBC'}`}
                 </p>
               </div>
 

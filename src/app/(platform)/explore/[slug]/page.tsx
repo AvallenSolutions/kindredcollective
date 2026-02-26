@@ -57,7 +57,7 @@ async function getSupplierBySlug(slug: string) {
       .from('Supplier')
       .select(`
         *,
-        portfolioImages:SupplierImage(id, imageUrl, altText, displayOrder)
+        portfolioImages:SupplierImage(id, url, alt, order)
       `)
       .eq('slug', slug)
       .eq('isPublic', true)
@@ -68,9 +68,9 @@ async function getSupplierBySlug(slug: string) {
       return null
     }
 
-    // Sort portfolio images by displayOrder
+    // Sort portfolio images by order
     if (supplier.portfolioImages) {
-      supplier.portfolioImages.sort((a: any, b: any) => a.displayOrder - b.displayOrder)
+      supplier.portfolioImages.sort((a: any, b: any) => a.order - b.order)
     }
 
     return supplier
@@ -259,8 +259,8 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
                         className="aspect-video border-2 border-black overflow-hidden hover:shadow-lg transition-shadow"
                       >
                         <img
-                          src={image.imageUrl}
-                          alt={image.altText || `${supplier.companyName} portfolio image`}
+                          src={image.url}
+                          alt={image.alt || `${supplier.companyName} portfolio image`}
                           className="w-full h-full object-cover"
                         />
                       </div>

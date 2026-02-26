@@ -193,6 +193,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
                     registrationUrl={event.registrationUrl}
                     isPast={isPast}
                     capacity={event.capacity}
+                    price={event.price}
                     currentAttendees={event.attendeeCount}
                   />
                 </>

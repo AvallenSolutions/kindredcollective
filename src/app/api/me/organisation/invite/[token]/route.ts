@@ -63,10 +63,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { token } = await params
   const supabase = await createClient()
 
-  // Get the invite
+  // Get the invite (include role for proper assignment)
   const { data: invite } = await supabase
     .from('OrganisationInvite')
-    .select('id, email, organisationId, expiresAt, acceptedAt')
+    .select('id, email, organisationId, role, expiresAt, acceptedAt')
     .eq('token', token)
     .single()
 
@@ -82,30 +82,30 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return errorResponse('This invite has expired')
   }
 
-  // Verify email matches (optional - depends on your requirements)
-  // If you want to enforce email matching:
-  // if (invite.email !== user.email) {
-  //   return errorResponse('This invite was sent to a different email address')
-  // }
+  // Verify email matches to prevent invite hijacking
+  if (invite.email !== user.email) {
+    return errorResponse('This invite was sent to a different email address', 403)
+  }
 
-  // Check if user is already in an organisation
+  // Check if user is already a member of THIS organisation
   const { data: existingMembership } = await supabase
     .from('OrganisationMember')
     .select('id')
+    .eq('organisationId', invite.organisationId)
     .eq('userId', user.id)
     .single()
 
   if (existingMembership) {
-    return errorResponse('You are already a member of an organisation. Leave your current organisation first.')
+    return errorResponse('You are already a member of this organisation')
   }
 
-  // Add user to organisation
+  // Add user to organisation with the role specified in the invite
   const { error: memberError } = await supabase
     .from('OrganisationMember')
     .insert({
       organisationId: invite.organisationId,
       userId: user.id,
-      role: 'MEMBER',
+      role: invite.role || 'MEMBER',
       joinedAt: new Date().toISOString(),
     })
 
