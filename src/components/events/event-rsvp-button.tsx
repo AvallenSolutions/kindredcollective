@@ -10,6 +10,7 @@ interface EventRsvpButtonProps {
   eventId: string
   eventTitle: string
   isFree: boolean
+  price?: number | null
   isRegistrationExternal: boolean
   registrationUrl?: string
   isPast: boolean
@@ -24,6 +25,7 @@ export function EventRsvpButton({
   eventId,
   eventTitle,
   isFree,
+  price,
   isRegistrationExternal,
   registrationUrl,
   isPast,
@@ -181,7 +183,7 @@ export function EventRsvpButton({
               <div>
                 <h3 className="font-bold mb-1">{eventTitle}</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  {isFree ? 'This is a free event.' : `Ticket price: £${capacity}`}
+                  {isFree ? 'This is a free event.' : `Ticket price: £${price ?? ''}`}
                 </p>
               </div>
 
