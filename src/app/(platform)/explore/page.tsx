@@ -27,11 +27,9 @@ async function getSuppliers() {
     }
 
     if (!suppliers || suppliers.length === 0) {
-      console.log('No suppliers found in database')
       return []
     }
 
-    console.log(`Found ${suppliers.length} public suppliers in database`)
     return suppliers
   } catch (err) {
     console.error('Failed to connect to Supabase:', err)

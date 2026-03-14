@@ -1,27 +1,32 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { Sparkles, Search, ArrowRight, Loader2, Zap, MessageSquare } from 'lucide-react'
+import { useState } from 'react'
+import { Sparkles, ArrowRight, Loader2, Zap, MessageSquare } from 'lucide-react'
 import { Badge, Button, Input, Card, CardContent } from '@/components/ui'
 import { SupplierCard } from '@/components/suppliers'
 import { BrandCard } from '@/components/brands'
-import { suppliers } from '../../../../prisma/seed-data'
-import { brands } from '../../../../prisma/seed-brands'
-import { cn } from '@/lib/utils'
 
-// Transform data
-const supplierData = suppliers.map((s, index) => ({
-  id: `supplier-${index}`,
-  ...s,
-  logoUrl: null,
-}))
+interface SearchSupplier {
+  id: string
+  companyName: string
+  slug: string
+  tagline: string | null
+  category: string
+  logoUrl: string | null
+  isVerified: boolean
+  location: string | null
+}
 
-const brandData = brands.map((b, index) => ({
-  id: `brand-${index}`,
-  ...b,
-  logoUrl: null,
-  heroImageUrl: null,
-}))
+interface SearchBrand {
+  id: string
+  name: string
+  slug: string
+  tagline: string | null
+  category: string
+  logoUrl: string | null
+  isVerified: boolean
+  location: string | null
+}
 
 // Sample queries for inspiration
 const sampleQueries = [
@@ -33,31 +38,11 @@ const sampleQueries = [
   'Design agencies with experience in craft beer',
 ]
 
-// Simulated AI search function
-function simulateAISearch(query: string) {
-  const queryLower = query.toLowerCase()
-
-  // Simple keyword matching for demo
-  const matchingSuppliers = supplierData.filter((s) => {
-    const text = `${s.companyName} ${s.tagline} ${s.description} ${s.services.join(' ')} ${s.category}`.toLowerCase()
-    const words = queryLower.split(' ').filter(w => w.length > 2)
-    return words.some(word => text.includes(word))
-  }).slice(0, 6)
-
-  const matchingBrands = brandData.filter((b) => {
-    const text = `${b.name} ${b.tagline} ${b.description} ${b.category} ${b.subcategories.join(' ')}`.toLowerCase()
-    const words = queryLower.split(' ').filter(w => w.length > 2)
-    return words.some(word => text.includes(word))
-  }).slice(0, 3)
-
-  return { suppliers: matchingSuppliers, brands: matchingBrands }
-}
-
 export default function AISearchPage() {
   const [query, setQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
-  const [results, setResults] = useState<{ suppliers: typeof supplierData; brands: typeof brandData }>({
+  const [results, setResults] = useState<{ suppliers: SearchSupplier[]; brands: SearchBrand[] }>({
     suppliers: [],
     brands: [],
   })
@@ -69,11 +54,17 @@ export default function AISearchPage() {
     setIsSearching(true)
     setQuery(q)
 
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&type=suppliers&type=brands`)
+      const data = await res.json()
+      setResults({
+        suppliers: data.data?.results?.suppliers || [],
+        brands: data.data?.results?.brands || [],
+      })
+    } catch {
+      setResults({ suppliers: [], brands: [] })
+    }
 
-    const searchResults = simulateAISearch(q)
-    setResults(searchResults)
     setHasSearched(true)
     setIsSearching(false)
   }
@@ -93,14 +84,13 @@ export default function AISearchPage() {
           <div className="max-w-3xl mx-auto text-center">
             <Badge variant="cyan" className="mb-6">
               <Sparkles className="w-3 h-3 mr-1" />
-              AI-Powered Search
+              Smart Search
             </Badge>
             <h1 className="font-display text-display-sm lg:text-display-md mb-6">
-              Search Like You Think
+              Search the Directory
             </h1>
             <p className="text-lg text-gray-400 mb-8">
-              Describe what you&apos;re looking for in plain English. Our AI will find
-              the perfect suppliers and brands for your needs.
+              Search our verified supplier and brand directory to find the perfect partner for your needs.
             </p>
 
             {/* Search Input */}
@@ -113,7 +103,7 @@ export default function AISearchPage() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                    placeholder="e.g., Organic botanicals suppliers with low MOQs..."
+                    placeholder="e.g. Organic botanicals suppliers with low MOQs..."
                     className="w-full h-14 pl-12 pr-4 text-lg bg-white text-black border-3 border-cyan placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan focus:ring-offset-2 focus:ring-offset-black"
                   />
                 </div>
@@ -159,7 +149,7 @@ export default function AISearchPage() {
       {/* Results or Empty State */}
       {hasSearched ? (
         <section className="section-container py-8 lg:py-12">
-          {/* AI Response Header */}
+          {/* Search Summary Header */}
           <Card className="mb-8 border-cyan">
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
@@ -167,21 +157,18 @@ export default function AISearchPage() {
                   <Sparkles className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="font-display font-bold mb-1">Kindred AI</p>
+                  <p className="font-display font-bold mb-1">Search Results</p>
                   {totalResults > 0 ? (
                     <p className="text-gray-600">
-                      I found <strong>{results.suppliers.length} suppliers</strong>
+                      Found <strong>{results.suppliers.length} suppliers</strong>
                       {results.brands.length > 0 && (
                         <> and <strong>{results.brands.length} brands</strong></>
                       )}{' '}
-                      matching your search for &quot;{query}&quot;.
-                      {results.suppliers.length > 0 && (
-                        <> Here are the most relevant results based on your criteria.</>
-                      )}
+                      matching &quot;{query}&quot;.
                     </p>
                   ) : (
                     <p className="text-gray-600">
-                      I couldn&apos;t find exact matches for &quot;{query}&quot;. Try rephrasing
+                      No results found for &quot;{query}&quot;. Try rephrasing
                       your search or browse our{' '}
                       <a href="/explore" className="text-cyan hover:underline">
                         full supplier directory
@@ -210,7 +197,22 @@ export default function AISearchPage() {
               </div>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {results.suppliers.map((supplier) => (
-                  <SupplierCard key={supplier.id} supplier={supplier} />
+                  <SupplierCard
+                    key={supplier.id}
+                    supplier={{
+                      id: supplier.id,
+                      companyName: supplier.companyName,
+                      slug: supplier.slug,
+                      tagline: supplier.tagline,
+                      description: null,
+                      logoUrl: supplier.logoUrl,
+                      category: supplier.category as import('@prisma/client').SupplierCategory,
+                      services: [],
+                      location: supplier.location,
+                      country: null,
+                      isVerified: supplier.isVerified,
+                    }}
+                  />
                 ))}
               </div>
             </div>
@@ -232,7 +234,23 @@ export default function AISearchPage() {
               </div>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {results.brands.map((brand) => (
-                  <BrandCard key={brand.id} brand={brand} />
+                  <BrandCard
+                    key={brand.id}
+                    brand={{
+                      id: brand.id,
+                      name: brand.name,
+                      slug: brand.slug,
+                      tagline: brand.tagline,
+                      logoUrl: brand.logoUrl,
+                      heroImageUrl: null,
+                      category: brand.category as import('@prisma/client').DrinkCategory,
+                      subcategories: [],
+                      location: brand.location,
+                      country: null,
+                      yearFounded: null,
+                      isVerified: brand.isVerified,
+                    }}
+                  />
                 ))}
               </div>
             </div>
@@ -285,7 +303,7 @@ export default function AISearchPage() {
         /* Initial State - How It Works */
         <section className="section-container py-12 lg:py-16">
           <h2 className="font-display text-2xl font-bold text-center mb-12">
-            How AI Search Works
+            How Search Works
           </h2>
           <div className="grid md:grid-cols-3 gap-8">
             <Card>
@@ -297,7 +315,7 @@ export default function AISearchPage() {
                   1. Describe Your Needs
                 </h3>
                 <p className="text-sm text-gray-600">
-                  Type what you&apos;re looking for in natural language, just like you&apos;d
+                  Type what you&apos;re looking for in plain language, just like you&apos;d
                   explain it to a colleague.
                 </p>
               </CardContent>
@@ -308,11 +326,11 @@ export default function AISearchPage() {
                   <Sparkles className="w-8 h-8" />
                 </div>
                 <h3 className="font-display text-lg font-bold mb-2">
-                  2. AI Understands Context
+                  2. We Search the Directory
                 </h3>
                 <p className="text-sm text-gray-600">
-                  Our AI interprets your query and understands the nuances of what
-                  you&apos;re actually looking for.
+                  We search our verified supplier and brand database to find the best matches
+                  for your query.
                 </p>
               </CardContent>
             </Card>

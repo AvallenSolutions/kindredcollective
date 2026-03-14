@@ -2,11 +2,15 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Mail, MessageCircle, CheckCircle } from 'lucide-react'
+import { ArrowRight, Mail, MessageCircle, CheckCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui'
+
+const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER
 
 export default function JoinPage() {
   const [submitted, setSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -15,11 +19,29 @@ export default function JoinPage() {
     message: '',
   })
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // For now, just show success state
-    // TODO: connect to an API endpoint or email service
-    setSubmitted(true)
+    setIsSubmitting(true)
+    setError(null)
+
+    try {
+      const res = await fetch('/api/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error || 'Something went wrong. Please try again.')
+      } else {
+        setSubmitted(true)
+      }
+    } catch {
+      setError('Network error. Please check your connection and try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -72,18 +94,25 @@ export default function JoinPage() {
               Fill out the form below and we&apos;ll review your request. We typically respond within 48 hours.
             </p>
             <div className="flex gap-3">
-              <a href="mailto:hello@kindredcollective.co.uk?subject=Membership%20Request" className="flex-1">
+              <a href="mailto:hello@kindredcollective.co.uk?subject=Membership%20Request" className={WHATSAPP_NUMBER ? 'flex-1' : 'w-full'}>
                 <Button variant="outline" className="w-full py-3 font-bold uppercase border-2 border-black hover:bg-black hover:text-white transition-all">
                   <Mail className="w-4 h-4 mr-2 inline" />
                   Email Us
                 </Button>
               </a>
-              <a href="https://wa.me/447000000000?text=Hi%2C%20I%27d%20like%20to%20join%20Kindred%20Collective" target="_blank" rel="noopener noreferrer" className="flex-1">
-                <Button variant="outline" className="w-full py-3 font-bold uppercase border-2 border-black hover:bg-lime hover:border-lime transition-all">
-                  <MessageCircle className="w-4 h-4 mr-2 inline" />
-                  WhatsApp
-                </Button>
-              </a>
+              {WHATSAPP_NUMBER && (
+                <a
+                  href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hi%2C%20I%27d%20like%20to%20join%20Kindred%20Collective`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1"
+                >
+                  <Button variant="outline" className="w-full py-3 font-bold uppercase border-2 border-black hover:bg-lime hover:border-lime transition-all">
+                    <MessageCircle className="w-4 h-4 mr-2 inline" />
+                    WhatsApp
+                  </Button>
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -104,6 +133,12 @@ export default function JoinPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="bg-white border-3 border-black neo-shadow p-8 rounded-xl space-y-6">
+              {error && (
+                <div className="bg-coral/10 border-2 border-coral text-coral px-4 py-3 text-sm font-medium">
+                  {error}
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-bold uppercase tracking-wide mb-2">Your Name *</label>
                 <input
@@ -170,8 +205,15 @@ export default function JoinPage() {
                 />
               </div>
 
-              <Button type="submit" className="w-full py-3 bg-cyan text-black font-bold uppercase border-2 border-black neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all">
-                Submit Request
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3 bg-cyan text-black font-bold uppercase border-2 border-black neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2 inline" />
+                ) : null}
+                {isSubmitting ? 'Submitting...' : 'Submit Request'}
               </Button>
             </form>
           )}

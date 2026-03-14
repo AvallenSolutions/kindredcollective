@@ -7,6 +7,7 @@ import {
   unauthorizedResponse,
   notFoundResponse,
 } from '@/lib/api/response'
+import { sendSupplierInquiryEmail } from '@/lib/email'
 
 interface RouteParams {
   params: Promise<{ slug: string }>
@@ -81,40 +82,22 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const senderEmail = contactEmail || user.email
   const senderPhone = contactPhone || member?.phone || null
 
-  // Log the inquiry (for analytics and backup)
-  // In a production app, you would also send an email here
-  // TODO: Create SupplierInquiry table for logging, integrate with email service
-
-  // For now, we'll simulate success and provide details for the user
-  // In production, this would trigger an email to the supplier
-
-  const inquiryData = {
-    supplierId: supplier.id,
-    supplierName: supplier.companyName,
-    supplierEmail: supplier.contactEmail,
-    senderUserId: user.id,
-    senderName,
-    senderEmail,
-    senderPhone,
-    senderCompany,
-    subject,
-    message,
-    projectDetails,
-    sentAt: new Date().toISOString(),
+  // Send email to supplier
+  try {
+    await sendSupplierInquiryEmail(supplier.contactEmail, {
+      supplierName: supplier.companyName,
+      senderName,
+      senderEmail,
+      senderPhone,
+      senderCompany,
+      subject,
+      message,
+      projectDetails,
+    })
+  } catch (emailErr) {
+    console.error('[Contact] Failed to send inquiry email:', emailErr)
+    // Don't fail the request if email sending fails
   }
-
-  // Log to console in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Supplier Inquiry:', inquiryData)
-  }
-
-  // In production, integrate with email service:
-  // await sendEmail({
-  //   to: supplier.contactEmail,
-  //   subject: `New inquiry from ${senderName}: ${subject}`,
-  //   template: 'supplier-inquiry',
-  //   data: inquiryData,
-  // })
 
   return successResponse({
     sent: true,
@@ -122,7 +105,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     inquiry: {
       to: supplier.companyName,
       subject,
-      sentAt: inquiryData.sentAt,
+      sentAt: new Date().toISOString(),
     },
   })
 }

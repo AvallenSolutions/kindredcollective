@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { Shield, Users, Building2, Store, Calendar, Gift, Plus, Settings, Mail, Star } from 'lucide-react'
+import { Shield, Users, Building2, Store, Calendar, Gift, Plus, Mail, Star, UserPlus } from 'lucide-react'
 
 export default async function AdminPage() {
   const session = await getSession()
@@ -80,6 +80,12 @@ export default async function AdminPage() {
           className="inline-flex items-center gap-2 px-4 py-2 bg-yellow border-2 border-black font-bold uppercase text-sm neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
         >
           <Plus className="w-4 h-4" /> Add Event
+        </Link>
+        <Link
+          href="/admin/join-requests"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-cyan border-2 border-black font-bold uppercase text-sm neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+        >
+          <UserPlus className="w-4 h-4" /> Join Requests
         </Link>
       </div>
 

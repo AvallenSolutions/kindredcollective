@@ -1,48 +1,67 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { Tag, Percent, Gift, Sparkles } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { Tag, Percent, Gift, Sparkles, Loader2 } from 'lucide-react'
 import { Badge, Button } from '@/components/ui'
 import { OfferCard } from '@/components/offers'
-import { offers } from '../../../../prisma/seed-offers'
-import { suppliers } from '../../../../prisma/seed-data'
 import { OFFER_TYPE_LABELS, SUPPLIER_CATEGORY_LABELS } from '@/types/database'
 import type { OfferType, SupplierCategory } from '@prisma/client'
 import { cn } from '@/lib/utils'
 
-// Transform seed data - link offers to suppliers
-const offerData = offers.map((offer, index) => {
-  const supplier = suppliers.find((s) => s.slug === offer.supplierSlug)
-  return {
-    id: `offer-${index}`,
-    ...offer,
-    supplierName: supplier?.companyName || 'Unknown Supplier',
-    supplierCategory: supplier?.category,
+interface ApiOffer {
+  id: string
+  title: string
+  description: string | null
+  type: OfferType
+  discountValue: number | null
+  code: string | null
+  endDate: string | null
+  forBrandsOnly: boolean
+  supplier: {
+    id: string
+    companyName: string
+    slug: string
+    logoUrl: string | null
+    category: SupplierCategory
+    isVerified: boolean
   }
-})
+}
 
 const offerTypes = Object.entries(OFFER_TYPE_LABELS) as [OfferType, string][]
 
 export default function OffersPage() {
+  const [offers, setOffers] = useState<ApiOffer[]>([])
+  const [loading, setLoading] = useState(true)
   const [selectedType, setSelectedType] = useState<OfferType | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<SupplierCategory | null>(null)
 
+  useEffect(() => {
+    fetch('/api/offers?limit=100')
+      .then((r) => r.json())
+      .then((data) => {
+        setOffers(data.data?.offers || [])
+      })
+      .catch(() => {
+        setOffers([])
+      })
+      .finally(() => setLoading(false))
+  }, [])
+
   const filteredOffers = useMemo(() => {
-    return offerData.filter((offer) => {
+    return offers.filter((offer) => {
       if (selectedType && offer.type !== selectedType) return false
-      if (selectedCategory && offer.supplierCategory !== selectedCategory) return false
+      if (selectedCategory && offer.supplier?.category !== selectedCategory) return false
       return true
     })
-  }, [selectedType, selectedCategory])
+  }, [offers, selectedType, selectedCategory])
 
-  // Get unique categories from offers
   const availableCategories = useMemo(() => {
     const cats = new Set<SupplierCategory>()
-    offerData.forEach((offer) => {
-      if (offer.supplierCategory) cats.add(offer.supplierCategory)
+    offers.forEach((offer) => {
+      if (offer.supplier?.category) cats.add(offer.supplier.category)
     })
     return Array.from(cats)
-  }, [])
+  }, [offers])
 
   return (
     <div className="min-h-screen">
@@ -51,7 +70,7 @@ export default function OffersPage() {
         <div className="section-container">
           <Badge className="mb-4 bg-black text-lime border-black">
             <Tag className="w-3 h-3 mr-1" />
-            {offerData.length} Active Offers
+            {loading ? '...' : `${offers.length} Active Offers`}
           </Badge>
           <h1 className="font-display text-display-sm lg:text-display-md mb-4">
             Exclusive Offers
@@ -136,84 +155,112 @@ export default function OffersPage() {
       </section>
 
       {/* Category Filter */}
-      <section className="bg-gray-50 border-b-3 border-black py-4">
-        <div className="section-container">
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setSelectedCategory(null)}
-              className={cn(
-                'px-4 py-2 text-sm font-bold border-2 transition-colors',
-                !selectedCategory
-                  ? 'bg-black text-white border-black'
-                  : 'bg-white text-black border-gray-200 hover:border-black'
-              )}
-            >
-              All Categories
-            </button>
-            {availableCategories.map((cat) => (
+      {availableCategories.length > 0 && (
+        <section className="bg-gray-50 border-b-3 border-black py-4">
+          <div className="section-container">
+            <div className="flex flex-wrap gap-2">
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
+                onClick={() => setSelectedCategory(null)}
                 className={cn(
                   'px-4 py-2 text-sm font-bold border-2 transition-colors',
-                  selectedCategory === cat
+                  !selectedCategory
                     ? 'bg-black text-white border-black'
                     : 'bg-white text-black border-gray-200 hover:border-black'
                 )}
               >
-                {SUPPLIER_CATEGORY_LABELS[cat]}
+                All Categories
               </button>
-            ))}
+              {availableCategories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={cn(
+                    'px-4 py-2 text-sm font-bold border-2 transition-colors',
+                    selectedCategory === cat
+                      ? 'bg-black text-white border-black'
+                      : 'bg-white text-black border-gray-200 hover:border-black'
+                  )}
+                >
+                  {SUPPLIER_CATEGORY_LABELS[cat]}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Offers Grid */}
       <section className="section-container py-8 lg:py-12">
-        {/* Results Count */}
-        <div className="flex items-center justify-between mb-6">
-          <p className="text-sm text-gray-600">
-            Showing <span className="font-bold text-black">{filteredOffers.length}</span> offers
-          </p>
-          {(selectedType || selectedCategory) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSelectedType(null)
-                setSelectedCategory(null)
-              }}
-            >
-              Clear filters
-            </Button>
-          )}
-        </div>
-
-        {filteredOffers.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredOffers.map((offer) => (
-              <OfferCard key={offer.id} offer={offer} />
-            ))}
+        {loading ? (
+          <div className="flex items-center justify-center py-24">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         ) : (
-          <div className="text-center py-16 bg-white border-3 border-black">
-            <div className="w-16 h-16 bg-gray-100 border-3 border-black mx-auto mb-4 flex items-center justify-center">
-              <Tag className="w-8 h-8 text-gray-400" />
+          <>
+            {/* Results Count */}
+            <div className="flex items-center justify-between mb-6">
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-bold text-black">{filteredOffers.length}</span> offers
+              </p>
+              {(selectedType || selectedCategory) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedType(null)
+                    setSelectedCategory(null)
+                  }}
+                >
+                  Clear filters
+                </Button>
+              )}
             </div>
-            <h3 className="font-display text-xl font-bold mb-2">No offers found</h3>
-            <p className="text-gray-600 mb-4">
-              Try adjusting your filters
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSelectedType(null)
-                setSelectedCategory(null)
-              }}
-            >
-              Clear Filters
-            </Button>
-          </div>
+
+            {filteredOffers.length > 0 ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredOffers.map((offer) => (
+                  <OfferCard
+                    key={offer.id}
+                    offer={{
+                      id: offer.id,
+                      title: offer.title,
+                      description: offer.description,
+                      type: offer.type,
+                      discountValue: offer.discountValue,
+                      code: offer.code,
+                      supplierName: offer.supplier?.companyName || 'Unknown Supplier',
+                      supplierSlug: offer.supplier?.slug || '',
+                      endDate: offer.endDate ? new Date(offer.endDate) : null,
+                      forBrandsOnly: offer.forBrandsOnly,
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16 bg-white border-3 border-black">
+                <div className="w-16 h-16 bg-gray-100 border-3 border-black mx-auto mb-4 flex items-center justify-center">
+                  <Tag className="w-8 h-8 text-gray-400" />
+                </div>
+                <h3 className="font-display text-xl font-bold mb-2">
+                  {offers.length === 0 ? 'No offers available yet' : 'No offers found'}
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  {offers.length === 0 ? 'Check back soon — suppliers will be adding exclusive deals.' : 'Try adjusting your filters'}
+                </p>
+                {(selectedType || selectedCategory) && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedType(null)
+                      setSelectedCategory(null)
+                    }}
+                  >
+                    Clear Filters
+                  </Button>
+                )}
+              </div>
+            )}
+          </>
         )}
       </section>
 
