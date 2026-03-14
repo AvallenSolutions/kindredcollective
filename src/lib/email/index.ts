@@ -109,6 +109,124 @@ export async function sendOrgInviteEmail(
   })
 }
 
+// ── Join Request Notification Email ─────────────────────────────────
+
+export async function sendJoinRequestEmail(request: {
+  name: string
+  email: string
+  company: string
+  type: string
+  message: string
+}) {
+  const typeLabel = request.type === 'brand' ? 'Brand' : request.type === 'supplier' ? 'Supplier' : 'Brand & Supplier'
+
+  return sendEmail({
+    to: 'hello@kindredcollective.co.uk',
+    subject: `New membership request from ${request.name}`,
+    html: `
+      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #00D9FF; padding: 24px; border: 3px solid #000;">
+          <h1 style="font-family: 'Space Grotesk', Arial, sans-serif; margin: 0; font-size: 24px;">
+            Kindred Collective &mdash; New Membership Request
+          </h1>
+        </div>
+        <div style="padding: 32px 24px; border: 3px solid #000; border-top: 0;">
+          <h2 style="margin-top: 0;">Someone wants to join!</h2>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 8px 0; font-weight: bold; width: 140px;">Name</td>
+              <td style="padding: 8px 0;">${request.name}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 8px 0; font-weight: bold;">Email</td>
+              <td style="padding: 8px 0;"><a href="mailto:${request.email}">${request.email}</a></td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 8px 0; font-weight: bold;">Company</td>
+              <td style="padding: 8px 0;">${request.company || '&mdash;'}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 8px 0; font-weight: bold;">Type</td>
+              <td style="padding: 8px 0;">${typeLabel}</td>
+            </tr>
+          </table>
+          ${request.message ? `
+          <h3 style="margin-top: 0; margin-bottom: 8px;">Message</h3>
+          <p style="background: #f9fafb; border-left: 4px solid #00D9FF; padding: 12px 16px; margin: 0 0 24px;">
+            ${request.message}
+          </p>
+          ` : ''}
+          <p style="color: #666; font-size: 14px;">
+            Log in to the admin panel to review and create an invite link for this person.
+          </p>
+        </div>
+      </div>
+    `,
+  })
+}
+
+// ── Supplier Inquiry Email ────────────────────────────────────────────
+
+export async function sendSupplierInquiryEmail(
+  to: string,
+  inquiry: {
+    supplierName: string
+    senderName: string
+    senderEmail: string
+    senderPhone: string | null
+    senderCompany: string | null
+    subject: string
+    message: string
+    projectDetails?: string
+  }
+) {
+  return sendEmail({
+    to,
+    subject: `New enquiry: ${inquiry.subject}`,
+    html: `
+      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #00D9FF; padding: 24px; border: 3px solid #000;">
+          <h1 style="font-family: 'Space Grotesk', Arial, sans-serif; margin: 0; font-size: 24px;">
+            Kindred Collective &mdash; New Enquiry
+          </h1>
+        </div>
+        <div style="padding: 32px 24px; border: 3px solid #000; border-top: 0;">
+          <h2 style="margin-top: 0;">You have a new enquiry via Kindred Collective</h2>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 8px 0; font-weight: bold; width: 140px;">From</td>
+              <td style="padding: 8px 0;">${inquiry.senderName}${inquiry.senderCompany ? ` (${inquiry.senderCompany})` : ''}</td>
+            </tr>
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 8px 0; font-weight: bold;">Reply to</td>
+              <td style="padding: 8px 0;"><a href="mailto:${inquiry.senderEmail}">${inquiry.senderEmail}</a></td>
+            </tr>
+            ${inquiry.senderPhone ? `
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 8px 0; font-weight: bold;">Phone</td>
+              <td style="padding: 8px 0;">${inquiry.senderPhone}</td>
+            </tr>
+            ` : ''}
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+              <td style="padding: 8px 0; font-weight: bold;">Subject</td>
+              <td style="padding: 8px 0;">${inquiry.subject}</td>
+            </tr>
+          </table>
+          <h3 style="margin-top: 0; margin-bottom: 8px;">Message</h3>
+          <p style="background: #f9fafb; border-left: 4px solid #00D9FF; padding: 12px 16px; margin: 0 0 16px; white-space: pre-wrap;">${inquiry.message}</p>
+          ${inquiry.projectDetails ? `
+          <h3 style="margin-bottom: 8px;">Project Details</h3>
+          <p style="background: #f9fafb; padding: 12px 16px; margin: 0 0 16px;">${inquiry.projectDetails}</p>
+          ` : ''}
+          <p style="color: #666; font-size: 14px;">
+            This enquiry was sent via ${inquiry.supplierName}&apos;s profile on Kindred Collective.
+          </p>
+        </div>
+      </div>
+    `,
+  })
+}
+
 // ── Supplier Claim Verification Email ───────────────────────────────
 
 export async function sendClaimVerificationEmail(

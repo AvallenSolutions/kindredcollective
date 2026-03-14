@@ -1,118 +1,93 @@
 import Link from 'next/link'
 import { Star, MapPin, Video, Calendar, Users, Clock, CalendarPlus, Ticket, ArrowRight, Mail } from 'lucide-react'
+import { createAdminClient } from '@/lib/supabase/admin'
+import type { EventType } from '@prisma/client'
 
-// Featured event data
-const featuredEvent = {
-  id: 'featured-1',
-  title: "Kindreds 2026 Annual Party",
-  date: 'Feb 10',
-  location: 'London, UK',
-  description: 'The biggest night in independent spirits. Celebrating makers, shakers, and innovators. Music, tastings, and networking.',
-  image: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80',
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+const eventTypeLabels: Record<EventType, string> = {
+  TRADE_SHOW: 'Trade Show',
+  MEETUP: 'Meetup',
+  WORKSHOP: 'Workshop',
+  WEBINAR: 'Webinar',
+  NETWORKING: 'Networking',
+  LAUNCH: 'Launch',
+  PARTY: 'Party',
+  OTHER: 'Event',
 }
 
-// Upcoming events data
-const upcomingEvents = [
-  {
-    id: '1',
-    title: 'Craft Spirits Expo',
-    description: 'The largest gathering of craft distillers in the UK. Networking, tasting, and workshops.',
-    month: 'Nov',
-    day: '12',
-    location: 'London',
-    isVirtual: false,
-    type: 'Trade Show',
-    attendees: 450,
-    hoverColor: 'group-hover:text-blue-500',
-  },
-  {
-    id: '2',
-    title: 'Sustainable Packaging Meetup',
-    description: 'Deep dive into plastic-free alternatives. Guest speakers from major glassworks.',
-    month: 'Nov',
-    day: '24',
-    location: 'Online',
-    isVirtual: true,
-    type: 'Webinar',
-    attendees: 120,
-    hoverColor: 'group-hover:text-coral',
-  },
-  {
-    id: '3',
-    title: "Founder's Winter Social",
-    description: 'End of year drinks for community members. Open bar sponsored by SpiritLab.',
-    month: 'Dec',
-    day: '05',
-    location: 'Manchester',
-    isVirtual: false,
-    type: 'Networking',
-    attendees: 85,
-    hoverColor: 'group-hover:text-cyan',
-  },
-  {
-    id: '4',
-    title: 'Brand Strategy Workshop',
-    description: 'Learn how to position your drinks brand for success. Interactive 3-hour session.',
-    month: 'Dec',
-    day: '12',
-    location: 'Online',
-    isVirtual: true,
-    type: 'Workshop',
-    attendees: 60,
-    hoverColor: 'group-hover:text-lime',
-  },
-  {
-    id: '5',
-    title: 'Imbibe Live 2026',
-    description: 'The UK\'s biggest drinks trade show. Meet suppliers, discover trends, network with buyers.',
-    month: 'Jan',
-    day: '15',
-    location: 'London',
-    isVirtual: false,
-    type: 'Trade Show',
-    attendees: 2500,
-    hoverColor: 'group-hover:text-blue-500',
-  },
-]
+const eventTypeHoverColors: Record<EventType, string> = {
+  TRADE_SHOW: 'group-hover:text-blue-500',
+  WEBINAR: 'group-hover:text-coral',
+  NETWORKING: 'group-hover:text-cyan',
+  WORKSHOP: 'group-hover:text-lime',
+  MEETUP: 'group-hover:text-yellow-500',
+  LAUNCH: 'group-hover:text-purple-500',
+  PARTY: 'group-hover:text-coral',
+  OTHER: 'group-hover:text-gray-600',
+}
 
-// Past events data
-const pastEvents = [
-  {
-    id: 'past-1',
-    title: 'Summer Spirits Festival',
-    date: 'Aug 2025',
-    location: 'Brighton',
-    attendees: 350,
-    image: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    id: 'past-2',
-    title: 'Distillery Tech Conference',
-    date: 'Jul 2025',
-    location: 'Edinburgh',
-    attendees: 180,
-    image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-  },
-  {
-    id: 'past-3',
-    title: 'Packaging Innovation Summit',
-    date: 'Jun 2025',
-    location: 'Birmingham',
-    attendees: 220,
-    image: 'https://images.unsplash.com/photo-1605733513597-a8f8341084e6?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-  },
-]
+const FALLBACK_PAST_IMAGE = 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'
 
-// Event types for filtering
+async function getEvents() {
+  const supabase = createAdminClient()
+  const now = new Date().toISOString()
+
+  const [upcomingResult, pastResult] = await Promise.all([
+    supabase
+      .from('Event')
+      .select('id, title, slug, description, type, startDate, isVirtual, city, country, imageUrl, isFeatured, capacity, rsvps:EventRsvp(status)')
+      .eq('status', 'PUBLISHED')
+      .gte('startDate', now)
+      .order('isFeatured', { ascending: false })
+      .order('startDate', { ascending: true })
+      .limit(11),
+    supabase
+      .from('Event')
+      .select('id, title, slug, startDate, city, country, imageUrl, rsvps:EventRsvp(status)')
+      .eq('status', 'PUBLISHED')
+      .lt('startDate', now)
+      .order('startDate', { ascending: false })
+      .limit(3),
+  ])
+
+  const upcoming = (upcomingResult.data || []).map((e) => {
+    const rsvps = (e.rsvps || []) as { status: string }[]
+    return {
+      ...e,
+      rsvps: undefined,
+      attendees: rsvps.filter((r) => r.status === 'GOING').length,
+    }
+  })
+
+  const past = (pastResult.data || []).map((e) => {
+    const rsvps = (e.rsvps || []) as { status: string }[]
+    return {
+      ...e,
+      rsvps: undefined,
+      attendees: rsvps.filter((r) => r.status === 'GOING').length,
+    }
+  })
+
+  return { upcoming, past }
+}
+
+// Event type filters for the filter bar
 const eventTypes = [
   { key: 'all', label: 'All Events' },
-  { key: 'trade-show', label: 'Trade Shows' },
-  { key: 'networking', label: 'Networking' },
-  { key: 'workshop', label: 'Workshops' },
-  { key: 'webinar', label: 'Webinars' },
+  { key: 'TRADE_SHOW', label: 'Trade Shows' },
+  { key: 'NETWORKING', label: 'Networking' },
+  { key: 'WORKSHOP', label: 'Workshops' },
+  { key: 'WEBINAR', label: 'Webinars' },
 ]
 
-export default function EventsPage() {
+export default async function EventsPage() {
+  const { upcoming, past } = await getEvents()
+
+  const featuredEvent = upcoming.find((e) => e.isFeatured) || upcoming[0] || null
+  const upcomingEvents = upcoming.filter((e) => e !== featuredEvent).slice(0, 5)
+
   return (
     <div className="min-h-screen bg-white text-black">
       {/* Page Header */}
@@ -135,7 +110,7 @@ export default function EventsPage() {
             {/* Quick Stats */}
             <div className="flex gap-4">
               <div className="bg-white border-2 border-black p-4 text-center neo-shadow min-w-[100px]">
-                <div className="text-3xl font-bold font-display">{upcomingEvents.length}</div>
+                <div className="text-3xl font-bold font-display">{upcoming.length}</div>
                 <div className="text-[10px] font-bold uppercase text-gray-500">Upcoming</div>
               </div>
               <div className="bg-white border-2 border-black p-4 text-center neo-shadow min-w-[100px]">
@@ -151,116 +126,156 @@ export default function EventsPage() {
       <div className="max-w-7xl mx-auto px-6 py-12 space-y-20">
 
         {/* FEATURED EVENT */}
-        <section className="relative">
-          <div className="absolute -top-6 -left-2 bg-black text-cyan px-3 py-1 font-bold font-display uppercase text-lg border-2 border-black transform -rotate-2 z-20">
-            Featured Event
-          </div>
-          <div className="bg-coral border-2 border-black p-0 neo-shadow-lg grid grid-cols-1 lg:grid-cols-2 overflow-hidden group">
-            <div className="p-8 md:p-12 flex flex-col justify-center relative z-10">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="bg-black text-white px-2 py-1 text-xs font-bold uppercase border border-black">{featuredEvent.date}</span>
-                <span className="font-bold uppercase tracking-wide">{featuredEvent.location}</span>
+        {featuredEvent && (() => {
+          const date = new Date(featuredEvent.startDate)
+          const dateLabel = date.toLocaleString('en-GB', { day: 'numeric', month: 'short' })
+          const location = featuredEvent.isVirtual ? 'Online' : [featuredEvent.city, featuredEvent.country].filter(Boolean).join(', ') || 'TBC'
+          return (
+            <section className="relative">
+              <div className="absolute -top-6 -left-2 bg-black text-cyan px-3 py-1 font-bold font-display uppercase text-lg border-2 border-black transform -rotate-2 z-20">
+                Featured Event
               </div>
-              <h2 className="font-display text-5xl md:text-6xl font-bold uppercase leading-none mb-6 group-hover:translate-x-2 transition-transform">
-                {featuredEvent.title}
-              </h2>
-              <p className="text-lg font-medium mb-8 max-w-md border-l-4 border-black pl-4">
-                {featuredEvent.description}
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <button className="px-8 py-3 bg-black text-cyan border-2 border-black font-bold uppercase hover:bg-white hover:text-black transition-colors neo-shadow neo-shadow-hover flex items-center gap-2">
-                  <Ticket className="w-5 h-5" />
-                  Get Tickets
-                </button>
-                <button className="px-8 py-3 bg-transparent text-black border-2 border-black font-bold uppercase hover:bg-white transition-colors">
-                  View Details
-                </button>
+              <div className="bg-coral border-2 border-black p-0 neo-shadow-lg grid grid-cols-1 lg:grid-cols-2 overflow-hidden group">
+                <div className="p-8 md:p-12 flex flex-col justify-center relative z-10">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="bg-black text-white px-2 py-1 text-xs font-bold uppercase border border-black">{dateLabel}</span>
+                    <span className="font-bold uppercase tracking-wide">{location}</span>
+                  </div>
+                  <h2 className="font-display text-5xl md:text-6xl font-bold uppercase leading-none mb-6 group-hover:translate-x-2 transition-transform">
+                    {featuredEvent.title}
+                  </h2>
+                  {featuredEvent.description && (
+                    <p className="text-lg font-medium mb-8 max-w-md border-l-4 border-black pl-4">
+                      {featuredEvent.description}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-4">
+                    <Link
+                      href={`/events/${featuredEvent.slug}`}
+                      className="px-8 py-3 bg-black text-cyan border-2 border-black font-bold uppercase hover:bg-white hover:text-black transition-colors neo-shadow neo-shadow-hover flex items-center gap-2"
+                    >
+                      <Ticket className="w-5 h-5" />
+                      View Event
+                    </Link>
+                  </div>
+                </div>
+                <div className="relative h-64 lg:h-auto border-t-2 lg:border-t-0 lg:border-l-2 border-black">
+                  {featuredEvent.imageUrl ? (
+                    <img
+                      src={featuredEvent.imageUrl}
+                      className="absolute inset-0 w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                      alt={featuredEvent.title}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-black/20" />
+                  )}
+                  <div className="absolute inset-0 bg-black/10"></div>
+                  {/* Diagonal corner accent */}
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-cyan border-l-2 border-b-2 border-black flex items-center justify-center">
+                    <Star className="w-12 h-12 animate-spin" style={{ animationDuration: '8s' }} />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="relative h-64 lg:h-auto border-t-2 lg:border-t-0 lg:border-l-2 border-black">
-              <img
-                src={featuredEvent.image}
-                className="absolute inset-0 w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
-                alt={featuredEvent.title}
-              />
-              <div className="absolute inset-0 bg-black/10"></div>
-              {/* Diagonal corner accent */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-cyan border-l-2 border-b-2 border-black flex items-center justify-center">
-                <Star className="w-12 h-12 animate-spin" style={{ animationDuration: '8s' }} />
-              </div>
-            </div>
-          </div>
-        </section>
+            </section>
+          )
+        })()}
+
+        {/* No events state */}
+        {upcoming.length === 0 && (
+          <section className="text-center py-16 bg-gray-50 border-2 border-black">
+            <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+            <h2 className="font-display text-3xl font-bold uppercase mb-2">No Upcoming Events</h2>
+            <p className="text-gray-600 mb-6">Check back soon — new events are added regularly.</p>
+            <Link href="/contact" className="px-8 py-3 bg-black text-white border-2 border-black font-bold uppercase hover:bg-cyan hover:text-black transition-colors">
+              Submit an Event
+            </Link>
+          </section>
+        )}
 
         {/* EVENT TYPE FILTERS */}
-        <section>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-            <h2 className="text-4xl font-display font-bold uppercase">Upcoming Events</h2>
-            <div className="flex flex-wrap gap-2">
-              {eventTypes.map((type) => (
-                <button
-                  key={type.key}
-                  className={`px-4 py-2 border-2 border-black font-bold uppercase text-xs transition-colors ${
-                    type.key === 'all'
-                      ? 'bg-black text-white hover:bg-cyan hover:text-black'
-                      : 'bg-white text-black hover:bg-cyan'
-                  }`}
-                >
-                  {type.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* UPCOMING EVENTS LIST */}
-          <div className="space-y-4">
-            {upcomingEvents.map((event) => (
-              <div
-                key={event.id}
-                className="group bg-white border-2 border-black p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-6 hover:bg-gray-50 transition-colors neo-shadow-hover cursor-pointer"
-              >
-                <div className="shrink-0 flex flex-row md:flex-col items-center border-2 border-black">
-                  <span className="px-4 py-1 bg-black text-white text-xs font-bold uppercase w-full text-center">
-                    {event.month}
-                  </span>
-                  <span className="px-4 py-2 bg-white text-xl font-display font-bold">{event.day}</span>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[10px] font-bold uppercase text-gray-400 bg-gray-100 px-2 py-0.5 border border-gray-200">
-                      {event.type}
-                    </span>
-                  </div>
-                  <h3 className={`font-display font-bold text-2xl uppercase mb-1 ${event.hoverColor} transition-colors`}>
-                    {event.title}
-                  </h3>
-                  <p className="text-gray-600 text-sm font-medium">{event.description}</p>
-                </div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full md:w-auto">
-                  <div className="flex items-center gap-3">
-                    <span className="flex items-center gap-1 text-xs font-bold uppercase bg-gray-100 px-2 py-1 border border-black">
-                      {event.isVirtual ? (
-                        <>
-                          <Video className="w-3 h-3" /> {event.location}
-                        </>
-                      ) : (
-                        <>
-                          <MapPin className="w-3 h-3" /> {event.location}
-                        </>
-                      )}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs font-bold text-gray-500">
-                      <Users className="w-3 h-3" /> {event.attendees}
-                    </span>
-                  </div>
-                  <button className="px-4 py-2 bg-cyan text-black border-2 border-black font-bold uppercase text-xs hover:bg-black hover:text-cyan transition-colors whitespace-nowrap">
-                    RSVP
+        {upcomingEvents.length > 0 && (
+          <section>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+              <h2 className="text-4xl font-display font-bold uppercase">Upcoming Events</h2>
+              <div className="flex flex-wrap gap-2">
+                {eventTypes.map((type) => (
+                  <button
+                    key={type.key}
+                    className={`px-4 py-2 border-2 border-black font-bold uppercase text-xs transition-colors ${
+                      type.key === 'all'
+                        ? 'bg-black text-white hover:bg-cyan hover:text-black'
+                        : 'bg-white text-black hover:bg-cyan'
+                    }`}
+                  >
+                    {type.label}
                   </button>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
+            </div>
+
+            {/* UPCOMING EVENTS LIST */}
+            <div className="space-y-4">
+              {upcomingEvents.map((event) => {
+                const date = new Date(event.startDate)
+                const month = date.toLocaleString('en-GB', { month: 'short' }).toUpperCase()
+                const day = date.getDate().toString().padStart(2, '0')
+                const location = event.isVirtual ? 'Online' : event.city || event.country || 'TBC'
+                const typeLabel = eventTypeLabels[event.type as EventType] || 'Event'
+                const hoverColor = eventTypeHoverColors[event.type as EventType] || 'group-hover:text-cyan'
+                return (
+                  <div
+                    key={event.id}
+                    className="group bg-white border-2 border-black p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-6 hover:bg-gray-50 transition-colors neo-shadow-hover cursor-pointer"
+                  >
+                    <div className="shrink-0 flex flex-row md:flex-col items-center border-2 border-black">
+                      <span className="px-4 py-1 bg-black text-white text-xs font-bold uppercase w-full text-center">
+                        {month}
+                      </span>
+                      <span className="px-4 py-2 bg-white text-xl font-display font-bold">{day}</span>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[10px] font-bold uppercase text-gray-400 bg-gray-100 px-2 py-0.5 border border-gray-200">
+                          {typeLabel}
+                        </span>
+                      </div>
+                      <h3 className={`font-display font-bold text-2xl uppercase mb-1 ${hoverColor} transition-colors`}>
+                        {event.title}
+                      </h3>
+                      {event.description && (
+                        <p className="text-gray-600 text-sm font-medium line-clamp-2">{event.description}</p>
+                      )}
+                    </div>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full md:w-auto">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1 text-xs font-bold uppercase bg-gray-100 px-2 py-1 border border-black">
+                          {event.isVirtual ? (
+                            <>
+                              <Video className="w-3 h-3" /> {location}
+                            </>
+                          ) : (
+                            <>
+                              <MapPin className="w-3 h-3" /> {location}
+                            </>
+                          )}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs font-bold text-gray-500">
+                          <Users className="w-3 h-3" /> {event.attendees}
+                        </span>
+                      </div>
+                      <Link
+                        href={`/events/${event.slug}`}
+                        className="px-4 py-2 bg-cyan text-black border-2 border-black font-bold uppercase text-xs hover:bg-black hover:text-cyan transition-colors whitespace-nowrap"
+                      >
+                        RSVP
+                      </Link>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
 
         {/* ADD TO CALENDAR CTA */}
         <section className="bg-black text-white p-8 md:p-12 border-2 border-black neo-shadow-lg relative overflow-hidden">
@@ -288,45 +303,52 @@ export default function EventsPage() {
         </section>
 
         {/* PAST EVENTS */}
-        <section>
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-4xl font-display font-bold uppercase">Past Events</h2>
-            <span className="text-sm font-bold uppercase text-gray-400">View highlights & recordings</span>
-          </div>
+        {past.length > 0 && (
+          <section>
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-4xl font-display font-bold uppercase">Past Events</h2>
+              <span className="text-sm font-bold uppercase text-gray-400">View highlights &amp; recordings</span>
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {pastEvents.map((event) => (
-              <div key={event.id} className="group bg-white border-2 border-black neo-shadow hover:neo-shadow-lg transition-all">
-                <div className="h-40 overflow-hidden border-b-2 border-black relative">
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <span className="px-4 py-2 bg-white text-black font-bold uppercase text-sm border-2 border-black">
-                      View Recap
-                    </span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {past.map((event) => {
+                const date = new Date(event.startDate)
+                const dateLabel = date.toLocaleString('en-GB', { month: 'short', year: 'numeric' })
+                const location = event.city || event.country || 'TBC'
+                return (
+                  <div key={event.id} className="group bg-white border-2 border-black neo-shadow hover:neo-shadow-lg transition-all">
+                    <div className="h-40 overflow-hidden border-b-2 border-black relative">
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <span className="px-4 py-2 bg-white text-black font-bold uppercase text-sm border-2 border-black">
+                          View Recap
+                        </span>
+                      </div>
+                      <img
+                        src={event.imageUrl || FALLBACK_PAST_IMAGE}
+                        className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                        alt={event.title}
+                      />
+                    </div>
+                    <div className="p-5">
+                      <div className="flex items-center gap-2 mb-2 text-xs font-bold text-gray-500 uppercase">
+                        <Clock className="w-3 h-3" />
+                        {dateLabel}
+                        <span className="mx-1">•</span>
+                        <MapPin className="w-3 h-3" />
+                        {location}
+                      </div>
+                      <h3 className="font-display text-xl font-bold uppercase mb-2">{event.title}</h3>
+                      <p className="text-sm text-gray-500">
+                        <Users className="w-3 h-3 inline mr-1" />
+                        {event.attendees} attendees
+                      </p>
+                    </div>
                   </div>
-                  <img
-                    src={event.image}
-                    className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
-                    alt={event.title}
-                  />
-                </div>
-                <div className="p-5">
-                  <div className="flex items-center gap-2 mb-2 text-xs font-bold text-gray-500 uppercase">
-                    <Clock className="w-3 h-3" />
-                    {event.date}
-                    <span className="mx-1">•</span>
-                    <MapPin className="w-3 h-3" />
-                    {event.location}
-                  </div>
-                  <h3 className="font-display text-xl font-bold uppercase mb-2">{event.title}</h3>
-                  <p className="text-sm text-gray-500">
-                    <Users className="w-3 h-3 inline mr-1" />
-                    {event.attendees} attendees
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+                )
+              })}
+            </div>
+          </section>
+        )}
 
         {/* HOST YOUR OWN EVENT */}
         <section className="bg-gray-50 p-8 md:p-12 border-2 border-black neo-shadow">
