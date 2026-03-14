@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { DRINK_CATEGORY_LABELS } from '@/types/database'
 import type { DrinkCategory } from '@prisma/client'
 import { getInitials } from '@/lib/utils'
+import { NewsletterForm } from '@/components/newsletter-form'
 
 // Force dynamic rendering to always fetch fresh data
 export const dynamic = 'force-dynamic'
@@ -424,19 +425,12 @@ export default async function CommunityPage() {
           <p className="text-white mb-6 font-medium">
             The best discussions, events, and deals of the week sent to your inbox every Friday.
           </p>
-          <form className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="flex-1 px-4 py-3 bg-white text-black font-bold focus:outline-none border-2 border-transparent focus:border-cyan"
-            />
-            <button
-              type="submit"
-              className="px-6 py-3 bg-cyan text-black font-bold uppercase hover:bg-white transition-colors"
-            >
-              Subscribe
-            </button>
-          </form>
+          <NewsletterForm
+            source="community"
+            inputClassName="flex-1 px-4 py-3 bg-white text-black font-bold focus:outline-none border-2 border-transparent focus:border-cyan"
+            buttonClassName="px-6 py-3 bg-cyan text-black font-bold uppercase hover:bg-white transition-colors"
+            successClassName="flex items-center justify-center gap-2 font-bold text-cyan py-3"
+          />
         </div>
       </section>
     </div>

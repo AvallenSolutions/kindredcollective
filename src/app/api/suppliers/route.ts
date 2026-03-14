@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   const { page, limit, from, to } = parsePagination(searchParams)
 
   // Filters
-  const category = searchParams.get('category')
+  const categories = searchParams.getAll('category')
   const rawLocation = searchParams.get('location')
   const rawSearch = searchParams.get('search')
   const certifications = searchParams.getAll('certification')
@@ -55,8 +55,10 @@ export async function GET(request: NextRequest) {
     .order('viewCount', { ascending: false })
     .range(from, to)
 
-  if (category) {
-    query = query.eq('category', category)
+  if (categories.length === 1) {
+    query = query.eq('category', categories[0])
+  } else if (categories.length > 1) {
+    query = query.in('category', categories)
   }
 
   if (rawLocation) {

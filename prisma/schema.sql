@@ -496,4 +496,15 @@ CREATE INDEX IF NOT EXISTS "OrganisationInvite_email_idx" ON "OrganisationInvite
 CREATE INDEX IF NOT EXISTS "WorkRelationship_brandId_idx" ON "WorkRelationship"("brandId");
 CREATE INDEX IF NOT EXISTS "WorkRelationship_supplierId_idx" ON "WorkRelationship"("supplierId");
 
+-- ============= NEWSLETTER =============
+
+CREATE TABLE IF NOT EXISTS "NewsletterSubscriber" (
+  "id" UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  "email" TEXT NOT NULL UNIQUE,
+  "source" TEXT,
+  "subscribedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS "NewsletterSubscriber_email_idx" ON "NewsletterSubscriber"("email");
+
 -- ============= DONE =============
