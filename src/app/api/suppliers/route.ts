@@ -96,13 +96,13 @@ export async function GET(request: NextRequest) {
     .select('category')
     .eq('isPublic', true)
 
-  const categories = Array.from(new Set(categoriesData?.map(s => s.category) || []))
+  const availableCategories = Array.from(new Set(categoriesData?.map(s => s.category) || []))
 
   return successResponse({
     suppliers,
     pagination: paginationMeta(page, limit, count || 0),
     filters: {
-      categories,
+      categories: availableCategories,
     },
   })
 }

@@ -32,7 +32,7 @@ type Supplier = {
   tagline: string | null
   description: string | null
   logoUrl: string | null
-  category: string
+  category: SupplierCategory
   services: string[]
   location: string | null
   country: string | null
