@@ -66,25 +66,53 @@ export async function POST(request: NextRequest) {
   const body = await request.json()
 
   const {
-    title, description, type, startDate, endDate,
-    location, isOnline, onlineUrl, capacity,
-    imageUrl, tags,
+    title,
+    slug,
+    description,
+    type,
+    startDate,
+    endDate,
+    isVirtual = false,
+    venueName,
+    address,
+    city,
+    country,
+    virtualUrl,
+    capacity,
+    isFree = true,
+    price,
+    registrationUrl,
+    imageUrl,
   } = body
 
-  if (!title || !type || !startDate) {
-    return errorResponse('Title, type, and start date are required')
+  if (!title || !slug || !type || !startDate) {
+    return errorResponse('Title, slug, type, and start date are required')
   }
 
   const { data: event, error } = await supabase
     .from('Event')
     .insert({
       createdById: session.user.id,
-      title, description, type,
-      startDate, endDate,
-      location, isOnline, onlineUrl, capacity,
-      imageUrl,
-      tags: tags || [],
+      title,
+      slug,
+      description,
+      type,
       status: 'DRAFT',
+      startDate,
+      endDate,
+      isVirtual,
+      venueName,
+      address,
+      city,
+      country,
+      virtualUrl,
+      capacity,
+      isFree,
+      price: isFree ? null : price,
+      registrationUrl,
+      imageUrl,
+      showAttendees: true,
+      timezone: 'Europe/London',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
@@ -93,6 +121,9 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     console.error('[MyEvents] Error creating event:', error)
+    if (error.code === '23505') {
+      return errorResponse('An event with this slug already exists')
+    }
     return serverErrorResponse('Failed to create event')
   }
 

@@ -14,6 +14,7 @@ import {
   Shield,
   Store,
   Tag as TagIcon,
+  Pencil,
 } from 'lucide-react'
 import { Badge, Button, Card, CardContent } from '@/components/ui'
 import { SupplierCard } from '@/components/suppliers'
@@ -230,13 +231,21 @@ export function DashboardContent({
                     <div className="w-10 h-10 bg-cyan border-2 border-black flex items-center justify-center shrink-0">
                       <Wine className="w-5 h-5" />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <h3 className="font-display font-bold text-sm truncate">
                         {org.brandName || org.organisationName}
                       </h3>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="cyan" className="text-xs">Brand</Badge>
                         <span className="text-xs text-gray-500 capitalize">{org.memberRole.toLowerCase()}</span>
+                      </div>
+                      <div className="mt-3">
+                        <Link href={`/settings/brand?orgId=${org.organisationId}`}>
+                          <Button size="sm" variant="outline" className="text-xs">
+                            <Pencil className="w-3 h-3 mr-1" />
+                            Edit Profile
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                   </div>
@@ -258,7 +267,13 @@ export function DashboardContent({
                         <Badge variant="coral" className="text-xs">Supplier</Badge>
                         <span className="text-xs text-gray-500 capitalize">{org.memberRole.toLowerCase()}</span>
                       </div>
-                      <div className="flex items-center gap-2 mt-3">
+                      <div className="flex flex-wrap items-center gap-2 mt-3">
+                        <Link href={`/settings/supplier?orgId=${org.organisationId}`}>
+                          <Button size="sm" variant="outline" className="text-xs">
+                            <Pencil className="w-3 h-3 mr-1" />
+                            Edit Profile
+                          </Button>
+                        </Link>
                         {org.supplierSlug && (
                           <Link href={`/explore/${org.supplierSlug}`}>
                             <Button size="sm" variant="outline" className="text-xs">
@@ -457,6 +472,19 @@ export function DashboardContent({
                   </CardContent>
                 </Card>
               </Link>
+              {organisations.length > 0 && (
+                <Link href="/settings/events">
+                  <Card className="hover:shadow-brutal-lg hover:-translate-y-1 cursor-pointer transition-all">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Calendar className="w-5 h-5 text-purple-500" />
+                        <span className="font-bold text-sm">Manage Events</span>
+                      </div>
+                      <ArrowRight className="w-4 h-4" />
+                    </CardContent>
+                  </Card>
+                </Link>
+              )}
             </div>
           </div>
         </div>

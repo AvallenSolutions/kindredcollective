@@ -189,6 +189,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
                     eventId={event.id}
                     eventTitle={event.title}
                     isFree={event.isFree}
+                    price={event.price}
                     isRegistrationExternal={!!event.registrationUrl}
                     registrationUrl={event.registrationUrl}
                     isPast={isPast}
