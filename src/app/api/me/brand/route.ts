@@ -69,7 +69,6 @@ export async function POST(request: NextRequest) {
     websiteUrl,
     instagramUrl,
     linkedinUrl,
-    twitterUrl,
     logoUrl,
     heroImageUrl,
   } = body
@@ -106,7 +105,6 @@ export async function POST(request: NextRequest) {
       websiteUrl,
       instagramUrl,
       linkedinUrl,
-      twitterUrl,
       logoUrl,
       heroImageUrl,
       isPublic: true,
@@ -181,7 +179,7 @@ export async function PATCH(request: NextRequest) {
   const allowedFields = [
     'name', 'tagline', 'description', 'story', 'category', 'subcategories',
     'yearFounded', 'location', 'country', 'websiteUrl', 'instagramUrl',
-    'linkedinUrl', 'twitterUrl', 'logoUrl', 'heroImageUrl', 'isPublic',
+    'linkedinUrl', 'logoUrl', 'heroImageUrl', 'isPublic',
   ]
 
   const updates: Record<string, unknown> = {

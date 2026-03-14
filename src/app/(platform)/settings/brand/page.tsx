@@ -15,7 +15,6 @@ import {
   Globe,
   Instagram,
   Linkedin,
-  Twitter,
 } from 'lucide-react'
 import {
   Button,
@@ -54,7 +53,6 @@ interface Brand {
   websiteUrl: string | null
   instagramUrl: string | null
   linkedinUrl: string | null
-  twitterUrl: string | null
   category: DrinkCategory
   subcategories: string[]
   yearFounded: number | null
@@ -76,7 +74,7 @@ interface FormData {
   websiteUrl: string
   instagramUrl: string
   linkedinUrl: string
-  twitterUrl: string
+
 }
 
 // ---------------------------------------------------------------------------
@@ -280,7 +278,6 @@ function BrandEditContent() {
     websiteUrl: '',
     instagramUrl: '',
     linkedinUrl: '',
-    twitterUrl: '',
   })
 
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
@@ -319,7 +316,6 @@ function BrandEditContent() {
           websiteUrl: data.websiteUrl || '',
           instagramUrl: data.instagramUrl || '',
           linkedinUrl: data.linkedinUrl || '',
-          twitterUrl: data.twitterUrl || '',
         })
       })
       .catch(() => setAccessDenied(true))
@@ -380,7 +376,6 @@ function BrandEditContent() {
       websiteUrl: form.websiteUrl || null,
       instagramUrl: form.instagramUrl || null,
       linkedinUrl: form.linkedinUrl || null,
-      twitterUrl: form.twitterUrl || null,
       logoUrl,
       heroImageUrl,
     }
@@ -540,10 +535,7 @@ function BrandEditContent() {
             <Label htmlFor="linkedinUrl" className="flex items-center gap-1"><Linkedin className="w-3 h-3" />LinkedIn</Label>
             <Input id="linkedinUrl" type="url" value={form.linkedinUrl} onChange={field('linkedinUrl')} placeholder="https://linkedin.com/company/yourbrand" />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="twitterUrl" className="flex items-center gap-1"><Twitter className="w-3 h-3" />Twitter / X</Label>
-            <Input id="twitterUrl" type="url" value={form.twitterUrl} onChange={field('twitterUrl')} placeholder="https://twitter.com/yourbrand" />
-          </div>
+
         </CardContent>
       </Card>
 

@@ -55,7 +55,6 @@ CREATE TABLE "Brand" (
     "websiteUrl" TEXT,
     "instagramUrl" TEXT,
     "linkedinUrl" TEXT,
-    "twitterUrl" TEXT,
     "category" "DrinkCategory" NOT NULL,
     "subcategories" TEXT[],
     "yearFounded" INTEGER,
