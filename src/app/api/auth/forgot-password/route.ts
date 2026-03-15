@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { sendPasswordResetEmail } from '@/lib/email'
+import { createClient } from '@supabase/supabase-js'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,25 +12,17 @@ export async function POST(request: NextRequest) {
     const origin = process.env.NEXT_PUBLIC_APP_URL ||
       `${request.nextUrl.protocol}//${request.nextUrl.host}`
 
-    const supabase = createAdminClient()
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
 
-    const { data, error } = await supabase.auth.admin.generateLink({
-      type: 'recovery',
-      email,
-      options: {
-        redirectTo: `${origin}/api/auth/callback?next=/reset-password`,
-      },
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${origin}/api/auth/callback?next=/reset-password`,
     })
 
-    if (!error && data?.properties?.action_link) {
-      try {
-        await sendPasswordResetEmail(email, data.properties.action_link)
-      } catch (emailErr) {
-        // Log but don't surface — link was generated, email provider failed
-        console.error('[forgot-password] Email send failed:', emailErr)
-      }
-    } else if (error) {
-      console.error('[forgot-password] Supabase generateLink error:', error)
+    if (error) {
+      console.error('[forgot-password] Supabase error:', error)
     }
 
     // Always return success to avoid email enumeration
