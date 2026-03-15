@@ -584,6 +584,17 @@ model InviteRequest {
   @@index([reviewed])
 }
 
+// ============= NEWSLETTER =============
+
+model NewsletterSubscriber {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  source       String?
+  subscribedAt DateTime @default(now())
+
+  @@index([email])
+}
+
 // ============= WORK RELATIONSHIPS (VERIFICATION) =============
 
 model WorkRelationship {
