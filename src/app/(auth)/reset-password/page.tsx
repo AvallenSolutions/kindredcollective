@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '@/components/ui'
@@ -13,6 +13,36 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [ready, setReady] = useState(false)
+  const [invalid, setInvalid] = useState(false)
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    // Listen for the PASSWORD_RECOVERY event fired when the user arrives
+    // via the reset link (hash fragment is picked up by the browser client)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setReady(true)
+      }
+    })
+
+    // Also handle the case where the session is already established
+    // (e.g. arriving via the server-side callback with token_hash/code)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setReady(true)
+      } else {
+        // Give the hash-fragment auth event time to fire, then mark invalid
+        const timeout = setTimeout(() => {
+          setInvalid(true)
+        }, 3000)
+        return () => clearTimeout(timeout)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,10 +61,7 @@ export default function ResetPasswordPage() {
     setLoading(true)
 
     const supabase = createClient()
-
-    const { error } = await supabase.auth.updateUser({
-      password,
-    })
+    const { error } = await supabase.auth.updateUser({ password })
 
     if (error) {
       setError(error.message)
@@ -45,7 +72,6 @@ export default function ResetPasswordPage() {
     setSuccess(true)
     setLoading(false)
 
-    // Redirect to dashboard after a short delay
     setTimeout(() => {
       router.push('/dashboard')
       router.refresh()
@@ -69,6 +95,41 @@ export default function ResetPasswordPage() {
             >
               Go to Dashboard
             </Link>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (invalid) {
+    return (
+      <div className="w-full max-w-md px-4">
+        <Card className="shadow-brutal-lg">
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-2xl">Link Expired</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="bg-coral/10 border-2 border-coral text-coral px-4 py-3 text-sm mb-6">
+              This password reset link is invalid or has expired. Please request a new one.
+            </div>
+            <Link
+              href="/forgot-password"
+              className="block w-full text-center px-4 py-2 bg-cyan border-2 border-black font-bold uppercase text-sm neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+            >
+              Request New Link
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!ready) {
+    return (
+      <div className="w-full max-w-md px-4">
+        <Card className="shadow-brutal-lg">
+          <CardContent className="pt-6 text-center text-gray-600 text-sm py-10">
+            Verifying your reset link...
           </CardContent>
         </Card>
       </div>
