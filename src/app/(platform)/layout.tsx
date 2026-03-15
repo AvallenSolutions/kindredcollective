@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Footer } from '@/components/layout/footer'
 import { getSession, getUserMember } from '@/lib/auth/session'
@@ -9,15 +10,17 @@ export default async function PlatformLayout({
 }) {
   const session = await getSession()
 
-  let user = null
-  if (session.user) {
-    const member = await getUserMember(session.user.id)
-    user = {
-      email: session.user.email,
-      role: session.user.role,
-      firstName: member?.firstName || null,
-      lastName: member?.lastName || null,
-    }
+  // Defense-in-depth: redirect unauthenticated users even if middleware fails
+  if (!session.isAuthenticated || !session.user) {
+    redirect('/login')
+  }
+
+  const member = await getUserMember(session.user.id)
+  const user = {
+    email: session.user.email,
+    role: session.user.role,
+    firstName: member?.firstName || null,
+    lastName: member?.lastName || null,
   }
 
   return (
