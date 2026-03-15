@@ -3,28 +3,31 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { sendPasswordResetEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
-  const { email } = await request.json()
+  try {
+    const { email } = await request.json()
 
-  if (!email || typeof email !== 'string') {
-    return NextResponse.json({ error: 'Email is required' }, { status: 400 })
-  }
+    if (!email || typeof email !== 'string') {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+    }
 
-  const supabase = createAdminClient()
+    const supabase = createAdminClient()
 
-  const { data, error } = await supabase.auth.admin.generateLink({
-    type: 'recovery',
-    email,
-    options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=/reset-password`,
-    },
-  })
+    const { data, error } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+      options: {
+        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=/reset-password`,
+      },
+    })
 
-  if (error || !data?.properties?.action_link) {
-    // Return success regardless to avoid email enumeration
+    if (!error && data?.properties?.action_link) {
+      await sendPasswordResetEmail(email, data.properties.action_link)
+    }
+
+    // Always return success to avoid email enumeration
     return NextResponse.json({ success: true })
+  } catch (err) {
+    console.error('[forgot-password] Unexpected error:', err)
+    return NextResponse.json({ error: 'Something went wrong' }, { status: 500 })
   }
-
-  await sendPasswordResetEmail(email, data.properties.action_link)
-
-  return NextResponse.json({ success: true })
 }
