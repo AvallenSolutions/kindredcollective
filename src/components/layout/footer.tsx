@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { GingerbittersBadge } from '@/components/gingerbitters-logo'
 
 const footerNavigation = {
   community: [
@@ -68,6 +69,10 @@ export function Footer() {
           <div className="flex gap-6">
             <Link href="/privacy" className="hover:text-black">Privacy</Link>
             <Link href="/terms" className="hover:text-black">Terms</Link>
+          </div>
+          <div className="flex items-center gap-2 text-gray-400">
+            <span className="text-xs font-bold uppercase tracking-wide">Built by</span>
+            <GingerbittersBadge />
           </div>
         </div>
       </div>
