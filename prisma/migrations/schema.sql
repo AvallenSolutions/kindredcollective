@@ -1,35 +1,40 @@
 -- Kindred Collective Database Schema
--- Run this in Supabase SQL Editor
+-- Generated from Prisma schema - run this in Supabase SQL Editor
+-- Safe to re-run: skips existing types, tables, indexes, and constraints
 
--- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('BRAND', 'SUPPLIER', 'ADMIN');
-CREATE TYPE "DrinkCategory" AS ENUM ('SPIRITS', 'BEER', 'WINE', 'RTD', 'NO_LO', 'CIDER', 'OTHER');
-CREATE TYPE "SupplierCategory" AS ENUM ('PACKAGING', 'INGREDIENTS', 'LOGISTICS', 'CO_PACKING', 'DESIGN', 'MARKETING', 'EQUIPMENT', 'CONSULTING', 'LEGAL', 'FINANCE', 'DISTRIBUTION', 'RECRUITMENT', 'SOFTWARE', 'SUSTAINABILITY', 'PR', 'PHOTOGRAPHY', 'WEB_DEVELOPMENT', 'OTHER');
-CREATE TYPE "Certification" AS ENUM ('ORGANIC', 'B_CORP', 'FAIRTRADE', 'VEGAN', 'GLUTEN_FREE', 'PLASTIC_FREE', 'CARBON_NEUTRAL', 'OTHER');
-CREATE TYPE "EventType" AS ENUM ('TRADE_SHOW', 'MEETUP', 'WORKSHOP', 'WEBINAR', 'NETWORKING', 'LAUNCH', 'PARTY', 'OTHER');
-CREATE TYPE "EventStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'CANCELLED', 'COMPLETED');
-CREATE TYPE "OfferType" AS ENUM ('PERCENTAGE_DISCOUNT', 'FIXED_DISCOUNT', 'FREE_TRIAL', 'BUNDLE', 'OTHER');
-CREATE TYPE "OfferStatus" AS ENUM ('DRAFT', 'ACTIVE', 'EXPIRED', 'PAUSED');
-CREATE TYPE "RsvpStatus" AS ENUM ('GOING', 'INTERESTED', 'NOT_GOING');
-CREATE TYPE "ClaimStatus" AS ENUM ('UNCLAIMED', 'PENDING', 'CLAIMED', 'REJECTED');
+-- CreateEnum (idempotent)
+DO $$ BEGIN CREATE TYPE "UserRole" AS ENUM ('MEMBER', 'ADMIN'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "OrganisationType" AS ENUM ('BRAND', 'SUPPLIER'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "DrinkCategory" AS ENUM ('SPIRITS', 'BEER', 'WINE', 'RTD', 'NO_LO', 'CIDER', 'OTHER'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "SupplierCategory" AS ENUM ('PACKAGING', 'INGREDIENTS', 'LOGISTICS', 'CO_PACKING', 'DESIGN', 'MARKETING', 'EQUIPMENT', 'CONSULTING', 'LEGAL', 'FINANCE', 'DISTRIBUTION', 'RECRUITMENT', 'SOFTWARE', 'SUSTAINABILITY', 'PR', 'PHOTOGRAPHY', 'WEB_DEVELOPMENT', 'OTHER'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "Certification" AS ENUM ('ORGANIC', 'B_CORP', 'FAIRTRADE', 'VEGAN', 'GLUTEN_FREE', 'PLASTIC_FREE', 'CARBON_NEUTRAL', 'OTHER'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "EventType" AS ENUM ('TRADE_SHOW', 'MEETUP', 'WORKSHOP', 'WEBINAR', 'NETWORKING', 'LAUNCH', 'PARTY', 'OTHER'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "EventStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'CANCELLED', 'COMPLETED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "OfferType" AS ENUM ('PERCENTAGE_DISCOUNT', 'FIXED_DISCOUNT', 'FREE_TRIAL', 'BUNDLE', 'OTHER'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "OfferStatus" AS ENUM ('DRAFT', 'ACTIVE', 'EXPIRED', 'PAUSED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "RsvpStatus" AS ENUM ('GOING', 'INTERESTED', 'NOT_GOING'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "ClaimStatus" AS ENUM ('UNCLAIMED', 'PENDING', 'CLAIMED', 'REJECTED'); EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN CREATE TYPE "OrganisationMemberRole" AS ENUM ('OWNER', 'ADMIN', 'MEMBER'); EXCEPTION WHEN duplicate_object THEN null; END $$;
 
--- CreateTable User
-CREATE TABLE "User" (
+-- CreateTable (idempotent)
+CREATE TABLE IF NOT EXISTS "User" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "emailVerified" TIMESTAMP(3),
     "role" "UserRole" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "inviteLinkToken" TEXT,
+
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable Member
-CREATE TABLE "Member" (
+CREATE TABLE IF NOT EXISTS "Member" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "firstName" TEXT NOT NULL,
     "lastName" TEXT NOT NULL,
+    "company" TEXT,
     "jobTitle" TEXT,
     "bio" TEXT,
     "avatarUrl" TEXT,
@@ -38,13 +43,12 @@ CREATE TABLE "Member" (
     "isPublic" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+
     CONSTRAINT "Member_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable Brand
-CREATE TABLE "Brand" (
+CREATE TABLE IF NOT EXISTS "Brand" (
     "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "tagline" TEXT,
@@ -65,24 +69,23 @@ CREATE TABLE "Brand" (
     "isPublic" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+
     CONSTRAINT "Brand_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable BrandImage
-CREATE TABLE "BrandImage" (
+CREATE TABLE IF NOT EXISTS "BrandImage" (
     "id" TEXT NOT NULL,
     "brandId" TEXT NOT NULL,
     "url" TEXT NOT NULL,
     "alt" TEXT,
     "order" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
     CONSTRAINT "BrandImage_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable Supplier
-CREATE TABLE "Supplier" (
+CREATE TABLE IF NOT EXISTS "Supplier" (
     "id" TEXT NOT NULL,
-    "userId" TEXT,
     "companyName" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "tagline" TEXT,
@@ -112,22 +115,22 @@ CREATE TABLE "Supplier" (
     "viewCount" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+
     CONSTRAINT "Supplier_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable SupplierImage
-CREATE TABLE "SupplierImage" (
+CREATE TABLE IF NOT EXISTS "SupplierImage" (
     "id" TEXT NOT NULL,
     "supplierId" TEXT NOT NULL,
     "url" TEXT NOT NULL,
     "alt" TEXT,
     "order" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
     CONSTRAINT "SupplierImage_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable SupplierReview
-CREATE TABLE "SupplierReview" (
+CREATE TABLE IF NOT EXISTS "SupplierReview" (
     "id" TEXT NOT NULL,
     "supplierId" TEXT NOT NULL,
     "brandId" TEXT,
@@ -144,11 +147,11 @@ CREATE TABLE "SupplierReview" (
     "isPublic" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+
     CONSTRAINT "SupplierReview_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable SupplierClaim
-CREATE TABLE "SupplierClaim" (
+CREATE TABLE IF NOT EXISTS "SupplierClaim" (
     "id" TEXT NOT NULL,
     "supplierId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -160,11 +163,11 @@ CREATE TABLE "SupplierClaim" (
     "processedBy" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+
     CONSTRAINT "SupplierClaim_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable Offer
-CREATE TABLE "Offer" (
+CREATE TABLE IF NOT EXISTS "Offer" (
     "id" TEXT NOT NULL,
     "supplierId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
@@ -183,20 +186,20 @@ CREATE TABLE "Offer" (
     "claimCount" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+
     CONSTRAINT "Offer_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable OfferClaim
-CREATE TABLE "OfferClaim" (
+CREATE TABLE IF NOT EXISTS "OfferClaim" (
     "id" TEXT NOT NULL,
     "offerId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "claimedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
     CONSTRAINT "OfferClaim_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable Event
-CREATE TABLE "Event" (
+CREATE TABLE IF NOT EXISTS "Event" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
@@ -222,64 +225,65 @@ CREATE TABLE "Event" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdById" TEXT,
+
     CONSTRAINT "Event_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable EventRsvp
-CREATE TABLE "EventRsvp" (
+CREATE TABLE IF NOT EXISTS "EventRsvp" (
     "id" TEXT NOT NULL,
     "eventId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "status" "RsvpStatus" NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+
     CONSTRAINT "EventRsvp_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable SavedSupplier
-CREATE TABLE "SavedSupplier" (
+CREATE TABLE IF NOT EXISTS "SavedSupplier" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "supplierId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
     CONSTRAINT "SavedSupplier_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable SavedBrand
-CREATE TABLE "SavedBrand" (
+CREATE TABLE IF NOT EXISTS "SavedBrand" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "brandId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
     CONSTRAINT "SavedBrand_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable NewsSource
-CREATE TABLE "NewsSource" (
+CREATE TABLE IF NOT EXISTS "NewsSource" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "feedUrl" TEXT NOT NULL,
     "siteUrl" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
     CONSTRAINT "NewsSource_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable NewsArticle
-CREATE TABLE "NewsArticle" (
+CREATE TABLE IF NOT EXISTS "NewsArticle" (
     "id" TEXT NOT NULL,
     "sourceId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "url" TEXT NOT NULL,
     "description" TEXT,
     "imageUrl" TEXT,
+    "category" TEXT,
     "publishedAt" TIMESTAMP(3) NOT NULL,
     "fetchedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
     CONSTRAINT "NewsArticle_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable SearchQuery
-CREATE TABLE "SearchQuery" (
+CREATE TABLE IF NOT EXISTS "SearchQuery" (
     "id" TEXT NOT NULL,
     "query" TEXT NOT NULL,
     "userId" TEXT,
@@ -287,67 +291,187 @@ CREATE TABLE "SearchQuery" (
     "processingMs" INTEGER NOT NULL,
     "usedAI" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
     CONSTRAINT "SearchQuery_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndexes
-CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
-CREATE INDEX "User_email_idx" ON "User"("email");
-CREATE INDEX "User_role_idx" ON "User"("role");
-CREATE UNIQUE INDEX "Member_userId_key" ON "Member"("userId");
-CREATE INDEX "Member_firstName_lastName_idx" ON "Member"("firstName", "lastName");
-CREATE UNIQUE INDEX "Brand_userId_key" ON "Brand"("userId");
-CREATE UNIQUE INDEX "Brand_slug_key" ON "Brand"("slug");
-CREATE INDEX "Brand_slug_idx" ON "Brand"("slug");
-CREATE INDEX "Brand_category_idx" ON "Brand"("category");
-CREATE INDEX "Brand_location_idx" ON "Brand"("location");
-CREATE INDEX "Brand_name_idx" ON "Brand"("name");
-CREATE UNIQUE INDEX "Supplier_userId_key" ON "Supplier"("userId");
-CREATE UNIQUE INDEX "Supplier_slug_key" ON "Supplier"("slug");
-CREATE INDEX "Supplier_slug_idx" ON "Supplier"("slug");
-CREATE INDEX "Supplier_category_idx" ON "Supplier"("category");
-CREATE INDEX "Supplier_location_idx" ON "Supplier"("location");
-CREATE INDEX "Supplier_companyName_idx" ON "Supplier"("companyName");
-CREATE INDEX "Supplier_claimStatus_idx" ON "Supplier"("claimStatus");
-CREATE INDEX "SupplierReview_supplierId_idx" ON "SupplierReview"("supplierId");
-CREATE INDEX "SupplierReview_rating_idx" ON "SupplierReview"("rating");
-CREATE INDEX "SupplierClaim_status_idx" ON "SupplierClaim"("status");
-CREATE UNIQUE INDEX "SupplierClaim_supplierId_userId_key" ON "SupplierClaim"("supplierId", "userId");
-CREATE INDEX "Offer_status_idx" ON "Offer"("status");
-CREATE INDEX "Offer_supplierId_idx" ON "Offer"("supplierId");
-CREATE INDEX "Offer_endDate_idx" ON "Offer"("endDate");
-CREATE UNIQUE INDEX "OfferClaim_offerId_userId_key" ON "OfferClaim"("offerId", "userId");
-CREATE UNIQUE INDEX "Event_slug_key" ON "Event"("slug");
-CREATE INDEX "Event_startDate_idx" ON "Event"("startDate");
-CREATE INDEX "Event_status_idx" ON "Event"("status");
-CREATE INDEX "Event_type_idx" ON "Event"("type");
-CREATE UNIQUE INDEX "EventRsvp_eventId_userId_key" ON "EventRsvp"("eventId", "userId");
-CREATE UNIQUE INDEX "SavedSupplier_userId_supplierId_key" ON "SavedSupplier"("userId", "supplierId");
-CREATE UNIQUE INDEX "SavedBrand_userId_brandId_key" ON "SavedBrand"("userId", "brandId");
-CREATE UNIQUE INDEX "NewsSource_feedUrl_key" ON "NewsSource"("feedUrl");
-CREATE UNIQUE INDEX "NewsArticle_url_key" ON "NewsArticle"("url");
-CREATE INDEX "NewsArticle_publishedAt_idx" ON "NewsArticle"("publishedAt");
-CREATE INDEX "SearchQuery_createdAt_idx" ON "SearchQuery"("createdAt");
-CREATE INDEX "SearchQuery_query_idx" ON "SearchQuery"("query");
+CREATE TABLE IF NOT EXISTS "Organisation" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "type" "OrganisationType" NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "brandId" TEXT,
+    "supplierId" TEXT,
 
--- AddForeignKeys
-ALTER TABLE "Member" ADD CONSTRAINT "Member_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "Brand" ADD CONSTRAINT "Brand_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "BrandImage" ADD CONSTRAINT "BrandImage_brandId_fkey" FOREIGN KEY ("brandId") REFERENCES "Brand"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "Supplier" ADD CONSTRAINT "Supplier_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "SupplierImage" ADD CONSTRAINT "SupplierImage_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "SupplierReview" ADD CONSTRAINT "SupplierReview_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "SupplierReview" ADD CONSTRAINT "SupplierReview_brandId_fkey" FOREIGN KEY ("brandId") REFERENCES "Brand"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "SupplierReview" ADD CONSTRAINT "SupplierReview_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "SupplierClaim" ADD CONSTRAINT "SupplierClaim_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "SupplierClaim" ADD CONSTRAINT "SupplierClaim_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "Offer" ADD CONSTRAINT "Offer_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "OfferClaim" ADD CONSTRAINT "OfferClaim_offerId_fkey" FOREIGN KEY ("offerId") REFERENCES "Offer"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "OfferClaim" ADD CONSTRAINT "OfferClaim_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "EventRsvp" ADD CONSTRAINT "EventRsvp_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "EventRsvp" ADD CONSTRAINT "EventRsvp_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "SavedSupplier" ADD CONSTRAINT "SavedSupplier_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "SavedSupplier" ADD CONSTRAINT "SavedSupplier_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "SavedBrand" ADD CONSTRAINT "SavedBrand_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "SavedBrand" ADD CONSTRAINT "SavedBrand_brandId_fkey" FOREIGN KEY ("brandId") REFERENCES "Brand"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "NewsArticle" ADD CONSTRAINT "NewsArticle_sourceId_fkey" FOREIGN KEY ("sourceId") REFERENCES "NewsSource"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    CONSTRAINT "Organisation_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE IF NOT EXISTS "OrganisationMember" (
+    "id" TEXT NOT NULL,
+    "organisationId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "role" "OrganisationMemberRole" NOT NULL DEFAULT 'MEMBER',
+    "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "OrganisationMember_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE IF NOT EXISTS "OrganisationInvite" (
+    "id" TEXT NOT NULL,
+    "organisationId" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "role" "OrganisationMemberRole" NOT NULL DEFAULT 'MEMBER',
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "acceptedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdById" TEXT NOT NULL,
+
+    CONSTRAINT "OrganisationInvite_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE IF NOT EXISTS "InviteLink" (
+    "id" TEXT NOT NULL,
+    "token" TEXT NOT NULL,
+    "createdBy" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expiresAt" TIMESTAMP(3),
+    "maxUses" INTEGER,
+    "usedCount" INTEGER NOT NULL DEFAULT 0,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "notes" TEXT,
+    "targetRole" TEXT,
+    "email" TEXT,
+    "phone" TEXT,
+
+    CONSTRAINT "InviteLink_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE IF NOT EXISTS "InviteRequest" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "company" TEXT,
+    "type" TEXT NOT NULL,
+    "message" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "reviewed" BOOLEAN NOT NULL DEFAULT false,
+
+    CONSTRAINT "InviteRequest_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE IF NOT EXISTS "NewsletterSubscriber" (
+    "id" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "source" TEXT,
+    "subscribedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "NewsletterSubscriber_pkey" PRIMARY KEY ("id")
+);
+
+CREATE TABLE IF NOT EXISTS "WorkRelationship" (
+    "id" TEXT NOT NULL,
+    "brandId" TEXT NOT NULL,
+    "supplierId" TEXT NOT NULL,
+    "brandVerified" BOOLEAN NOT NULL DEFAULT false,
+    "supplierVerified" BOOLEAN NOT NULL DEFAULT false,
+    "projectDate" TIMESTAMP(3),
+    "projectDescription" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "WorkRelationship_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex (idempotent)
+CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");
+CREATE INDEX IF NOT EXISTS "User_email_idx" ON "User"("email");
+CREATE INDEX IF NOT EXISTS "User_role_idx" ON "User"("role");
+CREATE UNIQUE INDEX IF NOT EXISTS "Member_userId_key" ON "Member"("userId");
+CREATE INDEX IF NOT EXISTS "Member_firstName_lastName_idx" ON "Member"("firstName", "lastName");
+CREATE UNIQUE INDEX IF NOT EXISTS "Brand_slug_key" ON "Brand"("slug");
+CREATE INDEX IF NOT EXISTS "Brand_slug_idx" ON "Brand"("slug");
+CREATE INDEX IF NOT EXISTS "Brand_category_idx" ON "Brand"("category");
+CREATE INDEX IF NOT EXISTS "Brand_location_idx" ON "Brand"("location");
+CREATE INDEX IF NOT EXISTS "Brand_name_idx" ON "Brand"("name");
+CREATE UNIQUE INDEX IF NOT EXISTS "Supplier_slug_key" ON "Supplier"("slug");
+CREATE INDEX IF NOT EXISTS "Supplier_slug_idx" ON "Supplier"("slug");
+CREATE INDEX IF NOT EXISTS "Supplier_category_idx" ON "Supplier"("category");
+CREATE INDEX IF NOT EXISTS "Supplier_location_idx" ON "Supplier"("location");
+CREATE INDEX IF NOT EXISTS "Supplier_companyName_idx" ON "Supplier"("companyName");
+CREATE INDEX IF NOT EXISTS "Supplier_claimStatus_idx" ON "Supplier"("claimStatus");
+CREATE INDEX IF NOT EXISTS "SupplierReview_supplierId_idx" ON "SupplierReview"("supplierId");
+CREATE INDEX IF NOT EXISTS "SupplierReview_rating_idx" ON "SupplierReview"("rating");
+CREATE INDEX IF NOT EXISTS "SupplierClaim_status_idx" ON "SupplierClaim"("status");
+CREATE UNIQUE INDEX IF NOT EXISTS "SupplierClaim_supplierId_userId_key" ON "SupplierClaim"("supplierId", "userId");
+CREATE INDEX IF NOT EXISTS "Offer_status_idx" ON "Offer"("status");
+CREATE INDEX IF NOT EXISTS "Offer_supplierId_idx" ON "Offer"("supplierId");
+CREATE INDEX IF NOT EXISTS "Offer_endDate_idx" ON "Offer"("endDate");
+CREATE UNIQUE INDEX IF NOT EXISTS "OfferClaim_offerId_userId_key" ON "OfferClaim"("offerId", "userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "Event_slug_key" ON "Event"("slug");
+CREATE INDEX IF NOT EXISTS "Event_startDate_idx" ON "Event"("startDate");
+CREATE INDEX IF NOT EXISTS "Event_status_idx" ON "Event"("status");
+CREATE INDEX IF NOT EXISTS "Event_type_idx" ON "Event"("type");
+CREATE UNIQUE INDEX IF NOT EXISTS "EventRsvp_eventId_userId_key" ON "EventRsvp"("eventId", "userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "SavedSupplier_userId_supplierId_key" ON "SavedSupplier"("userId", "supplierId");
+CREATE UNIQUE INDEX IF NOT EXISTS "SavedBrand_userId_brandId_key" ON "SavedBrand"("userId", "brandId");
+CREATE UNIQUE INDEX IF NOT EXISTS "NewsSource_feedUrl_key" ON "NewsSource"("feedUrl");
+CREATE UNIQUE INDEX IF NOT EXISTS "NewsArticle_url_key" ON "NewsArticle"("url");
+CREATE INDEX IF NOT EXISTS "NewsArticle_publishedAt_idx" ON "NewsArticle"("publishedAt");
+CREATE INDEX IF NOT EXISTS "NewsArticle_category_idx" ON "NewsArticle"("category");
+CREATE INDEX IF NOT EXISTS "SearchQuery_createdAt_idx" ON "SearchQuery"("createdAt");
+CREATE INDEX IF NOT EXISTS "SearchQuery_query_idx" ON "SearchQuery"("query");
+CREATE UNIQUE INDEX IF NOT EXISTS "Organisation_slug_key" ON "Organisation"("slug");
+CREATE UNIQUE INDEX IF NOT EXISTS "Organisation_brandId_key" ON "Organisation"("brandId");
+CREATE UNIQUE INDEX IF NOT EXISTS "Organisation_supplierId_key" ON "Organisation"("supplierId");
+CREATE INDEX IF NOT EXISTS "Organisation_slug_idx" ON "Organisation"("slug");
+CREATE INDEX IF NOT EXISTS "Organisation_type_idx" ON "Organisation"("type");
+CREATE INDEX IF NOT EXISTS "OrganisationMember_userId_idx" ON "OrganisationMember"("userId");
+CREATE INDEX IF NOT EXISTS "OrganisationMember_role_idx" ON "OrganisationMember"("role");
+CREATE UNIQUE INDEX IF NOT EXISTS "OrganisationMember_organisationId_userId_key" ON "OrganisationMember"("organisationId", "userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "OrganisationInvite_token_key" ON "OrganisationInvite"("token");
+CREATE INDEX IF NOT EXISTS "OrganisationInvite_token_idx" ON "OrganisationInvite"("token");
+CREATE INDEX IF NOT EXISTS "OrganisationInvite_email_idx" ON "OrganisationInvite"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "InviteLink_token_key" ON "InviteLink"("token");
+CREATE INDEX IF NOT EXISTS "InviteLink_token_idx" ON "InviteLink"("token");
+CREATE INDEX IF NOT EXISTS "InviteLink_isActive_idx" ON "InviteLink"("isActive");
+CREATE INDEX IF NOT EXISTS "InviteLink_createdBy_idx" ON "InviteLink"("createdBy");
+CREATE INDEX IF NOT EXISTS "InviteLink_email_idx" ON "InviteLink"("email");
+CREATE INDEX IF NOT EXISTS "InviteRequest_createdAt_idx" ON "InviteRequest"("createdAt");
+CREATE INDEX IF NOT EXISTS "InviteRequest_reviewed_idx" ON "InviteRequest"("reviewed");
+CREATE UNIQUE INDEX IF NOT EXISTS "NewsletterSubscriber_email_key" ON "NewsletterSubscriber"("email");
+CREATE INDEX IF NOT EXISTS "NewsletterSubscriber_email_idx" ON "NewsletterSubscriber"("email");
+CREATE INDEX IF NOT EXISTS "WorkRelationship_brandId_idx" ON "WorkRelationship"("brandId");
+CREATE INDEX IF NOT EXISTS "WorkRelationship_supplierId_idx" ON "WorkRelationship"("supplierId");
+CREATE UNIQUE INDEX IF NOT EXISTS "WorkRelationship_brandId_supplierId_key" ON "WorkRelationship"("brandId", "supplierId");
+
+-- AddForeignKey (idempotent)
+DO $$ BEGIN ALTER TABLE "User" ADD CONSTRAINT "User_inviteLinkToken_fkey" FOREIGN KEY ("inviteLinkToken") REFERENCES "InviteLink"("token") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "Member" ADD CONSTRAINT "Member_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "BrandImage" ADD CONSTRAINT "BrandImage_brandId_fkey" FOREIGN KEY ("brandId") REFERENCES "Brand"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "SupplierImage" ADD CONSTRAINT "SupplierImage_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "SupplierReview" ADD CONSTRAINT "SupplierReview_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "SupplierReview" ADD CONSTRAINT "SupplierReview_brandId_fkey" FOREIGN KEY ("brandId") REFERENCES "Brand"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "SupplierReview" ADD CONSTRAINT "SupplierReview_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "SupplierClaim" ADD CONSTRAINT "SupplierClaim_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "SupplierClaim" ADD CONSTRAINT "SupplierClaim_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "Offer" ADD CONSTRAINT "Offer_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "OfferClaim" ADD CONSTRAINT "OfferClaim_offerId_fkey" FOREIGN KEY ("offerId") REFERENCES "Offer"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "OfferClaim" ADD CONSTRAINT "OfferClaim_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "EventRsvp" ADD CONSTRAINT "EventRsvp_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "EventRsvp" ADD CONSTRAINT "EventRsvp_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "SavedSupplier" ADD CONSTRAINT "SavedSupplier_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "SavedSupplier" ADD CONSTRAINT "SavedSupplier_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "SavedBrand" ADD CONSTRAINT "SavedBrand_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "SavedBrand" ADD CONSTRAINT "SavedBrand_brandId_fkey" FOREIGN KEY ("brandId") REFERENCES "Brand"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "NewsArticle" ADD CONSTRAINT "NewsArticle_sourceId_fkey" FOREIGN KEY ("sourceId") REFERENCES "NewsSource"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "Organisation" ADD CONSTRAINT "Organisation_brandId_fkey" FOREIGN KEY ("brandId") REFERENCES "Brand"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "Organisation" ADD CONSTRAINT "Organisation_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE SET NULL ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "OrganisationMember" ADD CONSTRAINT "OrganisationMember_organisationId_fkey" FOREIGN KEY ("organisationId") REFERENCES "Organisation"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "OrganisationMember" ADD CONSTRAINT "OrganisationMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "OrganisationInvite" ADD CONSTRAINT "OrganisationInvite_organisationId_fkey" FOREIGN KEY ("organisationId") REFERENCES "Organisation"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "InviteLink" ADD CONSTRAINT "InviteLink_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "WorkRelationship" ADD CONSTRAINT "WorkRelationship_brandId_fkey" FOREIGN KEY ("brandId") REFERENCES "Brand"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;
+DO $$ BEGIN ALTER TABLE "WorkRelationship" ADD CONSTRAINT "WorkRelationship_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "Supplier"("id") ON DELETE CASCADE ON UPDATE CASCADE; EXCEPTION WHEN duplicate_object THEN null; END $$;

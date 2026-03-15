@@ -59,7 +59,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     'websiteUrl',
     'instagramUrl',
     'linkedinUrl',
-    'twitterUrl',
     'category',
     'subcategories',
     'yearFounded',

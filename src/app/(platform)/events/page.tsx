@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { Star, MapPin, Video, Calendar, Users, Clock, CalendarPlus, Ticket, ArrowRight, Mail } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { EventType } from '@prisma/client'
+import { NewsletterForm } from '@/components/newsletter-form'
+import { CalendarButtons } from '@/components/events/calendar-buttons'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -290,15 +292,7 @@ export default async function EventsPage() {
                 <p className="text-gray-400 font-medium">Subscribe to our calendar and get automatic updates for all Kindred events.</p>
               </div>
             </div>
-            <div className="flex gap-3">
-              <button className="px-6 py-3 bg-cyan text-black border-2 border-black font-bold uppercase hover:bg-white transition-colors flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Add to Google
-              </button>
-              <button className="px-6 py-3 bg-white text-black border-2 border-black font-bold uppercase hover:bg-cyan transition-colors">
-                iCal
-              </button>
-            </div>
+            <CalendarButtons />
           </div>
         </section>
 
@@ -378,19 +372,12 @@ export default async function EventsPage() {
           <p className="text-black/80 mb-6 font-medium">
             Be the first to know about new events, early bird tickets, and exclusive invites.
           </p>
-          <form className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="Enter your email"
-              className="flex-1 px-4 py-3 bg-white text-black font-bold focus:outline-none border-2 border-black"
-            />
-            <button
-              type="submit"
-              className="px-6 py-3 bg-black text-white font-bold uppercase hover:bg-white hover:text-black transition-colors border-2 border-black"
-            >
-              Subscribe
-            </button>
-          </form>
+          <NewsletterForm
+            source="events"
+            inputClassName="flex-1 px-4 py-3 bg-white text-black font-bold focus:outline-none border-2 border-black"
+            buttonClassName="px-6 py-3 bg-black text-white font-bold uppercase hover:bg-white hover:text-black transition-colors border-2 border-black"
+            successClassName="flex items-center justify-center gap-2 font-bold py-3"
+          />
         </div>
       </section>
     </div>

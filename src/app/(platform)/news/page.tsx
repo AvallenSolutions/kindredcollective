@@ -5,6 +5,7 @@ import { Newspaper, ExternalLink, Clock, Bookmark, Filter, Loader2 } from 'lucid
 import { Badge, Button, Card, CardContent } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { NewsletterForm } from '@/components/newsletter-form'
 
 interface NewsArticle {
   id: string
@@ -271,14 +272,12 @@ export default function NewsPage() {
           <p className="text-gray-400 mb-6 max-w-xl mx-auto">
             Subscribe to our weekly newsletter for curated industry news, trends, and exclusive insights.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-            <input
-              type="email"
-              placeholder="your@email.com"
-              className="flex-1 h-12 px-4 bg-white text-black border-3 border-cyan placeholder:text-gray-500 focus:outline-none"
-            />
-            <Button size="lg">Subscribe</Button>
-          </div>
+          <NewsletterForm
+            source="news"
+            inputClassName="flex-1 h-12 px-4 bg-white text-black border-3 border-cyan placeholder:text-gray-500 focus:outline-none"
+            buttonClassName="h-12 px-6 bg-cyan text-black border-3 border-cyan font-bold uppercase hover:bg-white transition-colors"
+            successClassName="flex items-center justify-center gap-2 font-bold text-cyan py-3"
+          />
         </div>
       </section>
     </div>
