@@ -134,6 +134,29 @@ export async function GET(request: Request) {
     }
   }
 
-  // Return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
+  // No server-side token found — Supabase may have sent the token as a hash
+  // fragment (implicit flow), which is invisible to the server. Return a small
+  // HTML page that reads the hash client-side and redirects accordingly.
+  return new NextResponse(
+    `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>Redirecting...</title></head>
+<body>
+<script>
+  var hash = window.location.hash.substring(1);
+  var params = {};
+  hash.split('&').forEach(function(part) {
+    var kv = part.split('=');
+    params[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || '');
+  });
+  if (params.type === 'recovery' && params.access_token) {
+    window.location.href = '/reset-password#' + hash;
+  } else {
+    window.location.href = '/login?error=auth_callback_error';
+  }
+</script>
+</body>
+</html>`,
+    { status: 200, headers: { 'Content-Type': 'text/html' } }
+  )
 }
