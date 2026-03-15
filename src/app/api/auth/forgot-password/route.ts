@@ -10,13 +10,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
+    const origin = process.env.NEXT_PUBLIC_APP_URL ||
+      `${request.nextUrl.protocol}//${request.nextUrl.host}`
+
     const supabase = createAdminClient()
 
     const { data, error } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email,
       options: {
-        redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=/reset-password`,
+        redirectTo: `${origin}/api/auth/callback?next=/reset-password`,
       },
     })
 
