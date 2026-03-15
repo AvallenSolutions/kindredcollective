@@ -24,7 +24,14 @@ export async function POST(request: NextRequest) {
     })
 
     if (!error && data?.properties?.action_link) {
-      await sendPasswordResetEmail(email, data.properties.action_link)
+      try {
+        await sendPasswordResetEmail(email, data.properties.action_link)
+      } catch (emailErr) {
+        // Log but don't surface — link was generated, email provider failed
+        console.error('[forgot-password] Email send failed:', emailErr)
+      }
+    } else if (error) {
+      console.error('[forgot-password] Supabase generateLink error:', error)
     }
 
     // Always return success to avoid email enumeration
