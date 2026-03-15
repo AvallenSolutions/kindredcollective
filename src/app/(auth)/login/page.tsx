@@ -53,7 +53,7 @@ export default function LoginPage() {
         <CardHeader className="text-center pb-2">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Image
-              src="/Kindred Spirits Awards_Logos-11 (edited).png"
+              src="/kindred-logo.png"
               alt="Kindred Collective logo"
               width={48}
               height={48}
