@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '@/components/ui'
 import { createClient } from '@/lib/supabase/client'
@@ -50,6 +51,16 @@ export default function LoginPage() {
     <div className="w-full max-w-md px-4">
       <Card className="shadow-brutal-lg">
         <CardHeader className="text-center pb-2">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Image
+              src="/Kindred Spirits Awards_Logos-11 (edited).png"
+              alt="Kindred Collective logo"
+              width={48}
+              height={48}
+              className="w-12 h-12"
+            />
+            <span className="font-display font-bold text-2xl tracking-tighter uppercase">Kindred Collective</span>
+          </div>
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <p className="text-gray-600 text-sm mt-2">
             Sign in to your Kindred account
