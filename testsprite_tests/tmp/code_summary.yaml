@@ -1,0 +1,530 @@
+version: "2"
+type: frontend
+tech_stack:
+  - Next.js 14 (App Router)
+  - TypeScript
+  - Prisma ORM
+  - Supabase (Auth + Storage + PostgreSQL)
+  - Tailwind CSS
+  - React
+routes:
+  - path: /
+    file: src/app/(marketing)/page.tsx
+    auth_required: false
+    description: Landing page with community stats, member benefits, and CTAs to join or login
+  - path: /about
+    file: src/app/(marketing)/about/page.tsx
+    auth_required: false
+    description: About page describing the Kindred Collective community story and values
+  - path: /join
+    file: src/app/(marketing)/join/page.tsx
+    auth_required: false
+    description: Join/request access page with invite code or membership request form
+  - path: /login
+    file: src/app/(auth)/login/page.tsx
+    auth_required: false
+    description: Email/password login via Supabase Auth
+  - path: /signup
+    file: src/app/(auth)/signup/page.tsx
+    auth_required: false
+    description: Account creation page with invite code validation
+  - path: /forgot-password
+    file: src/app/(auth)/forgot-password/page.tsx
+    auth_required: false
+    description: Password recovery initiation page
+  - path: /reset-password
+    file: src/app/(auth)/reset-password/page.tsx
+    auth_required: false
+    description: Password reset with token validation
+  - path: /dashboard
+    file: src/app/(platform)/dashboard/page.tsx
+    auth_required: true
+    description: User dashboard showing profile, saved suppliers, upcoming events, and claimed offers
+  - path: /dashboard/settings
+    file: src/app/(platform)/dashboard/settings/page.tsx
+    auth_required: true
+    description: General account settings page
+  - path: /onboarding
+    file: src/app/(platform)/onboarding/page.tsx
+    auth_required: true
+    description: Multi-step onboarding wizard for new users to set up profile, brand, and supplier affiliations
+  - path: /explore
+    file: src/app/(platform)/explore/page.tsx
+    auth_required: true
+    description: Supplier marketplace with search, category, location, and certification filters
+  - path: /search
+    file: src/app/(platform)/search/page.tsx
+    auth_required: true
+    description: AI-powered search results page for supplier discovery
+  - path: /community
+    file: src/app/(platform)/community/page.tsx
+    auth_required: true
+    description: Community hub showing featured event, brand profiles, member directory, and newsletter signup
+  - path: /community/brands
+    file: src/app/(platform)/community/brands/page.tsx
+    auth_required: true
+    description: Browse all public brand profiles with search and filter
+  - path: /community/brands/[slug]
+    file: src/app/(platform)/community/brands/[slug]/page.tsx
+    auth_required: true
+    description: Individual brand profile page
+  - path: /community/members
+    file: src/app/(platform)/community/members/page.tsx
+    auth_required: true
+    description: View all member profiles in the community
+  - path: /community/events
+    file: src/app/(platform)/community/events/page.tsx
+    auth_required: true
+    description: Event calendar and listing
+  - path: /community/events/[slug]
+    file: src/app/(platform)/community/events/[slug]/page.tsx
+    auth_required: true
+    description: Individual event details and RSVP
+  - path: /news
+    file: src/app/(platform)/news/page.tsx
+    auth_required: true
+    description: News and industry digest feed
+  - path: /offers
+    file: src/app/(platform)/offers/page.tsx
+    auth_required: true
+    description: Browse and claim exclusive member discounts from suppliers
+  - path: /events
+    file: src/app/(platform)/events/page.tsx
+    auth_required: true
+    description: Event listing and RSVP management
+  - path: /settings/team
+    file: src/app/(platform)/settings/team/page.tsx
+    auth_required: true
+    description: Manage team members and organisation
+  - path: /settings/brand
+    file: src/app/(platform)/settings/brand/page.tsx
+    auth_required: true
+    description: Configure brand profile and details
+  - path: /settings/supplier
+    file: src/app/(platform)/settings/supplier/page.tsx
+    auth_required: true
+    description: Configure supplier profile and details
+  - path: /settings/offers
+    file: src/app/(platform)/settings/offers/page.tsx
+    auth_required: true
+    description: Manage offers created by the user
+  - path: /settings/events
+    file: src/app/(platform)/settings/events/page.tsx
+    auth_required: true
+    description: Manage events created by the user
+  - path: /admin
+    file: src/app/(platform)/admin/page.tsx
+    auth_required: true
+    description: Admin dashboard with platform stats, quick actions, and recent users
+  - path: /admin/users
+    file: src/app/(platform)/admin/users/page.tsx
+    auth_required: true
+    description: Manage all platform users
+  - path: /admin/users/new
+    file: src/app/(platform)/admin/users/new/page.tsx
+    auth_required: true
+    description: Create a new user
+  - path: /admin/users/[id]
+    file: src/app/(platform)/admin/users/[id]/page.tsx
+    auth_required: true
+    description: Edit user details
+  - path: /admin/suppliers
+    file: src/app/(platform)/admin/suppliers/page.tsx
+    auth_required: true
+    description: Manage all suppliers
+  - path: /admin/suppliers/new
+    file: src/app/(platform)/admin/suppliers/new/page.tsx
+    auth_required: true
+    description: Create a new supplier
+  - path: /admin/suppliers/[id]
+    file: src/app/(platform)/admin/suppliers/[id]/page.tsx
+    auth_required: true
+    description: Edit supplier details
+  - path: /admin/events
+    file: src/app/(platform)/admin/events/page.tsx
+    auth_required: true
+    description: Manage all events
+  - path: /admin/events/new
+    file: src/app/(platform)/admin/events/new/page.tsx
+    auth_required: true
+    description: Create a new event
+  - path: /admin/events/[id]
+    file: src/app/(platform)/admin/events/[id]/page.tsx
+    auth_required: true
+    description: Edit event details
+  - path: /admin/offers
+    file: src/app/(platform)/admin/offers/page.tsx
+    auth_required: true
+    description: Manage supplier offers
+  - path: /admin/reviews
+    file: src/app/(platform)/admin/reviews/page.tsx
+    auth_required: true
+    description: Manage supplier reviews
+  - path: /admin/invites
+    file: src/app/(platform)/admin/invites/page.tsx
+    auth_required: true
+    description: Generate and manage invite links
+  - path: /admin/join-requests
+    file: src/app/(platform)/admin/join-requests/page.tsx
+    auth_required: true
+    description: Review and approve membership requests
+features:
+  - name: User Authentication
+    description: Email/password sign in and sign up with invite code validation via Supabase Auth
+    files:
+      - src/app/(auth)/login/page.tsx
+      - src/app/(auth)/signup/page.tsx
+      - src/app/api/auth/signup/route.ts
+      - src/lib/supabase/client.ts
+      - src/lib/auth/session.ts
+    entry_route: /login
+    user_interactions:
+      - Fill email input field
+      - Fill password input field
+      - Click Sign In button
+      - See error message on invalid credentials
+      - Click forgot password link
+    api_calls:
+      - method: POST
+        endpoint: /api/auth/signup
+    auth_required: false
+  - name: Join / Request Access
+    description: Public visitors can request membership or use an invite link to join the community
+    files:
+      - src/app/(marketing)/join/page.tsx
+      - src/app/api/join/route.ts
+      - src/app/api/invites/validate/route.ts
+    entry_route: /join
+    user_interactions:
+      - Enter invite code in the invite link field
+      - Click Validate Invite button
+      - Fill name, email, company, user type, and message in the request form
+      - Click Submit Request button
+      - See success or error message
+    api_calls:
+      - method: POST
+        endpoint: /api/join
+      - method: POST
+        endpoint: /api/invites/validate
+    auth_required: false
+  - name: User Onboarding
+    description: 4-step guided onboarding to set up profile, brand affiliations, and supplier affiliations
+    files:
+      - src/app/(platform)/onboarding/page.tsx
+      - src/app/api/onboarding/brand/route.ts
+      - src/app/api/onboarding/supplier/route.ts
+      - src/app/api/onboarding/search-suppliers/route.ts
+      - src/app/api/onboarding/claim-supplier/route.ts
+      - src/app/api/onboarding/join-organisation/route.ts
+    entry_route: /onboarding
+    user_interactions:
+      - Fill first name, last name, job title, company, and bio on step 1
+      - Click Continue to move to step 2
+      - Search for or create a brand on step 2
+      - Search for, claim, or create a supplier on step 3
+      - Click Finish on step 4 to complete onboarding
+    api_calls:
+      - method: POST
+        endpoint: /api/me/member
+      - method: POST
+        endpoint: /api/onboarding/brand
+      - method: POST
+        endpoint: /api/onboarding/supplier
+      - method: POST
+        endpoint: /api/onboarding/search-suppliers
+    auth_required: true
+  - name: Supplier Marketplace (Explore)
+    description: Browse and filter the supplier directory by category, location, certifications, and text search
+    files:
+      - src/app/(platform)/explore/page.tsx
+      - src/app/api/suppliers/route.ts
+      - src/components/suppliers/
+    entry_route: /explore
+    user_interactions:
+      - Type in the search input to filter suppliers by name or capability
+      - Select a supplier category from the filter dropdown
+      - Select a location filter
+      - Select certification filters (Organic, B-Corp, Vegan etc.)
+      - Click Load More to paginate results
+      - Click on a supplier card to view their profile
+      - Click Save button to bookmark a supplier
+    api_calls:
+      - method: GET
+        endpoint: /api/suppliers
+      - method: POST
+        endpoint: /api/me/saved-suppliers
+    auth_required: true
+  - name: Supplier Profile
+    description: View detailed supplier profile with contact info, portfolio images, reviews, and offers
+    files:
+      - src/app/(platform)/explore/[slug]/page.tsx
+      - src/app/api/suppliers/[slug]/route.ts
+      - src/app/api/suppliers/[slug]/reviews/route.ts
+    entry_route: /explore/[slug]
+    user_interactions:
+      - View supplier details, contact info, and certifications
+      - Browse portfolio images
+      - Read reviews and ratings
+      - Click Contact Supplier button
+      - Click Claim This Profile if unclaimed
+      - Click Save to bookmark the supplier
+    api_calls:
+      - method: GET
+        endpoint: /api/suppliers/[slug]
+      - method: GET
+        endpoint: /api/suppliers/[slug]/reviews
+      - method: POST
+        endpoint: /api/suppliers/[slug]/contact
+      - method: POST
+        endpoint: /api/suppliers/[slug]/claim
+    auth_required: true
+  - name: Events & RSVP
+    description: Browse upcoming events, view details, and RSVP with Going/Interested/Not Going status
+    files:
+      - src/app/(platform)/events/page.tsx
+      - src/app/(platform)/community/events/page.tsx
+      - src/app/(platform)/community/events/[slug]/page.tsx
+      - src/app/api/events/route.ts
+      - src/app/api/events/[slug]/rsvp/route.ts
+    entry_route: /events
+    user_interactions:
+      - Browse list of upcoming events
+      - Click on an event card to view details
+      - Click Going, Interested, or Not Going RSVP buttons
+      - See attendee count and list
+    api_calls:
+      - method: GET
+        endpoint: /api/events
+      - method: GET
+        endpoint: /api/events/[slug]
+      - method: POST
+        endpoint: /api/events/[slug]/rsvp
+    auth_required: true
+  - name: Exclusive Offers
+    description: Browse and claim exclusive member discounts from suppliers
+    files:
+      - src/app/(platform)/offers/page.tsx
+      - src/app/api/offers/route.ts
+      - src/app/api/offers/[id]/claim/route.ts
+    entry_route: /offers
+    user_interactions:
+      - Browse list of active offers
+      - Click Claim Offer button on an offer card
+      - View the discount code or instructions after claiming
+      - See offers already claimed
+    api_calls:
+      - method: GET
+        endpoint: /api/offers
+      - method: POST
+        endpoint: /api/offers/[id]/claim
+    auth_required: true
+  - name: User Dashboard
+    description: Personal dashboard showing saved suppliers, upcoming events, claimed offers, and profile summary
+    files:
+      - src/app/(platform)/dashboard/page.tsx
+      - src/app/api/me/route.ts
+      - src/app/api/me/saved-suppliers/route.ts
+      - src/app/api/me/claimed-offers/route.ts
+    entry_route: /dashboard
+    user_interactions:
+      - View profile summary and organisation
+      - See saved suppliers grid
+      - View upcoming events list
+      - View claimed offers list
+      - Click Edit Profile to update settings
+    api_calls:
+      - method: GET
+        endpoint: /api/me
+      - method: GET
+        endpoint: /api/me/saved-suppliers
+      - method: GET
+        endpoint: /api/me/claimed-offers
+    auth_required: true
+  - name: Brand Profile Management
+    description: Create and manage brand profiles with images, categories, and social links
+    files:
+      - src/app/(platform)/settings/brand/page.tsx
+      - src/app/api/me/brand/route.ts
+      - src/app/api/me/brand/images/route.ts
+    entry_route: /settings/brand
+    user_interactions:
+      - Fill brand name, tagline, description, and story
+      - Select drink category and subcategories
+      - Upload logo and hero image
+      - Add website, Instagram, and LinkedIn URLs
+      - Click Save Changes to update
+    api_calls:
+      - method: GET
+        endpoint: /api/me/brand
+      - method: PUT
+        endpoint: /api/me/brand
+      - method: POST
+        endpoint: /api/me/brand/images
+      - method: DELETE
+        endpoint: /api/me/brand/images/[id]
+    auth_required: true
+  - name: Supplier Profile Management
+    description: Create and manage supplier profiles with services, certifications, and portfolio images
+    files:
+      - src/app/(platform)/settings/supplier/page.tsx
+      - src/app/api/me/supplier/route.ts
+      - src/app/api/me/supplier/images/route.ts
+    entry_route: /settings/supplier
+    user_interactions:
+      - Fill company name, tagline, description, and services offered
+      - Select supplier category and certifications
+      - Upload logo and portfolio images
+      - Add contact information and service regions
+      - Click Save Changes
+    api_calls:
+      - method: GET
+        endpoint: /api/me/supplier
+      - method: PUT
+        endpoint: /api/me/supplier
+      - method: POST
+        endpoint: /api/me/supplier/images
+    auth_required: true
+  - name: Offers Management
+    description: Suppliers can create, edit, and manage exclusive member offers
+    files:
+      - src/app/(platform)/settings/offers/page.tsx
+      - src/app/api/me/offers/route.ts
+      - src/app/api/me/offers/[id]/route.ts
+    entry_route: /settings/offers
+    user_interactions:
+      - View list of created offers
+      - Click Create New Offer
+      - Fill offer title, description, type, and discount value
+      - Set start and end dates
+      - Click Save or Publish to activate the offer
+      - Click Edit or Delete on existing offers
+    api_calls:
+      - method: GET
+        endpoint: /api/me/offers
+      - method: POST
+        endpoint: /api/me/offers
+      - method: PUT
+        endpoint: /api/me/offers/[id]
+      - method: DELETE
+        endpoint: /api/me/offers/[id]
+    auth_required: true
+  - name: Team Management
+    description: Manage organisation members and invite new team members
+    files:
+      - src/app/(platform)/settings/team/page.tsx
+      - src/app/api/me/organisation/members/route.ts
+      - src/app/api/me/organisation/invite/route.ts
+    entry_route: /settings/team
+    user_interactions:
+      - View list of current team members
+      - Click Invite Member and enter email
+      - Click Remove to remove a member
+      - View pending invites
+    api_calls:
+      - method: GET
+        endpoint: /api/me/organisation/members
+      - method: POST
+        endpoint: /api/me/organisation/invite
+      - method: DELETE
+        endpoint: /api/me/organisation/members/[id]
+    auth_required: true
+  - name: Community Hub
+    description: Central community page with featured brands, members, events, and newsletter signup
+    files:
+      - src/app/(platform)/community/page.tsx
+      - src/app/(platform)/community/brands/page.tsx
+      - src/app/(platform)/community/members/page.tsx
+    entry_route: /community
+    user_interactions:
+      - Browse featured brands grid
+      - Browse member cards
+      - View featured/upcoming event
+      - Click Subscribe to newsletter and enter email
+      - Navigate to Brands, Members, and Events sub-sections
+    api_calls:
+      - method: GET
+        endpoint: /api/brands
+      - method: GET
+        endpoint: /api/members
+      - method: GET
+        endpoint: /api/events
+      - method: POST
+        endpoint: /api/join
+    auth_required: true
+  - name: News Feed
+    description: Industry news and digest feed pulled from RSS sources
+    files:
+      - src/app/(platform)/news/page.tsx
+      - src/app/api/news/route.ts
+    entry_route: /news
+    user_interactions:
+      - Browse list of news articles
+      - Click on an article to open it in a new tab
+      - See article category, date, and source
+    api_calls:
+      - method: GET
+        endpoint: /api/news
+    auth_required: true
+  - name: Admin Dashboard
+    description: Admin-only dashboard with platform stats, user management, content moderation, and invite management
+    files:
+      - src/app/(platform)/admin/page.tsx
+      - src/app/(platform)/admin/users/page.tsx
+      - src/app/(platform)/admin/suppliers/page.tsx
+      - src/app/(platform)/admin/events/page.tsx
+      - src/app/(platform)/admin/offers/page.tsx
+      - src/app/(platform)/admin/reviews/page.tsx
+      - src/app/(platform)/admin/invites/page.tsx
+      - src/app/(platform)/admin/join-requests/page.tsx
+      - src/app/api/admin/analytics/route.ts
+    entry_route: /admin
+    user_interactions:
+      - View platform stats (users, brands, suppliers, events, offers)
+      - Click Manage Users to navigate to user list
+      - Create a new user by filling form and clicking Save
+      - Edit a user by clicking Edit button
+      - Delete a user by clicking Delete and confirming
+      - Generate an invite link by clicking Create Invite
+      - Copy invite link to clipboard
+      - Review join requests and approve or reject
+    api_calls:
+      - method: GET
+        endpoint: /api/admin/analytics
+      - method: GET
+        endpoint: /api/admin/users
+      - method: POST
+        endpoint: /api/admin/users
+      - method: PUT
+        endpoint: /api/admin/users/[id]
+      - method: DELETE
+        endpoint: /api/admin/users/[id]
+      - method: GET
+        endpoint: /api/admin/invites
+      - method: POST
+        endpoint: /api/admin/invites
+    auth_required: true
+  - name: Password Recovery
+    description: Users can request a password reset email and set a new password
+    files:
+      - src/app/(auth)/forgot-password/page.tsx
+      - src/app/(auth)/reset-password/page.tsx
+    entry_route: /forgot-password
+    user_interactions:
+      - Enter email address on forgot password page
+      - Click Send Reset Link button
+      - See confirmation message
+      - Open email and click reset link
+      - Enter new password and confirm it on reset-password page
+      - Click Reset Password to submit
+    api_calls: []
+    auth_required: false
+known_limitations:
+  - issue: Supabase project DNS not resolvable from current environment; all database-dependent API routes will fail at runtime
+    location: src/lib/db.ts
+    impact: All pages requiring database data will show empty states or errors
+  - issue: DATABASE_URL and DIRECT_URL env vars not set; Prisma cannot connect to database
+    location: .env.local
+    impact: All Prisma queries will throw at runtime
+  - issue: News feed depends on external RSS sources which may be blocked by network proxy
+    location: src/app/api/news/route.ts
+    impact: News page may show empty or stale content
