@@ -5,8 +5,35 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
+  const tokenHash = searchParams.get('token_hash')
+  const type = searchParams.get('type')
   const inviteToken = searchParams.get('invite')
   const next = searchParams.get('next') ?? '/onboarding' // Redirect to onboarding for profile setup
+
+  // Handle password reset (and other OTP-based flows) via token_hash
+  if (tokenHash && type) {
+    const supabase = await createClient()
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: type as 'recovery' | 'signup' | 'magiclink' | 'email',
+    })
+
+    if (!error) {
+      const forwardedHost = request.headers.get('x-forwarded-host')
+      const isLocalEnv = process.env.NODE_ENV === 'development'
+      const redirectPath = type === 'recovery' ? '/reset-password' : next
+
+      if (isLocalEnv) {
+        return NextResponse.redirect(`${origin}${redirectPath}`)
+      } else if (forwardedHost) {
+        return NextResponse.redirect(`https://${forwardedHost}${redirectPath}`)
+      } else {
+        return NextResponse.redirect(`${origin}${redirectPath}`)
+      }
+    }
+
+    return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
+  }
 
   if (code) {
     const supabase = await createClient()
