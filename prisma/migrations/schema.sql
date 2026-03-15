@@ -1,6 +1,21 @@
 -- Kindred Collective Database Schema
 -- Generated from Prisma schema - run this in Supabase SQL Editor
 -- Or use: prisma db push (with DATABASE_URL set)
+
+-- Drop existing enums (safe to re-run)
+DROP TYPE IF EXISTS "UserRole" CASCADE;
+DROP TYPE IF EXISTS "OrganisationType" CASCADE;
+DROP TYPE IF EXISTS "DrinkCategory" CASCADE;
+DROP TYPE IF EXISTS "SupplierCategory" CASCADE;
+DROP TYPE IF EXISTS "Certification" CASCADE;
+DROP TYPE IF EXISTS "EventType" CASCADE;
+DROP TYPE IF EXISTS "EventStatus" CASCADE;
+DROP TYPE IF EXISTS "OfferType" CASCADE;
+DROP TYPE IF EXISTS "OfferStatus" CASCADE;
+DROP TYPE IF EXISTS "RsvpStatus" CASCADE;
+DROP TYPE IF EXISTS "ClaimStatus" CASCADE;
+DROP TYPE IF EXISTS "OrganisationMemberRole" CASCADE;
+
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('MEMBER', 'ADMIN');
 
