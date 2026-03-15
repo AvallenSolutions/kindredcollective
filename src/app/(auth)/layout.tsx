@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function AuthLayout({
   children,
@@ -11,11 +12,9 @@ export default function AuthLayout({
       <header className="border-b-3 border-black">
         <div className="section-container py-4">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-cyan border-3 border-black flex items-center justify-center">
-              <span className="font-display font-bold text-xl">K</span>
-            </div>
-            <span className="font-display font-bold text-xl tracking-tight">
-              Kindred
+            <Image src="/kindred-logo.png" alt="Kindred Collective logo" width={40} height={40} className="w-10 h-10" />
+            <span className="font-display font-bold text-xl tracking-tight uppercase">
+              Kindred Collective
             </span>
           </Link>
         </div>
