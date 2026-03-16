@@ -188,7 +188,7 @@ export default async function EventsPage() {
             <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-400" />
             <h2 className="font-display text-3xl font-bold uppercase mb-2">No Upcoming Events</h2>
             <p className="text-gray-600 mb-6">Check back soon — new events are added regularly.</p>
-            <Link href="/contact" className="px-8 py-3 bg-black text-white border-2 border-black font-bold uppercase hover:bg-cyan hover:text-black transition-colors">
+            <Link href="/settings/events" className="px-8 py-3 bg-black text-white border-2 border-black font-bold uppercase hover:bg-cyan hover:text-black transition-colors">
               Submit an Event
             </Link>
           </section>
@@ -354,7 +354,7 @@ export default async function EventsPage() {
               </p>
             </div>
             <Link
-              href="/contact"
+              href="/settings/events"
               className="px-8 py-4 bg-black text-white border-2 border-black font-bold uppercase hover:bg-cyan hover:text-black transition-colors neo-shadow flex items-center gap-2 whitespace-nowrap"
             >
               Submit an Event

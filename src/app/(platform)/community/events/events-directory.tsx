@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { Calendar, MapPin, Video } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { EventCard } from '@/components/events'
@@ -237,9 +238,11 @@ export function EventsDirectory({ events }: EventsDirectoryProps) {
           <p className="text-gray-400 mb-6 max-w-xl mx-auto">
             Got an event that would interest the Kindred community? Get in touch to have it listed.
           </p>
-          <Button size="lg">
-            Submit an Event
-          </Button>
+          <Link href="/settings/events">
+            <Button size="lg">
+              Submit an Event
+            </Button>
+          </Link>
         </div>
       </section>
     </>
