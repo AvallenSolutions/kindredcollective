@@ -1,5 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -10,9 +11,38 @@ export async function GET(request: Request) {
   const inviteToken = searchParams.get('invite')
   const next = searchParams.get('next') ?? '/onboarding' // Redirect to onboarding for profile setup
 
+  const cookieStore = await cookies()
+
+  // Capture cookies set by Supabase auth operations so we can apply them to
+  // the specific NextResponse we return. cookies() from next/headers writes to
+  // the implicit default response — NOT to a custom NextResponse.redirect —
+  // so without this the browser never receives session cookies.
+  const pendingCookies: Array<{ name: string; value: string; options: CookieOptions }> = []
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach((c) => pendingCookies.push(c))
+        },
+      },
+    }
+  )
+
+  function withCookies(response: NextResponse): NextResponse {
+    pendingCookies.forEach(({ name, value, options }) => {
+      response.cookies.set(name, value, options)
+    })
+    return response
+  }
+
   // Handle password reset (and other OTP-based flows) via token_hash
   if (tokenHash && type) {
-    const supabase = await createClient()
     const { error } = await supabase.auth.verifyOtp({
       token_hash: tokenHash,
       type: type as 'recovery' | 'signup' | 'magiclink' | 'email',
@@ -24,11 +54,11 @@ export async function GET(request: Request) {
       const redirectPath = type === 'recovery' ? '/reset-password' : next
 
       if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${redirectPath}`)
+        return withCookies(NextResponse.redirect(`${origin}${redirectPath}`))
       } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${redirectPath}`)
+        return withCookies(NextResponse.redirect(`https://${forwardedHost}${redirectPath}`))
       } else {
-        return NextResponse.redirect(`${origin}${redirectPath}`)
+        return withCookies(NextResponse.redirect(`${origin}${redirectPath}`))
       }
     }
 
@@ -36,7 +66,6 @@ export async function GET(request: Request) {
   }
 
   if (code) {
-    const supabase = await createClient()
     const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error && sessionData?.user) {
@@ -125,11 +154,11 @@ export async function GET(request: Request) {
       const isLocalEnv = process.env.NODE_ENV === 'development'
 
       if (isLocalEnv) {
-        return NextResponse.redirect(`${origin}${next}`)
+        return withCookies(NextResponse.redirect(`${origin}${next}`))
       } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`)
+        return withCookies(NextResponse.redirect(`https://${forwardedHost}${next}`))
       } else {
-        return NextResponse.redirect(`${origin}${next}`)
+        return withCookies(NextResponse.redirect(`${origin}${next}`))
       }
     }
   }
