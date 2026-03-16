@@ -90,8 +90,8 @@ async function getMembers() {
       `)
       .in('userId', userIds)
 
-    // Build a map of userId -> primary affiliation
-    const affiliationMap = new Map<string, { company: string, companyType: 'BRAND' | 'SUPPLIER' }>()
+    // Build a map of userId -> ALL affiliations
+    const affiliationMap = new Map<string, Array<{ company: string, companyType: 'BRAND' | 'SUPPLIER' }>>()
 
     if (orgMemberships) {
       for (const membership of orgMemberships as any[]) {
@@ -102,18 +102,63 @@ async function getMembers() {
         const supplier = org.supplier ? (Array.isArray(org.supplier) ? org.supplier[0] : org.supplier) : null
         const companyName = brand?.name || supplier?.companyName || org.name
 
-        // Use first affiliation found as primary (don't overwrite)
         if (!affiliationMap.has(membership.userId)) {
-          affiliationMap.set(membership.userId, {
-            company: companyName,
-            companyType: org.type as 'BRAND' | 'SUPPLIER',
-          })
+          affiliationMap.set(membership.userId, [])
         }
+        affiliationMap.get(membership.userId)!.push({
+          company: companyName,
+          companyType: org.type as 'BRAND' | 'SUPPLIER',
+        })
+      }
+    }
+
+    // Fetch user emails for contact
+    const { data: userEmails } = await supabase
+      .from('User')
+      .select('id, email')
+      .in('id', userIds)
+
+    const emailMap = new Map(userEmails?.map(u => [u.id, u.email]) ?? [])
+
+    // Fetch pet info
+    const { data: petMembers } = await supabase
+      .from('Member')
+      .select('userId, petName, petType, petPhotoUrl, petPhotoPublic')
+      .in('userId', userIds)
+      .not('petName', 'is', null)
+
+    const petMap = new Map(
+      petMembers?.map(p => [p.userId, {
+        petName: p.petName,
+        petType: p.petType,
+        petPhotoUrl: p.petPhotoPublic ? p.petPhotoUrl : null,
+      }]) ?? []
+    )
+
+    // Fetch RSVP'd events for each member
+    const { data: rsvps } = await supabase
+      .from('EventRsvp')
+      .select('userId, status, event:Event(title, slug, startDate)')
+      .in('userId', userIds)
+      .eq('status', 'GOING')
+
+    const rsvpMap = new Map<string, Array<{ title: string, slug: string, startDate: string }>>()
+    if (rsvps) {
+      for (const rsvp of rsvps as any[]) {
+        const event = Array.isArray(rsvp.event) ? rsvp.event[0] : rsvp.event
+        if (!event) continue
+        if (!rsvpMap.has(rsvp.userId)) rsvpMap.set(rsvp.userId, [])
+        rsvpMap.get(rsvp.userId)!.push({
+          title: event.title,
+          slug: event.slug,
+          startDate: event.startDate,
+        })
       }
     }
 
     return members.map((member) => {
-      const affiliation = affiliationMap.get(member.userId)
+      const affiliations = affiliationMap.get(member.userId) ?? []
+      const primaryAffiliation = affiliations[0]
       return {
         id: member.id,
         firstName: member.firstName,
@@ -122,9 +167,14 @@ async function getMembers() {
         bio: member.bio,
         avatarUrl: member.avatarUrl,
         linkedinUrl: member.linkedinUrl,
+        email: emailMap.get(member.userId) ?? null,
         location: null as string | null,
-        company: affiliation?.company || '',
-        companyType: (affiliation?.companyType || 'BRAND') as 'BRAND' | 'SUPPLIER',
+        company: primaryAffiliation?.company || '',
+        companyType: (primaryAffiliation?.companyType || 'BRAND') as 'BRAND' | 'SUPPLIER',
+        companyTypes: [...new Set(affiliations.map(a => a.companyType))] as ('BRAND' | 'SUPPLIER')[],
+        companies: affiliations.map(a => ({ name: a.company, type: a.companyType })),
+        pet: petMap.get(member.userId) ?? null,
+        rsvpEvents: rsvpMap.get(member.userId) ?? [],
       }
     })
   } catch (err) {

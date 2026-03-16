@@ -9,7 +9,6 @@ import {
   Users,
   Share2,
   ExternalLink,
-  Ticket,
 } from 'lucide-react'
 import { Badge, Button, Card, CardContent } from '@/components/ui'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -172,32 +171,15 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
               </div>
             </div>
 
-            {/* Price */}
-            <div className="flex flex-col gap-3">
-              {!isPast ? (
-                <>
-                  <div className="text-center mb-2">
-                    <span className={cn(
-                      'font-display text-2xl font-bold',
-                      event.isFree ? 'text-lime-700' : 'text-black'
-                    )}>
-                      {event.isFree ? 'FREE' : `£${event.price}`}
-                    </span>
-                  </div>
-                  <EventRsvpButton
-                    eventSlug={event.slug}
-                    eventId={event.id}
-                    eventTitle={event.title}
-                    isFree={event.isFree}
-                    price={event.price}
-                    isRegistrationExternal={!!event.registrationUrl}
-                    registrationUrl={event.registrationUrl}
-                    isPast={isPast}
-                    capacity={event.capacity}
-                    currentAttendees={event.attendeeCount}
-                  />
-                </>
-              ) : (
+            {/* Price & Status */}
+            <div className="flex flex-col gap-3 items-end">
+              <span className={cn(
+                'font-display text-2xl font-bold',
+                event.isFree ? 'text-lime-700' : 'text-black'
+              )}>
+                {event.isFree ? 'FREE' : `£${event.price}`}
+              </span>
+              {isPast && (
                 <Badge variant="outline" className="bg-gray-200 text-gray-600">
                   This event has ended
                 </Badge>
@@ -221,49 +203,99 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
               </CardContent>
             </Card>
 
-            {/* Attendees */}
-            {event.attendees.length > 0 && (
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-display text-xl font-bold">
-                      Who&apos;s Attending
-                    </h2>
-                    <Badge variant="cyan">
-                      <Users className="w-3 h-3 mr-1" />
-                      {event.attendeeCount} attending
-                    </Badge>
-                  </div>
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    {event.attendees.map((attendee: { id: string; name: string; company: string }) => (
-                      <div
-                        key={attendee.id}
-                        className="flex items-center gap-3 p-3 bg-gray-50 border-2 border-gray-200"
-                      >
-                        <div className="w-10 h-10 bg-cyan border-2 border-black flex items-center justify-center flex-shrink-0">
-                          <span className="font-display font-bold">
-                            {attendee.name.charAt(0)}
-                          </span>
+            {/* Attendees — always shown */}
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="font-display text-xl font-bold">
+                    Who&apos;s Attending
+                  </h2>
+                  <Badge variant="cyan">
+                    <Users className="w-3 h-3 mr-1" />
+                    {event.attendeeCount} attending
+                  </Badge>
+                </div>
+                {event.attendees.length > 0 ? (
+                  <>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {event.attendees.map((attendee: { id: string; name: string; company: string }) => (
+                        <div
+                          key={attendee.id}
+                          className="flex items-center gap-3 p-3 bg-gray-50 border-2 border-gray-200"
+                        >
+                          <div className="w-10 h-10 bg-cyan border-2 border-black flex items-center justify-center flex-shrink-0">
+                            <span className="font-display font-bold">
+                              {attendee.name.charAt(0)}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-bold text-sm">{attendee.name}</p>
+                            <p className="text-xs text-gray-500">{attendee.company}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold text-sm">{attendee.name}</p>
-                          <p className="text-xs text-gray-500">{attendee.company}</p>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                    {event.attendeeCount > event.attendees.length && (
+                      <p className="text-sm text-gray-500 mt-4">
+                        + {event.attendeeCount - event.attendees.length} more attendees
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-6 bg-gray-50 border-2 border-dashed border-gray-200">
+                    <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500 font-medium">No RSVPs yet</p>
+                    <p className="text-xs text-gray-400 mt-1">Be the first to let others know you&apos;re going!</p>
                   </div>
-                  {event.attendeeCount > event.attendees.length && (
-                    <p className="text-sm text-gray-500 mt-4">
-                      + {event.attendeeCount - event.attendees.length} more attendees
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                )}
+              </CardContent>
+            </Card>
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* RSVP Card */}
+            <Card className="border-3 border-cyan">
+              <CardContent className="p-6">
+                <h3 className="font-display text-lg font-bold mb-2">RSVP</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Let other Kindred members know you&apos;re attending.
+                </p>
+                <div className="mb-3">
+                  <span className={cn(
+                    'font-display text-xl font-bold',
+                    event.isFree ? 'text-lime-600' : 'text-black'
+                  )}>
+                    {event.isFree ? 'FREE' : `£${event.price}`}
+                  </span>
+                </div>
+                {!isPast ? (
+                  <EventRsvpButton
+                    eventSlug={event.slug}
+                    eventId={event.id}
+                    eventTitle={event.title}
+                    isFree={event.isFree}
+                    price={event.price}
+                    isRegistrationExternal={!!event.registrationUrl}
+                    registrationUrl={event.registrationUrl}
+                    isPast={isPast}
+                    capacity={event.capacity}
+                    currentAttendees={event.attendeeCount}
+                  />
+                ) : (
+                  <Badge variant="outline" className="bg-gray-200 text-gray-600">
+                    This event has ended
+                  </Badge>
+                )}
+                {event.attendeeCount > 0 && (
+                  <p className="text-xs text-gray-500 mt-3 flex items-center gap-1">
+                    <Users className="w-3 h-3" />
+                    {event.attendeeCount} Kindred {event.attendeeCount === 1 ? 'member' : 'members'} attending
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Location */}
             <Card>
               <CardContent className="p-6">

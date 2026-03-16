@@ -15,9 +15,14 @@ interface MemberData {
   bio: string | null
   avatarUrl: string | null
   linkedinUrl: string | null
+  email: string | null
   location: string | null
   company: string
   companyType: 'BRAND' | 'SUPPLIER'
+  companyTypes: ('BRAND' | 'SUPPLIER')[]
+  companies: Array<{ name: string; type: 'BRAND' | 'SUPPLIER' }>
+  pet: { petName: string; petType: string | null; petPhotoUrl: string | null } | null
+  rsvpEvents: Array<{ title: string; slug: string; startDate: string }>
 }
 
 interface MembersDirectoryProps {
@@ -44,7 +49,7 @@ export function MembersDirectory({ members }: MembersDirectoryProps) {
         if (!matchesSearch) return false
       }
 
-      if (selectedType !== 'all' && member.companyType !== selectedType) {
+      if (selectedType !== 'all' && !member.companyTypes.includes(selectedType)) {
         return false
       }
 
@@ -52,8 +57,8 @@ export function MembersDirectory({ members }: MembersDirectoryProps) {
     })
   }, [members, search, selectedType])
 
-  const brandCount = members.filter((m) => m.companyType === 'BRAND').length
-  const supplierCount = members.filter((m) => m.companyType === 'SUPPLIER').length
+  const brandCount = members.filter((m) => m.companyTypes.includes('BRAND')).length
+  const supplierCount = members.filter((m) => m.companyTypes.includes('SUPPLIER')).length
 
   return (
     <>
