@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { uploadImage, validateFile, StorageBucket } from '@/lib/storage/upload'
+import { requireAuth } from '@/lib/auth/session'
 
 export async function POST(req: NextRequest) {
+  try {
+    await requireAuth()
+  } catch {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  }
+
   try {
     const formData = await req.formData()
     const file = formData.get('file') as File

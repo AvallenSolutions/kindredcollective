@@ -337,16 +337,18 @@ function BrandEditContent() {
     try {
       const fd = new FormData()
       fd.append('file', file)
-      const res = await fetch(`/api/me/brand/images?orgId=${orgId}`, { method: 'POST', body: fd })
+      const folder = fieldKey === 'logoUrl' ? 'logos' : 'hero'
+      const res = await fetch(`/api/upload?bucket=brand-images&folder=${folder}`, { method: 'POST', body: fd })
       if (!res.ok) return null
-      const { data } = await res.json()
+      const result = await res.json()
+      if (!result.url) return null
       // Immediately persist logoUrl / heroImageUrl to the brand
       await fetch(`/api/me/brand?orgId=${orgId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [fieldKey]: data.url }),
+        body: JSON.stringify({ [fieldKey]: result.url }),
       })
-      return data.url
+      return result.url
     } finally {
       setUploading(false)
     }
