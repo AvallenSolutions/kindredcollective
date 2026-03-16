@@ -11,7 +11,7 @@ const PURPLE = '#A855F7'
 const BLACK = '#000000'
 const WHITE = '#FFFFFF'
 
-// ─── Level definitions ───────────────────────────────────────────────────────
+// ─── Level generation (99 levels) ────────────────────────────────────────────
 interface LevelDef {
   name: string
   rows: number
@@ -21,59 +21,100 @@ interface LevelDef {
   paddleWidth: number
 }
 
-const LEVELS: LevelDef[] = [
-  { name: 'The Warm-Up', rows: 3, cols: 7, ballSpeed: 4, maxHits: 1, paddleWidth: 100 },
-  { name: 'Happy Hour', rows: 4, cols: 8, ballSpeed: 4.5, maxHits: 1, paddleWidth: 95 },
-  { name: 'Last Orders', rows: 5, cols: 8, ballSpeed: 5, maxHits: 1, paddleWidth: 90 },
-  { name: 'After Party', rows: 5, cols: 8, ballSpeed: 5.5, maxHits: 2, paddleWidth: 85 },
-  { name: 'The Morning After', rows: 6, cols: 9, ballSpeed: 6, maxHits: 2, paddleWidth: 80 },
-]
+const NAMED_LEVELS: Record<number, string> = {
+  1: 'The Warm-Up',
+  2: 'Happy Hour',
+  3: 'Last Orders',
+  4: 'After Party',
+  5: 'The Morning After',
+  10: 'Second Round',
+  15: 'On The Rocks',
+  20: 'Shaken Not Stirred',
+  25: 'Double Shot',
+  30: 'Neat Pour',
+  35: 'Top Shelf',
+  40: 'Barrel Aged',
+  45: 'Cask Strength',
+  50: 'Halfway House',
+  55: 'Proof Positive',
+  60: 'Spirit Level',
+  65: 'High Ball',
+  70: 'Full Measure',
+  75: 'Last Call',
+  80: 'Lock-In',
+  85: 'Nightcap',
+  90: 'One More Round',
+  95: 'The Final Straw',
+  99: 'Legendary',
+}
 
+function generateLevel(n: number): LevelDef {
+  // n is 1-indexed (1..99)
+  const t = (n - 1) / 98 // 0..1 normalised progression
+
+  const rows = Math.min(3 + Math.floor(t * 6), 9)           // 3 → 9
+  const cols = Math.min(7 + Math.floor(t * 5), 12)           // 7 → 12
+  const ballSpeed = 4 + t * 4                                 // 4 → 8
+  const maxHits = n >= 4 ? Math.min(1 + Math.floor(t * 3), 3) : 1  // 1 → 3
+  const paddleWidth = Math.max(100 - Math.floor(t * 40), 60) // 100 → 60
+
+  const name = NAMED_LEVELS[n] ?? `Level ${n}`
+
+  return { name, rows, cols, ballSpeed, maxHits, paddleWidth }
+}
+
+const TOTAL_LEVELS = 99
 const BOTTLE_COLOURS = [CYAN, CORAL, LIME, AMBER, PURPLE]
 
-const LEVEL_MESSAGES = [
+const LEVEL_COMPLETE_MESSAGES = [
   'Nice warm-up! Time to pick up the pace.',
   'The drinks are flowing! Keep it going.',
   'Last orders at the bar — but not for you.',
   'Still standing after the after party!',
+  'You survived the morning after. Respect.',
 ]
 
-// ─── Leaderboard ─────────────────────────────────────────────────────────────
-const STORAGE_KEY = 'kindred-bottle-breaker-scores'
-const MAX_SCORES = 10
+function getLevelMessage(levelIdx: number): string {
+  if (levelIdx < LEVEL_COMPLETE_MESSAGES.length) return LEVEL_COMPLETE_MESSAGES[levelIdx]
+  if (levelIdx >= 90) return 'Absolutely legendary. Keep going!'
+  if (levelIdx >= 70) return 'Are you even human? Incredible.'
+  if (levelIdx >= 50) return 'Halfway and beyond. Unstoppable.'
+  if (levelIdx >= 30) return 'Serious skills on display here.'
+  if (levelIdx >= 15) return 'Getting into the groove now.'
+  return 'Smashed it! On to the next one.'
+}
 
+// ─── Leaderboard API ─────────────────────────────────────────────────────────
 interface HighScore {
+  id: string
   name: string
   score: number
   level: number
-  date: string
+  createdAt: string
 }
 
-function loadScores(): HighScore[] {
+async function fetchScores(): Promise<HighScore[]> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    return JSON.parse(raw) as HighScore[]
+    const res = await fetch('/api/game-scores')
+    if (!res.ok) return []
+    const json = await res.json()
+    return json.data ?? []
   } catch {
     return []
   }
 }
 
-function saveScore(entry: HighScore): HighScore[] {
-  const scores = loadScores()
-  scores.push(entry)
-  scores.sort((a, b) => b.score - a.score)
-  const top = scores.slice(0, MAX_SCORES)
+async function submitScore(name: string, score: number, level: number): Promise<HighScore[]> {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(top))
-  } catch { /* quota exceeded — ignore */ }
-  return top
-}
-
-function isHighScore(score: number): boolean {
-  const scores = loadScores()
-  if (scores.length < MAX_SCORES) return score > 0
-  return score > scores[scores.length - 1].score
+    await fetch('/api/game-scores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, score, level }),
+    })
+    return fetchScores()
+  } catch {
+    return []
+  }
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -87,30 +128,11 @@ interface Brick {
   alive: boolean
 }
 
-interface Ball {
-  x: number
-  y: number
-  dx: number
-  dy: number
-  r: number
-}
-
-interface Paddle {
-  x: number
-  y: number
-  w: number
-  h: number
-}
-
+interface Ball { x: number; y: number; dx: number; dy: number; r: number }
+interface Paddle { x: number; y: number; w: number; h: number }
 interface Particle {
-  x: number
-  y: number
-  dx: number
-  dy: number
-  life: number
-  maxLife: number
-  colour: string
-  size: number
+  x: number; y: number; dx: number; dy: number
+  life: number; maxLife: number; colour: string; size: number
 }
 
 type GameState = 'idle' | 'playing' | 'level-complete' | 'lost' | 'beaten'
@@ -180,16 +202,22 @@ export default function BottleBreaker() {
   const [nameInput, setNameInput] = useState('')
   const [scoreSaved, setScoreSaved] = useState(false)
   const [qualifiesForBoard, setQualifiesForBoard] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   // Load scores on mount
   useEffect(() => {
-    setHighScores(loadScores())
+    fetchScores().then(setHighScores)
   }, [])
+
+  function checkQualifies(score: number): boolean {
+    if (highScores.length < 20) return score > 0
+    return score > (highScores[highScores.length - 1]?.score ?? 0)
+  }
 
   // ── Initialise / reset a level ──────────────────────────────────────────
   const initLevel = useCallback((levelIdx: number) => {
     const s = stateRef.current
-    const lv = LEVELS[levelIdx]
+    const lv = generateLevel(levelIdx + 1)
     s.level = levelIdx
     s.bricks = buildBricks(lv, s.canvasW)
     s.paddle.w = lv.paddleWidth
@@ -223,34 +251,31 @@ export default function BottleBreaker() {
   const continueToNextLevel = useCallback(() => {
     const s = stateRef.current
     const nextLevel = s.level + 1
-    if (nextLevel < LEVELS.length) {
+    if (nextLevel < TOTAL_LEVELS) {
       s.gameState = 'playing'
       initLevel(nextLevel)
       setDisplayState('playing')
     }
   }, [initLevel])
 
-  // ── End-of-game score handling ──────────────────────────────────────────
   const handleGameEnd = useCallback((state: 'lost' | 'beaten') => {
     const s = stateRef.current
     s.gameState = state
     setDisplayState(state)
     setScoreSaved(false)
     setNameInput('')
-    setQualifiesForBoard(isHighScore(s.score))
-  }, [])
+    setQualifiesForBoard(checkQualifies(s.score))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highScores])
 
-  const handleSaveScore = useCallback(() => {
+  const handleSaveScore = useCallback(async () => {
     const s = stateRef.current
     const name = nameInput.trim() || 'Anonymous'
-    const updated = saveScore({
-      name,
-      score: s.score,
-      level: s.level + 1,
-      date: new Date().toISOString().slice(0, 10),
-    })
+    setSaving(true)
+    const updated = await submitScore(name, s.score, s.level + 1)
     setHighScores(updated)
     setScoreSaved(true)
+    setSaving(false)
   }, [nameInput])
 
   // ── Spawn particles on brick break ──────────────────────────────────────
@@ -279,43 +304,35 @@ export default function BottleBreaker() {
     if (!ctx) return
     const s = stateRef.current
 
-    // — Clear —
     ctx.fillStyle = WHITE
     ctx.fillRect(0, 0, s.canvasW, s.canvasH)
 
-    // — Update particles —
+    // Update particles
     s.particles = s.particles.filter(p => {
-      p.x += p.dx
-      p.y += p.dy
-      p.dy += 0.1
-      p.life--
+      p.x += p.dx; p.y += p.dy; p.dy += 0.1; p.life--
       return p.life > 0
     })
 
     if (s.gameState === 'playing') {
-      // — Move paddle toward pointer —
-      if (s.pointerX !== null) {
-        s.paddle.x = s.pointerX - s.paddle.w / 2
-      }
+      if (s.pointerX !== null) s.paddle.x = s.pointerX - s.paddle.w / 2
       s.paddle.x = Math.max(0, Math.min(s.canvasW - s.paddle.w, s.paddle.x))
 
-      // — Move ball —
       s.ball.x += s.ball.dx
       s.ball.y += s.ball.dy
 
-      // wall bounce
+      // Wall bounce
       if (s.ball.x - s.ball.r <= 0) { s.ball.x = s.ball.r; s.ball.dx = Math.abs(s.ball.dx) }
       if (s.ball.x + s.ball.r >= s.canvasW) { s.ball.x = s.canvasW - s.ball.r; s.ball.dx = -Math.abs(s.ball.dx) }
       if (s.ball.y - s.ball.r <= 0) { s.ball.y = s.ball.r; s.ball.dy = Math.abs(s.ball.dy) }
 
-      // bottom — lose life
+      // Bottom — lose life
       if (s.ball.y + s.ball.r > s.canvasH) {
         s.lives--
         setDisplayLives(s.lives)
         if (s.lives <= 0) {
           handleGameEnd('lost')
         } else {
-          const lv = LEVELS[s.level]
+          const lv = generateLevel(s.level + 1)
           s.ball = {
             x: s.paddle.x + s.paddle.w / 2,
             y: s.paddle.y - 10,
@@ -326,7 +343,7 @@ export default function BottleBreaker() {
         }
       }
 
-      // paddle bounce
+      // Paddle bounce
       if (
         s.ball.dy > 0 &&
         s.ball.y + s.ball.r >= s.paddle.y &&
@@ -342,7 +359,7 @@ export default function BottleBreaker() {
         s.ball.dy = -speed * Math.cos(angle)
       }
 
-      // brick collision
+      // Brick collision
       for (const brick of s.bricks) {
         if (!brick.alive) continue
         if (
@@ -351,18 +368,12 @@ export default function BottleBreaker() {
           s.ball.y + s.ball.r > brick.y &&
           s.ball.y - s.ball.r < brick.y + brick.h
         ) {
-          const overlapLeft = (s.ball.x + s.ball.r) - brick.x
-          const overlapRight = (brick.x + brick.w) - (s.ball.x - s.ball.r)
-          const overlapTop = (s.ball.y + s.ball.r) - brick.y
-          const overlapBottom = (brick.y + brick.h) - (s.ball.y - s.ball.r)
-          const minOverlapX = Math.min(overlapLeft, overlapRight)
-          const minOverlapY = Math.min(overlapTop, overlapBottom)
-
-          if (minOverlapX < minOverlapY) {
-            s.ball.dx = -s.ball.dx
-          } else {
-            s.ball.dy = -s.ball.dy
-          }
+          const oL = (s.ball.x + s.ball.r) - brick.x
+          const oR = (brick.x + brick.w) - (s.ball.x - s.ball.r)
+          const oT = (s.ball.y + s.ball.r) - brick.y
+          const oB = (brick.y + brick.h) - (s.ball.y - s.ball.r)
+          if (Math.min(oL, oR) < Math.min(oT, oB)) s.ball.dx = -s.ball.dx
+          else s.ball.dy = -s.ball.dy
 
           brick.hits--
           if (brick.hits <= 0) {
@@ -377,10 +388,9 @@ export default function BottleBreaker() {
         }
       }
 
-      // check level clear
+      // Level clear
       if (s.bricks.every(b => !b.alive)) {
-        if (s.level + 1 < LEVELS.length) {
-          // Level complete — pause for celebration
+        if (s.level + 1 < TOTAL_LEVELS) {
           s.gameState = 'level-complete'
           setDisplayState('level-complete')
         } else {
@@ -390,17 +400,13 @@ export default function BottleBreaker() {
     }
 
     // ── DRAW ──────────────────────────────────────────────────────────────
-
-    // particles
     for (const p of s.particles) {
-      const alpha = p.life / p.maxLife
-      ctx.globalAlpha = alpha
+      ctx.globalAlpha = p.life / p.maxLife
       ctx.fillStyle = p.colour
       ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size)
     }
     ctx.globalAlpha = 1
 
-    // bricks
     for (const brick of s.bricks) {
       if (!brick.alive) continue
       const isMultiHit = brick.hits > 1
@@ -420,7 +426,7 @@ export default function BottleBreaker() {
       }
     }
 
-    // paddle
+    // Paddle
     ctx.fillStyle = BLACK
     ctx.fillRect(s.paddle.x + 3, s.paddle.y + 3, s.paddle.w, s.paddle.h)
     ctx.fillStyle = BLACK
@@ -431,7 +437,7 @@ export default function BottleBreaker() {
     ctx.fillStyle = CYAN
     ctx.fillRect(s.paddle.x + 4, s.paddle.y + 4, s.paddle.w - 8, 6)
 
-    // ball
+    // Ball
     ctx.fillStyle = BLACK
     ctx.beginPath()
     ctx.arc(s.ball.x + 2, s.ball.y + 2, s.ball.r, 0, Math.PI * 2)
@@ -464,7 +470,6 @@ export default function BottleBreaker() {
     stateRef.current.paddle.y = h - 36
   }, [])
 
-  // ── Lifecycle ───────────────────────────────────────────────────────────
   useEffect(() => {
     resize()
     window.addEventListener('resize', resize)
@@ -502,7 +507,7 @@ export default function BottleBreaker() {
     }
   }, [])
 
-  // ── Shared UI pieces ──────────────────────────────────────────────────
+  // ── Shared UI ─────────────────────────────────────────────────────────
   const btnClass = 'px-8 py-3 border-2 border-black font-display font-bold uppercase text-sm hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all neo-shadow'
 
   const scoreboard = (
@@ -514,9 +519,9 @@ export default function BottleBreaker() {
         <p className="text-gray-500 text-xs text-center">No scores yet — be the first!</p>
       ) : (
         <div className="space-y-1">
-          {highScores.map((hs, i) => (
+          {highScores.slice(0, 10).map((hs, i) => (
             <div
-              key={`${hs.name}-${hs.score}-${i}`}
+              key={hs.id}
               className={`flex items-center justify-between text-xs px-3 py-1.5 border border-black/20 ${
                 i === 0 ? 'bg-lime/30 font-bold' : i === 1 ? 'bg-cyan/20' : i === 2 ? 'bg-coral/20' : 'bg-white/50'
               }`}
@@ -544,16 +549,17 @@ export default function BottleBreaker() {
             type="text"
             value={nameInput}
             onChange={e => setNameInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSaveScore()}
+            onKeyDown={e => e.key === 'Enter' && !saving && handleSaveScore()}
             placeholder="Your name"
             maxLength={20}
             className="flex-1 px-3 py-2 bg-white/10 border-2 border-white/30 text-white font-bold text-sm placeholder:text-gray-500 focus:outline-none focus:border-cyan"
           />
           <button
             onClick={handleSaveScore}
-            className={`${btnClass} bg-cyan text-black`}
+            disabled={saving}
+            className={`${btnClass} bg-cyan text-black ${saving ? 'opacity-50' : ''}`}
           >
-            Save
+            {saving ? '...' : 'Save'}
           </button>
         </div>
       ) : (
@@ -563,7 +569,7 @@ export default function BottleBreaker() {
   )
 
   // ── Render ──────────────────────────────────────────────────────────────
-  const levelDef = LEVELS[displayLevel]
+  const currentLevel = generateLevel(displayLevel + 1)
 
   return (
     <div className="w-full max-w-[540px] mx-auto">
@@ -571,9 +577,9 @@ export default function BottleBreaker() {
       <div className="flex items-center justify-between mb-3 px-1 font-display text-xs font-bold uppercase tracking-wider">
         <span>
           Level {displayLevel + 1}
-          <span className="text-gray-400 ml-1">/ {LEVELS.length}</span>
+          <span className="text-gray-400 ml-1">/ {TOTAL_LEVELS}</span>
         </span>
-        <span className="text-cyan">{levelDef?.name}</span>
+        <span className="text-cyan truncate mx-2">{currentLevel.name}</span>
         <span className="flex gap-3">
           <span>Score: {displayScore}</span>
           <span>
@@ -588,14 +594,14 @@ export default function BottleBreaker() {
       <div ref={containerRef} className="relative w-full border-3 border-black neo-shadow bg-white">
         <canvas ref={canvasRef} className="block w-full" style={{ touchAction: 'none' }} />
 
-        {/* ── Idle overlay ── */}
+        {/* ── Idle ── */}
         {displayState === 'idle' && (
-          <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-4 px-6">
+          <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-4 px-6 overflow-y-auto py-6">
             <h3 className="font-display text-3xl md:text-4xl font-bold uppercase text-white text-center">
               Bottle Breaker
             </h3>
             <p className="text-gray-300 text-sm text-center max-w-xs">
-              Smash through the bottles before they smash your spirit. Move the paddle with your mouse or finger.
+              Smash through the bottles before they smash your spirit. 99 levels. 3 lives. Move the paddle with your mouse or finger.
             </p>
             <button onClick={startGame} className={`${btnClass} bg-cyan text-black`}>
               Start Game
@@ -604,17 +610,17 @@ export default function BottleBreaker() {
           </div>
         )}
 
-        {/* ── Level complete overlay ── */}
+        {/* ── Level complete ── */}
         {displayState === 'level-complete' && (
           <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-4 px-6">
             <div className="px-4 py-1 bg-cyan border-2 border-black rotate-[-2deg] neo-shadow mb-1">
               <span className="text-xs font-bold uppercase tracking-widest">Level {displayLevel + 1} Complete</span>
             </div>
             <h3 className="font-display text-2xl md:text-3xl font-bold uppercase text-white text-center">
-              {LEVELS[displayLevel]?.name}
+              {currentLevel.name}
             </h3>
             <p className="text-gray-300 text-sm text-center max-w-xs">
-              {LEVEL_MESSAGES[displayLevel] ?? 'On to the next one!'}
+              {getLevelMessage(displayLevel)}
             </p>
             <p className="text-cyan text-lg font-bold">Score: {displayScore}</p>
             <p className="text-gray-400 text-xs">
@@ -626,7 +632,7 @@ export default function BottleBreaker() {
           </div>
         )}
 
-        {/* ── Game over overlay ── */}
+        {/* ── Game over ── */}
         {displayState === 'lost' && (
           <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-4 px-6 overflow-y-auto py-6">
             <h3 className="font-display text-3xl font-bold uppercase text-coral text-center">
@@ -634,7 +640,7 @@ export default function BottleBreaker() {
             </h3>
             <p className="text-white text-lg font-bold">Score: {displayScore}</p>
             <p className="text-gray-400 text-xs">
-              Reached level {displayLevel + 1} — {LEVELS[displayLevel]?.name}
+              Reached level {displayLevel + 1} — {currentLevel.name}
             </p>
             {qualifiesForBoard && nameEntry}
             <button onClick={startGame} className={`${btnClass} bg-coral text-white`}>
@@ -644,14 +650,14 @@ export default function BottleBreaker() {
           </div>
         )}
 
-        {/* ── All levels beaten overlay ── */}
+        {/* ── All levels beaten ── */}
         {displayState === 'beaten' && (
           <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-4 px-6 overflow-y-auto py-6">
             <div className="px-4 py-1 bg-lime border-2 border-black rotate-[-2deg] neo-shadow mb-1">
               <span className="text-xs font-bold uppercase tracking-widest">Champion</span>
             </div>
             <h3 className="font-display text-3xl font-bold uppercase text-white text-center">
-              All Bottles Smashed!
+              All 99 Levels Smashed!
             </h3>
             <p className="text-lime text-lg font-bold">Final Score: {displayScore}</p>
             {qualifiesForBoard && nameEntry}

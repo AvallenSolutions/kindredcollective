@@ -664,6 +664,19 @@ model RFPResponse {
   @@index([status])
 }
 
+// ============= GAME SCORES (404 Easter Egg) =============
+
+model GameScore {
+  id        String   @id @default(cuid())
+  name      String
+  score     Int
+  level     Int
+  createdAt DateTime @default(now())
+
+  @@index([score])
+  @@index([createdAt])
+}
+
 // ============= WORK RELATIONSHIPS (VERIFICATION) =============
 
 model WorkRelationship {
