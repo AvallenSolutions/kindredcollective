@@ -411,7 +411,7 @@ export default function ExplorePage() {
             </div>
           </div>
           <Link
-            href="/signup?role=brand"
+            href="/requests/new"
             className="whitespace-nowrap px-8 py-3 bg-white text-black font-bold uppercase border-2 border-black hover:bg-black hover:text-white transition-colors neo-shadow"
           >
             Post a Request

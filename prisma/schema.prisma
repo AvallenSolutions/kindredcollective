@@ -109,6 +109,19 @@ enum ClaimStatus {
   REJECTED
 }
 
+enum RFPStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  AWARDED
+}
+
+enum RFPResponseStatus {
+  PENDING
+  SHORTLISTED
+  REJECTED
+}
+
 enum OrganisationMemberRole {
   OWNER   // Full control, can transfer ownership
   ADMIN   // Can manage members and settings
@@ -139,6 +152,8 @@ model User {
   reviews         SupplierReview[]
   organisationMembers OrganisationMember[]
   createdInvites  InviteLink[] @relation("AdminInvites")
+  rfps            RFP[]
+  rfpResponses    RFPResponse[]
 
   @@index([email])
   @@index([role])
@@ -200,6 +215,7 @@ model Brand {
   reviews SupplierReview[]
   organisation Organisation?
   workRelationships WorkRelationship[]
+  rfps    RFP[]
 
   @@index([slug])
   @@index([category])
@@ -259,6 +275,7 @@ model Supplier {
   claims          SupplierClaim[]
   organisation    Organisation?
   workRelationships WorkRelationship[]
+  rfpResponses    RFPResponse[]
 
   @@index([slug])
   @@index([category])
@@ -597,6 +614,54 @@ model NewsletterSubscriber {
   subscribedAt DateTime @default(now())
 
   @@index([email])
+}
+
+// ============= RFP (REQUEST FOR PROPOSAL) =============
+
+model RFP {
+  id             String    @id @default(cuid())
+  title          String
+  description    String    @db.Text
+  brandId        String
+  postedByUserId String
+  category       SupplierCategory
+  subcategories  String[]
+  budget         String?
+  deadline       DateTime?
+  location       String?
+  isRemoteOk     Boolean   @default(false)
+  status         RFPStatus @default(OPEN)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  brand     Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  postedBy  User          @relation(fields: [postedByUserId], references: [id])
+  responses RFPResponse[]
+
+  @@index([brandId])
+  @@index([category])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model RFPResponse {
+  id                String            @id @default(cuid())
+  rfpId             String
+  supplierId        String
+  respondedByUserId String
+  message           String            @db.Text
+  status            RFPResponseStatus @default(PENDING)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  rfp         RFP      @relation(fields: [rfpId], references: [id], onDelete: Cascade)
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  respondedBy User     @relation(fields: [respondedByUserId], references: [id])
+
+  @@unique([rfpId, supplierId])
+  @@index([rfpId])
+  @@index([supplierId])
+  @@index([status])
 }
 
 // ============= WORK RELATIONSHIPS (VERIFICATION) =============

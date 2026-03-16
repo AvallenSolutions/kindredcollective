@@ -16,11 +16,29 @@ export default async function DashboardPage() {
   const brands = await getUserBrands(session.user.id)
   const suppliers = await getUserSuppliers(session.user.id)
 
-  // Fetch member-level stats (these use userId on their own tables, not brand/supplier)
-  const [savedSuppliersResult, eventsResult, offersClaimedResult] = await Promise.all([
+  const brandId = brands[0]?.id
+  const supplierId = suppliers[0]?.id
+  const supplierCategory = suppliers[0]?.category
+
+  // Fetch member-level stats and RFP data in parallel
+  const [
+    savedSuppliersResult,
+    eventsResult,
+    offersClaimedResult,
+    myRfpsResult,
+    opportunityRfpsResult,
+  ] = await Promise.all([
     supabase.from('SavedSupplier').select('*', { count: 'exact', head: true }).eq('userId', session.user.id),
     supabase.from('EventRsvp').select('*', { count: 'exact', head: true }).eq('userId', session.user.id).eq('status', 'GOING'),
     supabase.from('OfferClaim').select('*', { count: 'exact', head: true }).eq('userId', session.user.id),
+    // Brand's own RFPs
+    brandId
+      ? supabase.from('RFP').select('id, title, category, status, createdAt, responses:RFPResponse(count)').eq('brandId', brandId).order('createdAt', { ascending: false }).limit(3)
+      : Promise.resolve({ data: [] }),
+    // Open RFPs in the supplier's category (opportunities)
+    supplierId && supplierCategory
+      ? supabase.from('RFP').select('id, title, category, budget, deadline, brand:Brand(name)').eq('status', 'OPEN').eq('category', supplierCategory).order('createdAt', { ascending: false }).limit(3)
+      : Promise.resolve({ data: [] }),
   ])
 
   const stats = {
@@ -79,6 +97,8 @@ export default async function DashboardPage() {
       recentOfferClaims={recentOfferClaims as any || []}
       brands={brands}
       suppliers={suppliers}
+      myRfps={(myRfpsResult.data as any) || []}
+      opportunityRfps={(opportunityRfpsResult.data as any) || []}
     />
   )
 }

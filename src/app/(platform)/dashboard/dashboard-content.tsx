@@ -15,6 +15,7 @@ import {
   Store,
   Tag as TagIcon,
   Pencil,
+  Zap,
 } from 'lucide-react'
 import { Badge, Button, Card, CardContent } from '@/components/ui'
 import { SupplierCard } from '@/components/suppliers'
@@ -80,6 +81,22 @@ interface DashboardContentProps {
   }>
   brands: Array<any>
   suppliers: Array<any>
+  myRfps: Array<{
+    id: string
+    title: string
+    category: string
+    status: string
+    createdAt: string
+    responses: { count: number }[]
+  }>
+  opportunityRfps: Array<{
+    id: string
+    title: string
+    category: string
+    budget: string | null
+    deadline: string | null
+    brand: { name: string }
+  }>
 }
 
 export function DashboardContent({
@@ -91,6 +108,8 @@ export function DashboardContent({
   recentOfferClaims,
   brands,
   suppliers,
+  myRfps,
+  opportunityRfps,
 }: DashboardContentProps) {
   const displayName = user.firstName || user.email.split('@')[0]
   const initials = user.firstName
@@ -297,6 +316,106 @@ export function DashboardContent({
         </section>
       )}
 
+      {/* My Requests (brand users) */}
+      {brandOrgs.length > 0 && (
+        <section className="section-container pb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-lg font-bold uppercase tracking-wide">My Requests</h2>
+            <div className="flex gap-3">
+              <Link href="/requests/new">
+                <Button size="sm" variant="outline">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Post Request
+                </Button>
+              </Link>
+              <Link href="/requests" className="text-sm font-bold text-cyan hover:underline self-center">
+                View Board →
+              </Link>
+            </div>
+          </div>
+          {myRfps.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="p-6 text-center">
+                <Zap className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm text-gray-500 mb-3">No requests posted yet</p>
+                <Link href="/requests/new">
+                  <Button size="sm" variant="outline">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Post your first request
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {myRfps.slice(0, 3).map(rfp => {
+                const count = rfp.responses?.[0]
+                  ? (typeof rfp.responses[0] === 'object' && 'count' in rfp.responses[0]
+                      ? (rfp.responses[0] as any).count
+                      : 0)
+                  : 0
+                return (
+                  <Link key={rfp.id} href={`/requests/${rfp.id}`}>
+                    <Card className="hover:shadow-brutal-lg hover:-translate-y-1 transition-all cursor-pointer">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`text-xs font-bold px-2 py-0.5 border ${
+                            rfp.status === 'OPEN' ? 'bg-lime border-lime-700 text-lime-900'
+                            : rfp.status === 'AWARDED' ? 'bg-cyan border-black'
+                            : 'bg-gray-100 border-gray-300 text-gray-600'
+                          }`}>
+                            {rfp.status}
+                          </span>
+                        </div>
+                        <h3 className="font-display font-bold text-sm mb-2 line-clamp-2">{rfp.title}</h3>
+                        <p className="text-xs text-gray-500">
+                          {count} response{count !== 1 ? 's' : ''}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Opportunities (supplier users) */}
+      {supplierOrgs.length > 0 && opportunityRfps.length > 0 && (
+        <section className="section-container pb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-lg font-bold uppercase tracking-wide">New Opportunities</h2>
+            <Link href="/requests" className="text-sm font-bold text-cyan hover:underline">
+              View All →
+            </Link>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {opportunityRfps.map(rfp => (
+              <Link key={rfp.id} href={`/requests/${rfp.id}`}>
+                <Card className="hover:shadow-brutal-lg hover:-translate-y-1 transition-all cursor-pointer">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs bg-lime border border-lime-700 text-lime-900 font-bold px-2 py-0.5">OPEN</span>
+                    </div>
+                    <h3 className="font-display font-bold text-sm mb-1 line-clamp-2">{rfp.title}</h3>
+                    <p className="text-xs text-gray-500 mb-2">{rfp.brand.name}</p>
+                    <div className="flex flex-wrap gap-2 text-xs text-gray-400">
+                      {rfp.budget && <span>Budget: {rfp.budget}</span>}
+                      {rfp.deadline && (
+                        <span>
+                          Due {new Date(rfp.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                        </span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* No organisations CTA */}
       {organisations.length === 0 && (
         <section className="section-container pb-8">
@@ -479,6 +598,32 @@ export function DashboardContent({
                       <div className="flex items-center gap-3">
                         <Calendar className="w-5 h-5 text-purple-500" />
                         <span className="font-bold text-sm">Manage Events</span>
+                      </div>
+                      <ArrowRight className="w-4 h-4" />
+                    </CardContent>
+                  </Card>
+                </Link>
+              )}
+              {brandOrgs.length > 0 && (
+                <Link href="/requests/new">
+                  <Card className="hover:shadow-brutal-lg hover:-translate-y-1 cursor-pointer transition-all">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Zap className="w-5 h-5 text-cyan" />
+                        <span className="font-bold text-sm">Post a Request</span>
+                      </div>
+                      <ArrowRight className="w-4 h-4" />
+                    </CardContent>
+                  </Card>
+                </Link>
+              )}
+              {supplierOrgs.length > 0 && (
+                <Link href="/requests">
+                  <Card className="hover:shadow-brutal-lg hover:-translate-y-1 cursor-pointer transition-all">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Zap className="w-5 h-5 text-lime-600" />
+                        <span className="font-bold text-sm">Browse Opportunities</span>
                       </div>
                       <ArrowRight className="w-4 h-4" />
                     </CardContent>
