@@ -1,4 +1,4 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
@@ -17,7 +17,8 @@ export async function GET(request: Request) {
   // the specific NextResponse we return. cookies() from next/headers writes to
   // the implicit default response — NOT to a custom NextResponse.redirect —
   // so without this the browser never receives session cookies.
-  const pendingCookies: Array<{ name: string; value: string; options: CookieOptions }> = []
+  type StoredCookie = ReturnType<typeof cookieStore.getAll>[number]
+  const pendingCookies: StoredCookie[] = []
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,7 +28,7 @@ export async function GET(request: Request) {
         getAll() {
           return cookieStore.getAll()
         },
-        setAll(cookiesToSet) {
+        setAll(cookiesToSet: StoredCookie[]) {
           cookiesToSet.forEach((c) => pendingCookies.push(c))
         },
       },
