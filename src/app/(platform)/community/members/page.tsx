@@ -171,7 +171,7 @@ async function getMembers() {
         location: null as string | null,
         company: primaryAffiliation?.company || '',
         companyType: (primaryAffiliation?.companyType || 'BRAND') as 'BRAND' | 'SUPPLIER',
-        companyTypes: [...new Set(affiliations.map(a => a.companyType))] as ('BRAND' | 'SUPPLIER')[],
+        companyTypes: Array.from(new Set(affiliations.map(a => a.companyType))) as ('BRAND' | 'SUPPLIER')[],
         companies: affiliations.map(a => ({ name: a.company, type: a.companyType })),
         pet: petMap.get(member.userId) ?? null,
         rsvpEvents: rsvpMap.get(member.userId) ?? [],
