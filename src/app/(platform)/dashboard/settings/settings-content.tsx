@@ -44,6 +44,7 @@ interface SettingsContentProps {
     petName: string | null
     petType: string | null
     petPhotoUrl: string | null
+    petPhotoPublic: boolean
   } | null
   organisations: UserOrganisation[]
 }
@@ -70,6 +71,7 @@ export function SettingsContent({ user, member, organisations }: SettingsContent
     isPublic: member?.isPublic ?? true,
     petName: member?.petName || '',
     petType: member?.petType || '',
+    petPhotoPublic: member?.petPhotoPublic ?? false,
   })
 
   // Avatar & pet photo state (managed locally for instant preview)
@@ -158,6 +160,7 @@ export function SettingsContent({ user, member, organisations }: SettingsContent
           isPublic: profileData.isPublic,
           petName: profileData.petName || null,
           petType: profileData.petType || null,
+          petPhotoPublic: profileData.petPhotoPublic,
         }),
       })
 
@@ -450,6 +453,26 @@ export function SettingsContent({ user, member, organisations }: SettingsContent
                             />
                           </div>
                         </div>
+
+                        {petPhotoUrl && (
+                          <div className="flex items-center justify-between p-3 bg-amber-50 border-2 border-amber-300">
+                            <div>
+                              <p className="font-bold text-sm">Share on the Pet Photoboard</p>
+                              <p className="text-xs text-gray-500">
+                                Show {profileData.petName || 'your pet'} on the community photoboard
+                              </p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                              <input
+                                type="checkbox"
+                                className="sr-only peer"
+                                checked={profileData.petPhotoPublic}
+                                onChange={(e) => setProfileData({ ...profileData, petPhotoPublic: e.target.checked })}
+                              />
+                              <div className="w-11 h-6 bg-gray-300 peer-checked:bg-cyan border-2 border-black peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-2 after:border-black after:h-5 after:w-5 after:transition-all"></div>
+                            </label>
+                          </div>
+                        )}
                       </div>
                     </div>
 

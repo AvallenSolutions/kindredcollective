@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { PlusCircle, UserPlus, Star, MapPin, Video, ArrowDown, Mail, Calendar } from 'lucide-react'
+import { PlusCircle, UserPlus, Star, MapPin, Video, ArrowDown, Mail, Calendar, PawPrint } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { DRINK_CATEGORY_LABELS } from '@/types/database'
 import type { DrinkCategory } from '@prisma/client'
@@ -92,6 +92,16 @@ async function getCommunityData() {
     }))
   }
 
+  // Fetch public pet photos for photoboard teaser (max 8)
+  const { data: pets } = await supabase
+    .from('Member')
+    .select('id, firstName, petName, petType, petPhotoUrl')
+    .eq('isPublic', true)
+    .eq('petPhotoPublic', true)
+    .not('petPhotoUrl', 'is', null)
+    .order('updatedAt', { ascending: false })
+    .limit(8)
+
   // Fetch upcoming events
   const { data: events } = await supabase
     .from('Event')
@@ -116,11 +126,12 @@ async function getCommunityData() {
     members: memberData,
     events: events || [],
     featuredEvent: featuredEvents?.[0] || null,
+    pets: (pets || []).filter(p => !!p.petPhotoUrl),
   }
 }
 
 export default async function CommunityPage() {
-  const { brands, members, events, featuredEvent } = await getCommunityData()
+  const { brands, members, events, featuredEvent, pets } = await getCommunityData()
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -353,6 +364,56 @@ export default async function CommunityPage() {
             </Link>
           </div>
         </section>
+
+        {/* PET PHOTOBOARD TEASER */}
+        {pets.length > 0 && (
+          <section className="relative">
+            <div className="absolute -top-6 -left-2 bg-amber-400 text-black px-3 py-1 font-bold font-display uppercase text-lg border-2 border-black transform rotate-1 z-20">
+              Pet Photoboard
+            </div>
+            <div className="bg-amber-50 border-2 border-black neo-shadow p-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div className="flex items-center gap-2">
+                  <PawPrint className="w-6 h-6" />
+                  <p className="text-gray-600 text-sm font-medium">
+                    Meet our community's most important members
+                  </p>
+                </div>
+                <Link
+                  href="/community/pets"
+                  className="px-4 py-2 border-2 border-black bg-black text-white font-bold uppercase text-xs hover:bg-cyan hover:text-black transition-colors whitespace-nowrap"
+                >
+                  View the board →
+                </Link>
+              </div>
+
+              {/* Mini polaroid row */}
+              <div className="flex flex-wrap gap-6 justify-center">
+                {pets.map((pet, index) => {
+                  const rotations = ['-rotate-3','rotate-2','-rotate-1','rotate-3','-rotate-2','rotate-1','-rotate-4','rotate-4']
+                  const r = rotations[index % rotations.length]
+                  return (
+                    <div key={pet.id} className={`relative transform ${r} hover:rotate-0 hover:scale-105 transition-all duration-200`}>
+                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-coral border-2 border-black z-10" />
+                      <div className="bg-white border-2 border-black p-2 pb-6 shadow-brutal w-24">
+                        <div className="w-full aspect-square overflow-hidden border border-black bg-gray-100">
+                          <img
+                            src={pet.petPhotoUrl!}
+                            alt={pet.petName || `${pet.firstName}'s pet`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <p className="mt-2 text-center text-xs font-bold leading-tight truncate">
+                          {pet.petName || '?'}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* UPCOMING EVENTS LIST */}
         <section id="events">
