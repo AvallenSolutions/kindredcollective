@@ -263,7 +263,7 @@ export default function RFPDetailPage({ params }: { params: Promise<{ id: string
                       <CheckCircle className="w-10 h-10 text-green-600 mx-auto mb-3" />
                       <h3 className="font-display font-bold text-lg mb-1">Response submitted!</h3>
                       <p className="text-sm text-gray-600">
-                        The brand will review your message and get in touch if they're interested.
+                        The brand will review your message and get in touch if they&apos;re interested.
                       </p>
                     </div>
                   ) : !isOpen ? (
@@ -274,7 +274,7 @@ export default function RFPDetailPage({ params }: { params: Promise<{ id: string
                     <form onSubmit={submitResponse}>
                       <h2 className="font-display font-bold text-lg mb-1">Submit Expression of Interest</h2>
                       <p className="text-sm text-gray-600 mb-4">
-                        Tell the brand why you're a great fit. Keep it concise — they'll follow up if interested.
+                        Tell the brand why you&apos;re a great fit. Keep it concise — they&apos;ll follow up if interested.
                       </p>
                       <textarea
                         value={message}

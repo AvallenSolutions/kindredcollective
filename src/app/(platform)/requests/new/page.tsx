@@ -270,7 +270,7 @@ export default function NewRequestPage() {
             <li>1. Post your request with as much detail as possible</li>
             <li>2. Suppliers on the platform browse and respond with a short message</li>
             <li>3. Review responses and contact whoever looks like a good fit</li>
-            <li>4. Close or mark your request as awarded when you're done</li>
+            <li>4. Close or mark your request as awarded when you&apos;re done</li>
           </ol>
         </div>
       </div>
