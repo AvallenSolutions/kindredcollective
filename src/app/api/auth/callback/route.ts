@@ -17,8 +17,8 @@ export async function GET(request: Request) {
   // the specific NextResponse we return. cookies() from next/headers writes to
   // the implicit default response — NOT to a custom NextResponse.redirect —
   // so without this the browser never receives session cookies.
-  type StoredCookie = ReturnType<typeof cookieStore.getAll>[number]
-  const pendingCookies: StoredCookie[] = []
+  type PendingCookie = { name: string; value: string; options?: Record<string, unknown> }
+  const pendingCookies: PendingCookie[] = []
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
         getAll() {
           return cookieStore.getAll()
         },
-        setAll(cookiesToSet: StoredCookie[]) {
+        setAll(cookiesToSet: PendingCookie[]) {
           cookiesToSet.forEach((c) => pendingCookies.push(c))
         },
       },
