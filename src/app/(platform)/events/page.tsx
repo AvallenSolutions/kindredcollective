@@ -153,7 +153,7 @@ export default async function EventsPage() {
                   )}
                   <div className="flex flex-wrap gap-4">
                     <Link
-                      href={`/events/${featuredEvent.slug}`}
+                      href={`/community/events/${featuredEvent.slug}`}
                       className="px-8 py-3 bg-black text-cyan border-2 border-black font-bold uppercase hover:bg-white hover:text-black transition-colors neo-shadow neo-shadow-hover flex items-center gap-2"
                     >
                       <Ticket className="w-5 h-5" />
@@ -266,7 +266,7 @@ export default async function EventsPage() {
                         </span>
                       </div>
                       <Link
-                        href={`/events/${event.slug}`}
+                        href={`/community/events/${event.slug}`}
                         className="px-4 py-2 bg-cyan text-black border-2 border-black font-bold uppercase text-xs hover:bg-black hover:text-cyan transition-colors whitespace-nowrap"
                       >
                         RSVP

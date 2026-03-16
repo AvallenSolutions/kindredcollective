@@ -11,90 +11,146 @@ const PURPLE = '#A855F7'
 const BLACK = '#000000'
 const WHITE = '#FFFFFF'
 
-// ─── Level definitions ───────────────────────────────────────────────────────
+// ─── Level generation (99 levels) ────────────────────────────────────────────
 interface LevelDef {
   name: string
   rows: number
   cols: number
   ballSpeed: number
-  /** max hits for multi-hit bottles (1 = one hit) */
   maxHits: number
   paddleWidth: number
 }
 
-const LEVELS: LevelDef[] = [
-  { name: 'The Warm-Up', rows: 3, cols: 7, ballSpeed: 4, maxHits: 1, paddleWidth: 100 },
-  { name: 'Happy Hour', rows: 4, cols: 8, ballSpeed: 4.5, maxHits: 1, paddleWidth: 95 },
-  { name: 'Last Orders', rows: 5, cols: 8, ballSpeed: 5, maxHits: 1, paddleWidth: 90 },
-  { name: 'After Party', rows: 5, cols: 8, ballSpeed: 5.5, maxHits: 2, paddleWidth: 85 },
-  { name: 'The Morning After', rows: 6, cols: 9, ballSpeed: 6, maxHits: 2, paddleWidth: 80 },
-]
+const NAMED_LEVELS: Record<number, string> = {
+  1: 'The Warm-Up', 2: 'Happy Hour', 3: 'Last Orders', 4: 'After Party',
+  5: 'The Morning After', 10: 'Second Round', 15: 'On The Rocks',
+  20: 'Shaken Not Stirred', 25: 'Double Shot', 30: 'Neat Pour',
+  35: 'Top Shelf', 40: 'Barrel Aged', 45: 'Cask Strength',
+  50: 'Halfway House', 55: 'Proof Positive', 60: 'Spirit Level',
+  65: 'High Ball', 70: 'Full Measure', 75: 'Last Call', 80: 'Lock-In',
+  85: 'Nightcap', 90: 'One More Round', 95: 'The Final Straw', 99: 'Legendary',
+}
 
+function generateLevel(n: number): LevelDef {
+  const t = (n - 1) / 98
+  return {
+    name: NAMED_LEVELS[n] ?? `Level ${n}`,
+    rows: Math.min(3 + Math.floor(t * 6), 9),
+    cols: Math.min(7 + Math.floor(t * 5), 12),
+    ballSpeed: 4 + t * 4,
+    maxHits: n >= 4 ? Math.min(1 + Math.floor(t * 3), 3) : 1,
+    paddleWidth: Math.max(100 - Math.floor(t * 40), 60),
+  }
+}
+
+const TOTAL_LEVELS = 99
 const BOTTLE_COLOURS = [CYAN, CORAL, LIME, AMBER, PURPLE]
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-interface Brick {
-  x: number
-  y: number
-  w: number
-  h: number
-  hits: number
+// ─── Power-ups ───────────────────────────────────────────────────────────────
+type PowerUpType = 'multiball' | 'wide' | 'fireball' | 'extralife' | 'slow'
+
+interface PowerUpDef {
+  label: string
   colour: string
-  alive: boolean
+  duration: number // frames (0 = instant)
 }
 
-interface Ball {
-  x: number
-  y: number
-  dx: number
-  dy: number
-  r: number
+const POWERUP_DEFS: Record<PowerUpType, PowerUpDef> = {
+  multiball:  { label: 'x3',  colour: CYAN,   duration: 0 },
+  wide:       { label: 'W',   colour: LIME,   duration: 480 },   // ~8 sec
+  fireball:   { label: 'F',   colour: CORAL,  duration: 300 },   // ~5 sec
+  extralife:  { label: '+1',  colour: PURPLE, duration: 0 },
+  slow:       { label: 'S',   colour: AMBER,  duration: 360 },   // ~6 sec
 }
 
-interface Paddle {
-  x: number
-  y: number
-  w: number
-  h: number
-}
+const POWERUP_TYPES: PowerUpType[] = ['multiball', 'wide', 'fireball', 'extralife', 'slow']
+const POWERUP_DROP_CHANCE = 0.15
 
-interface Particle {
+interface PowerUp {
   x: number
   y: number
-  dx: number
-  dy: number
-  life: number
-  maxLife: number
-  colour: string
+  type: PowerUpType
   size: number
 }
 
-type GameState = 'idle' | 'playing' | 'won' | 'lost' | 'beaten'
+// ─── Leaderboard API ─────────────────────────────────────────────────────────
+interface HighScore {
+  id: string
+  name: string
+  score: number
+  level: number
+  createdAt: string
+}
+
+async function fetchScores(): Promise<HighScore[]> {
+  try {
+    const res = await fetch('/api/game-scores')
+    if (!res.ok) return []
+    const json = await res.json()
+    return json.data ?? []
+  } catch { return [] }
+}
+
+async function submitScore(name: string, score: number, level: number): Promise<HighScore[]> {
+  try {
+    await fetch('/api/game-scores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, score, level }),
+    })
+    return fetchScores()
+  } catch { return [] }
+}
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+interface Brick {
+  x: number; y: number; w: number; h: number
+  hits: number; colour: string; alive: boolean
+}
+interface Ball {
+  x: number; y: number; dx: number; dy: number; r: number
+}
+interface Paddle { x: number; y: number; w: number; h: number }
+interface Particle {
+  x: number; y: number; dx: number; dy: number
+  life: number; maxLife: number; colour: string; size: number
+}
+
+type GameState = 'idle' | 'playing' | 'lost' | 'beaten'
+
+interface ActiveEffect {
+  type: PowerUpType
+  remaining: number
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function buildBricks(level: LevelDef, canvasW: number): Brick[] {
   const bricks: Brick[] = []
-  const padding = 6
-  const topOffset = 50
-  const brickH = 22
-  const totalPaddingW = padding * (level.cols + 1)
-  const brickW = (canvasW - totalPaddingW) / level.cols
-
+  const padding = 6, topOffset = 50, brickH = 22
+  const brickW = (canvasW - padding * (level.cols + 1)) / level.cols
   for (let r = 0; r < level.rows; r++) {
     const rowColour = BOTTLE_COLOURS[r % BOTTLE_COLOURS.length]
     for (let c = 0; c < level.cols; c++) {
       bricks.push({
         x: padding + c * (brickW + padding),
         y: topOffset + r * (brickH + padding),
-        w: brickW,
-        h: brickH,
+        w: brickW, h: brickH,
         hits: r < 2 && level.maxHits > 1 ? level.maxHits : 1,
-        colour: rowColour,
-        alive: true,
+        colour: rowColour, alive: true,
       })
     }
   }
   return bricks
+}
+
+function makeBall(canvasW: number, paddleY: number, speed: number): Ball {
+  return {
+    x: canvasW / 2,
+    y: paddleY - 10,
+    dx: speed * (Math.random() > 0.5 ? 1 : -1) * 0.7,
+    dy: -speed,
+    r: 7,
+  }
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -103,26 +159,34 @@ export default function BottleBreaker() {
   const containerRef = useRef<HTMLDivElement>(null)
   const animRef = useRef<number>(0)
   const stateRef = useRef<{
-    ball: Ball
+    balls: Ball[]
     paddle: Paddle
     bricks: Brick[]
     particles: Particle[]
+    powerUps: PowerUp[]
+    effects: ActiveEffect[]
     lives: number
     score: number
     gameState: GameState
     level: number
+    basePaddleW: number
+    baseBallSpeed: number
     canvasW: number
     canvasH: number
     pointerX: number | null
   }>({
-    ball: { x: 0, y: 0, dx: 0, dy: 0, r: 7 },
+    balls: [],
     paddle: { x: 0, y: 0, w: 100, h: 14 },
     bricks: [],
     particles: [],
+    powerUps: [],
+    effects: [],
     lives: 3,
     score: 0,
     gameState: 'idle',
     level: 0,
+    basePaddleW: 100,
+    baseBallSpeed: 4,
     canvasW: 480,
     canvasH: 600,
     pointerX: null,
@@ -132,24 +196,132 @@ export default function BottleBreaker() {
   const [displayLevel, setDisplayLevel] = useState(0)
   const [displayScore, setDisplayScore] = useState(0)
   const [displayLives, setDisplayLives] = useState(3)
+  const [highScores, setHighScores] = useState<HighScore[]>([])
+  const [nameInput, setNameInput] = useState('')
+  const [scoreSaved, setScoreSaved] = useState(false)
+  const [qualifiesForBoard, setQualifiesForBoard] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState<{ message: string; sub: string } | null>(null)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // ── Initialise / reset a level ──────────────────────────────────────────
+  function showToast(message: string, sub: string) {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    setToast({ message, sub })
+    toastTimerRef.current = setTimeout(() => {
+      setToast(null)
+      toastTimerRef.current = null
+    }, 2000)
+  }
+
+  useEffect(() => {
+    fetchScores().then(setHighScores)
+    return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current) }
+  }, [])
+
+  function checkQualifies(score: number): boolean {
+    if (highScores.length < 20) return score > 0
+    return score > (highScores[highScores.length - 1]?.score ?? 0)
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  function hasEffect(type: PowerUpType): boolean {
+    return stateRef.current.effects.some(e => e.type === type)
+  }
+
+  function spawnParticles(s: typeof stateRef.current, brick: Brick) {
+    for (let i = 0; i < 8; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const speed = 1 + Math.random() * 3
+      s.particles.push({
+        x: brick.x + brick.w / 2, y: brick.y + brick.h / 2,
+        dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed,
+        life: 30 + Math.random() * 20, maxLife: 50,
+        colour: brick.colour, size: 3 + Math.random() * 4,
+      })
+    }
+  }
+
+  function maybeDropPowerUp(s: typeof stateRef.current, brick: Brick) {
+    if (Math.random() < POWERUP_DROP_CHANCE) {
+      const type = POWERUP_TYPES[Math.floor(Math.random() * POWERUP_TYPES.length)]
+      s.powerUps.push({
+        x: brick.x + brick.w / 2,
+        y: brick.y + brick.h / 2,
+        type,
+        size: 18,
+      })
+    }
+  }
+
+  function applyPowerUp(s: typeof stateRef.current, pu: PowerUp) {
+    const def = POWERUP_DEFS[pu.type]
+
+    switch (pu.type) {
+      case 'multiball': {
+        // Spawn 2 extra balls from the first ball's position
+        const ref = s.balls[0]
+        if (ref) {
+          const speed = Math.sqrt(ref.dx ** 2 + ref.dy ** 2)
+          s.balls.push(
+            { x: ref.x, y: ref.y, dx: speed * 0.7, dy: -speed * 0.7, r: 7 },
+            { x: ref.x, y: ref.y, dx: -speed * 0.7, dy: -speed * 0.7, r: 7 },
+          )
+        }
+        break
+      }
+      case 'wide': {
+        // Remove existing wide effect, add fresh one
+        s.effects = s.effects.filter(e => e.type !== 'wide')
+        s.effects.push({ type: 'wide', remaining: def.duration })
+        s.paddle.w = s.basePaddleW * 1.5
+        break
+      }
+      case 'fireball': {
+        s.effects = s.effects.filter(e => e.type !== 'fireball')
+        s.effects.push({ type: 'fireball', remaining: def.duration })
+        break
+      }
+      case 'extralife': {
+        s.lives = Math.min(s.lives + 1, 5)
+        setDisplayLives(s.lives)
+        break
+      }
+      case 'slow': {
+        s.effects = s.effects.filter(e => e.type !== 'slow')
+        s.effects.push({ type: 'slow', remaining: def.duration })
+        for (const b of s.balls) {
+          b.dx *= 0.6
+          b.dy *= 0.6
+        }
+        break
+      }
+    }
+
+    showToast(
+      pu.type === 'multiball' ? 'Multi-Ball!' :
+      pu.type === 'wide' ? 'Wide Paddle!' :
+      pu.type === 'fireball' ? 'Fireball!' :
+      pu.type === 'extralife' ? 'Extra Life!' :
+      'Slow Ball!',
+      POWERUP_DEFS[pu.type].label,
+    )
+  }
+
+  // ── Init / reset ────────────────────────────────────────────────────────
   const initLevel = useCallback((levelIdx: number) => {
     const s = stateRef.current
-    const lv = LEVELS[levelIdx]
+    const lv = generateLevel(levelIdx + 1)
     s.level = levelIdx
     s.bricks = buildBricks(lv, s.canvasW)
+    s.basePaddleW = lv.paddleWidth
+    s.baseBallSpeed = lv.ballSpeed
     s.paddle.w = lv.paddleWidth
     s.paddle.x = (s.canvasW - lv.paddleWidth) / 2
     s.paddle.y = s.canvasH - 36
-    s.ball = {
-      x: s.canvasW / 2,
-      y: s.paddle.y - 10,
-      dx: lv.ballSpeed * (Math.random() > 0.5 ? 1 : -1) * 0.7,
-      dy: -lv.ballSpeed,
-      r: 7,
-    }
+    s.balls = [makeBall(s.canvasW, s.paddle.y, lv.ballSpeed)]
     s.particles = []
+    s.powerUps = []
+    s.effects = []
     setDisplayLevel(levelIdx)
   }, [])
 
@@ -162,25 +334,41 @@ export default function BottleBreaker() {
     setDisplayState('playing')
     setDisplayScore(0)
     setDisplayLives(3)
+    setScoreSaved(false)
+    setQualifiesForBoard(false)
+    setNameInput('')
   }, [initLevel])
 
-  // ── Spawn particles on brick break ──────────────────────────────────────
-  function spawnParticles(s: typeof stateRef.current, brick: Brick) {
-    for (let i = 0; i < 8; i++) {
-      const angle = Math.random() * Math.PI * 2
-      const speed = 1 + Math.random() * 3
-      s.particles.push({
-        x: brick.x + brick.w / 2,
-        y: brick.y + brick.h / 2,
-        dx: Math.cos(angle) * speed,
-        dy: Math.sin(angle) * speed,
-        life: 30 + Math.random() * 20,
-        maxLife: 50,
-        colour: brick.colour,
-        size: 3 + Math.random() * 4,
-      })
+  const advanceToNextLevel = useCallback((completedLevel: number) => {
+    const s = stateRef.current
+    const completedDef = generateLevel(completedLevel + 1)
+    showToast(`Level ${completedLevel + 1} Complete!`, completedDef.name)
+    if (completedLevel + 1 < TOTAL_LEVELS) {
+      s.gameState = 'playing'
+      initLevel(completedLevel + 1)
+      setDisplayState('playing')
     }
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initLevel])
+
+  const handleGameEnd = useCallback((state: 'lost' | 'beaten') => {
+    const s = stateRef.current
+    s.gameState = state
+    setDisplayState(state)
+    setScoreSaved(false)
+    setNameInput('')
+    setQualifiesForBoard(checkQualifies(s.score))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highScores])
+
+  const handleSaveScore = useCallback(async () => {
+    const s = stateRef.current
+    setSaving(true)
+    const updated = await submitScore(nameInput.trim() || 'Anonymous', s.score, s.level + 1)
+    setHighScores(updated)
+    setScoreSaved(true)
+    setSaving(false)
+  }, [nameInput])
 
   // ── Main game loop ──────────────────────────────────────────────────────
   const loop = useCallback(() => {
@@ -190,146 +378,192 @@ export default function BottleBreaker() {
     if (!ctx) return
     const s = stateRef.current
 
-    // — Clear —
     ctx.fillStyle = WHITE
     ctx.fillRect(0, 0, s.canvasW, s.canvasH)
 
-    // — Update particles —
+    // Update particles
     s.particles = s.particles.filter(p => {
-      p.x += p.dx
-      p.y += p.dy
-      p.dy += 0.1 // gravity
-      p.life--
+      p.x += p.dx; p.y += p.dy; p.dy += 0.1; p.life--
       return p.life > 0
     })
 
     if (s.gameState === 'playing') {
-      // — Move paddle toward pointer —
-      if (s.pointerX !== null) {
-        s.paddle.x = s.pointerX - s.paddle.w / 2
+      // ── Update active effects ──
+      for (let i = s.effects.length - 1; i >= 0; i--) {
+        s.effects[i].remaining--
+        if (s.effects[i].remaining <= 0) {
+          const expired = s.effects[i]
+          s.effects.splice(i, 1)
+          // Revert effect
+          if (expired.type === 'wide') {
+            s.paddle.w = s.basePaddleW
+          }
+          if (expired.type === 'slow') {
+            // Re-accelerate balls to normal speed
+            for (const b of s.balls) {
+              const curSpeed = Math.sqrt(b.dx ** 2 + b.dy ** 2)
+              if (curSpeed > 0) {
+                const scale = s.baseBallSpeed / curSpeed
+                b.dx *= scale
+                b.dy *= scale
+              }
+            }
+          }
+        }
       }
-      // clamp paddle
+
+      // ── Move paddle ──
+      if (s.pointerX !== null) s.paddle.x = s.pointerX - s.paddle.w / 2
       s.paddle.x = Math.max(0, Math.min(s.canvasW - s.paddle.w, s.paddle.x))
 
-      // — Move ball —
-      s.ball.x += s.ball.dx
-      s.ball.y += s.ball.dy
+      // ── Move & collide each ball ──
+      const isFireball = hasEffect('fireball')
 
-      // wall bounce
-      if (s.ball.x - s.ball.r <= 0) { s.ball.x = s.ball.r; s.ball.dx = Math.abs(s.ball.dx) }
-      if (s.ball.x + s.ball.r >= s.canvasW) { s.ball.x = s.canvasW - s.ball.r; s.ball.dx = -Math.abs(s.ball.dx) }
-      if (s.ball.y - s.ball.r <= 0) { s.ball.y = s.ball.r; s.ball.dy = Math.abs(s.ball.dy) }
+      for (let bi = s.balls.length - 1; bi >= 0; bi--) {
+        const ball = s.balls[bi]
+        ball.x += ball.dx
+        ball.y += ball.dy
 
-      // bottom — lose life
-      if (s.ball.y + s.ball.r > s.canvasH) {
+        // Wall bounce
+        if (ball.x - ball.r <= 0) { ball.x = ball.r; ball.dx = Math.abs(ball.dx) }
+        if (ball.x + ball.r >= s.canvasW) { ball.x = s.canvasW - ball.r; ball.dx = -Math.abs(ball.dx) }
+        if (ball.y - ball.r <= 0) { ball.y = ball.r; ball.dy = Math.abs(ball.dy) }
+
+        // Bottom — remove ball
+        if (ball.y + ball.r > s.canvasH) {
+          s.balls.splice(bi, 1)
+          continue
+        }
+
+        // Paddle bounce
+        if (
+          ball.dy > 0 &&
+          ball.y + ball.r >= s.paddle.y &&
+          ball.y + ball.r <= s.paddle.y + s.paddle.h + 4 &&
+          ball.x >= s.paddle.x &&
+          ball.x <= s.paddle.x + s.paddle.w
+        ) {
+          ball.dy = -Math.abs(ball.dy)
+          const hitPos = (ball.x - s.paddle.x) / s.paddle.w
+          const angle = (hitPos - 0.5) * 1.2
+          const speed = Math.sqrt(ball.dx ** 2 + ball.dy ** 2)
+          ball.dx = speed * Math.sin(angle)
+          ball.dy = -speed * Math.cos(angle)
+        }
+
+        // Brick collision
+        for (const brick of s.bricks) {
+          if (!brick.alive) continue
+          if (
+            ball.x + ball.r > brick.x &&
+            ball.x - ball.r < brick.x + brick.w &&
+            ball.y + ball.r > brick.y &&
+            ball.y - ball.r < brick.y + brick.h
+          ) {
+            // Fireball: smash through without bouncing
+            if (!isFireball) {
+              const oL = (ball.x + ball.r) - brick.x
+              const oR = (brick.x + brick.w) - (ball.x - ball.r)
+              const oT = (ball.y + ball.r) - brick.y
+              const oB = (brick.y + brick.h) - (ball.y - ball.r)
+              if (Math.min(oL, oR) < Math.min(oT, oB)) ball.dx = -ball.dx
+              else ball.dy = -ball.dy
+            }
+
+            if (isFireball) {
+              // Fireball destroys in one hit
+              brick.alive = false
+              brick.hits = 0
+              s.score += 10
+              spawnParticles(s, brick)
+              maybeDropPowerUp(s, brick)
+              // Don't break — keep smashing through
+            } else {
+              brick.hits--
+              if (brick.hits <= 0) {
+                brick.alive = false
+                s.score += 10
+                spawnParticles(s, brick)
+                maybeDropPowerUp(s, brick)
+              } else {
+                s.score += 5
+              }
+              break
+            }
+          }
+        }
+      }
+
+      // ── All balls lost ──
+      if (s.balls.length === 0) {
         s.lives--
         setDisplayLives(s.lives)
+        // Clear timed effects on life loss
+        s.effects = []
+        s.paddle.w = s.basePaddleW
         if (s.lives <= 0) {
-          s.gameState = 'lost'
-          setDisplayState('lost')
+          handleGameEnd('lost')
         } else {
-          // reset ball on paddle
-          const lv = LEVELS[s.level]
-          s.ball = {
-            x: s.paddle.x + s.paddle.w / 2,
-            y: s.paddle.y - 10,
-            dx: lv.ballSpeed * (Math.random() > 0.5 ? 1 : -1) * 0.7,
-            dy: -lv.ballSpeed,
-            r: 7,
-          }
+          s.balls = [makeBall(s.canvasW, s.paddle.y, s.baseBallSpeed)]
         }
       }
 
-      // paddle bounce
-      if (
-        s.ball.dy > 0 &&
-        s.ball.y + s.ball.r >= s.paddle.y &&
-        s.ball.y + s.ball.r <= s.paddle.y + s.paddle.h + 4 &&
-        s.ball.x >= s.paddle.x &&
-        s.ball.x <= s.paddle.x + s.paddle.w
-      ) {
-        s.ball.dy = -Math.abs(s.ball.dy)
-        // angle based on where it hit the paddle
-        const hitPos = (s.ball.x - s.paddle.x) / s.paddle.w // 0..1
-        const angle = (hitPos - 0.5) * 1.2 // -0.6..0.6
-        const speed = Math.sqrt(s.ball.dx ** 2 + s.ball.dy ** 2)
-        s.ball.dx = speed * Math.sin(angle)
-        s.ball.dy = -speed * Math.cos(angle)
-      }
+      setDisplayScore(s.score)
 
-      // brick collision
-      for (const brick of s.bricks) {
-        if (!brick.alive) continue
+      // ── Move power-up drops ──
+      for (let pi = s.powerUps.length - 1; pi >= 0; pi--) {
+        const pu = s.powerUps[pi]
+        pu.y += 2 // fall speed
+
+        // Caught by paddle?
         if (
-          s.ball.x + s.ball.r > brick.x &&
-          s.ball.x - s.ball.r < brick.x + brick.w &&
-          s.ball.y + s.ball.r > brick.y &&
-          s.ball.y - s.ball.r < brick.y + brick.h
+          pu.y + pu.size / 2 >= s.paddle.y &&
+          pu.y - pu.size / 2 <= s.paddle.y + s.paddle.h &&
+          pu.x + pu.size / 2 >= s.paddle.x &&
+          pu.x - pu.size / 2 <= s.paddle.x + s.paddle.w
         ) {
-          // determine bounce direction
-          const overlapLeft = (s.ball.x + s.ball.r) - brick.x
-          const overlapRight = (brick.x + brick.w) - (s.ball.x - s.ball.r)
-          const overlapTop = (s.ball.y + s.ball.r) - brick.y
-          const overlapBottom = (brick.y + brick.h) - (s.ball.y - s.ball.r)
-          const minOverlapX = Math.min(overlapLeft, overlapRight)
-          const minOverlapY = Math.min(overlapTop, overlapBottom)
+          applyPowerUp(s, pu)
+          s.powerUps.splice(pi, 1)
+          continue
+        }
 
-          if (minOverlapX < minOverlapY) {
-            s.ball.dx = -s.ball.dx
-          } else {
-            s.ball.dy = -s.ball.dy
-          }
-
-          brick.hits--
-          if (brick.hits <= 0) {
-            brick.alive = false
-            s.score += 10
-            spawnParticles(s, brick)
-          } else {
-            s.score += 5
-          }
-          setDisplayScore(s.score)
-          break
+        // Fell off screen
+        if (pu.y - pu.size / 2 > s.canvasH) {
+          s.powerUps.splice(pi, 1)
         }
       }
 
-      // check level clear
+      // ── Level clear ──
       if (s.bricks.every(b => !b.alive)) {
-        if (s.level + 1 < LEVELS.length) {
-          initLevel(s.level + 1)
+        if (s.level + 1 < TOTAL_LEVELS) {
+          advanceToNextLevel(s.level)
         } else {
-          s.gameState = 'beaten'
-          setDisplayState('beaten')
+          handleGameEnd('beaten')
         }
       }
     }
 
     // ── DRAW ──────────────────────────────────────────────────────────────
 
-    // particles (behind everything)
+    // Particles
     for (const p of s.particles) {
-      const alpha = p.life / p.maxLife
-      ctx.globalAlpha = alpha
+      ctx.globalAlpha = p.life / p.maxLife
       ctx.fillStyle = p.colour
       ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size)
     }
     ctx.globalAlpha = 1
 
-    // bricks
+    // Bricks
     for (const brick of s.bricks) {
       if (!brick.alive) continue
       const isMultiHit = brick.hits > 1
-      // shadow
       ctx.fillStyle = BLACK
       ctx.fillRect(brick.x + 3, brick.y + 3, brick.w, brick.h)
-      // brick body
       ctx.fillStyle = isMultiHit ? WHITE : brick.colour
       ctx.fillRect(brick.x, brick.y, brick.w, brick.h)
-      // border
       ctx.strokeStyle = BLACK
       ctx.lineWidth = 2
       ctx.strokeRect(brick.x, brick.y, brick.w, brick.h)
-      // inner stripe for multi-hit
       if (isMultiHit) {
         ctx.strokeStyle = brick.colour
         ctx.lineWidth = 2
@@ -339,35 +573,89 @@ export default function BottleBreaker() {
       }
     }
 
-    // paddle
+    // Power-up drops
+    for (const pu of s.powerUps) {
+      const def = POWERUP_DEFS[pu.type]
+      const sz = pu.size
+      // Shadow
+      ctx.fillStyle = BLACK
+      ctx.fillRect(pu.x - sz / 2 + 2, pu.y - sz / 2 + 2, sz, sz)
+      // Body
+      ctx.fillStyle = def.colour
+      ctx.fillRect(pu.x - sz / 2, pu.y - sz / 2, sz, sz)
+      ctx.strokeStyle = BLACK
+      ctx.lineWidth = 2
+      ctx.strokeRect(pu.x - sz / 2, pu.y - sz / 2, sz, sz)
+      // Label
+      ctx.fillStyle = BLACK
+      ctx.font = 'bold 11px Inter, sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(def.label, pu.x, pu.y + 1)
+    }
+
+    // Paddle
+    const paddleColour = hasEffect('wide') ? LIME : BLACK
+    const stripeColour = hasEffect('fireball') ? CORAL : CYAN
     ctx.fillStyle = BLACK
     ctx.fillRect(s.paddle.x + 3, s.paddle.y + 3, s.paddle.w, s.paddle.h)
-    ctx.fillStyle = BLACK
+    ctx.fillStyle = paddleColour
     ctx.fillRect(s.paddle.x, s.paddle.y, s.paddle.w, s.paddle.h)
     ctx.strokeStyle = BLACK
     ctx.lineWidth = 2
     ctx.strokeRect(s.paddle.x, s.paddle.y, s.paddle.w, s.paddle.h)
-    // accent stripe on paddle
-    ctx.fillStyle = CYAN
+    ctx.fillStyle = stripeColour
     ctx.fillRect(s.paddle.x + 4, s.paddle.y + 4, s.paddle.w - 8, 6)
 
-    // ball
-    ctx.fillStyle = BLACK
-    ctx.beginPath()
-    ctx.arc(s.ball.x + 2, s.ball.y + 2, s.ball.r, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillStyle = CORAL
-    ctx.beginPath()
-    ctx.arc(s.ball.x, s.ball.y, s.ball.r, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.strokeStyle = BLACK
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.arc(s.ball.x, s.ball.y, s.ball.r, 0, Math.PI * 2)
-    ctx.stroke()
+    // Balls
+    const ballColour = hasEffect('fireball') ? AMBER : CORAL
+    for (const ball of s.balls) {
+      ctx.fillStyle = BLACK
+      ctx.beginPath()
+      ctx.arc(ball.x + 2, ball.y + 2, ball.r, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = ballColour
+      ctx.beginPath()
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.strokeStyle = BLACK
+      ctx.lineWidth = 2
+      ctx.beginPath()
+      ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2)
+      ctx.stroke()
+      // Fireball glow
+      if (hasEffect('fireball')) {
+        ctx.globalAlpha = 0.3
+        ctx.fillStyle = CORAL
+        ctx.beginPath()
+        ctx.arc(ball.x, ball.y, ball.r + 4, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.globalAlpha = 1
+      }
+    }
+
+    // Active effect indicators (bottom-left)
+    let indicatorX = 6
+    for (const eff of s.effects) {
+      const def = POWERUP_DEFS[eff.type]
+      const pct = eff.remaining / def.duration
+      const barW = 30
+      ctx.fillStyle = def.colour
+      ctx.globalAlpha = 0.8
+      ctx.fillRect(indicatorX, s.canvasH - 10, barW * pct, 4)
+      ctx.globalAlpha = 0.3
+      ctx.fillRect(indicatorX, s.canvasH - 10, barW, 4)
+      ctx.globalAlpha = 1
+      ctx.fillStyle = BLACK
+      ctx.font = 'bold 8px Inter, sans-serif'
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'bottom'
+      ctx.fillText(def.label, indicatorX, s.canvasH - 12)
+      indicatorX += barW + 8
+    }
 
     animRef.current = requestAnimationFrame(loop)
-  }, [initLevel])
+  }, [handleGameEnd, advanceToNextLevel])
 
   // ── Canvas sizing ───────────────────────────────────────────────────────
   const resize = useCallback(() => {
@@ -384,7 +672,6 @@ export default function BottleBreaker() {
     stateRef.current.paddle.y = h - 36
   }, [])
 
-  // ── Lifecycle ───────────────────────────────────────────────────────────
   useEffect(() => {
     resize()
     window.addEventListener('resize', resize)
@@ -399,22 +686,18 @@ export default function BottleBreaker() {
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-
     function getX(e: MouseEvent | TouchEvent) {
       const rect = canvas!.getBoundingClientRect()
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
       return clientX - rect.left
     }
-
     function onMove(e: MouseEvent | TouchEvent) {
       e.preventDefault()
       stateRef.current.pointerX = getX(e)
     }
-
     canvas.addEventListener('mousemove', onMove)
     canvas.addEventListener('touchmove', onMove, { passive: false })
     canvas.addEventListener('touchstart', onMove, { passive: false })
-
     return () => {
       canvas.removeEventListener('mousemove', onMove)
       canvas.removeEventListener('touchmove', onMove)
@@ -422,8 +705,68 @@ export default function BottleBreaker() {
     }
   }, [])
 
-  // ── Render ──────────────────────────────────────────────────────────────
-  const levelDef = LEVELS[displayLevel]
+  // ── Shared UI ─────────────────────────────────────────────────────────
+  const btnClass = 'px-8 py-3 border-2 border-black font-display font-bold uppercase text-sm hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all neo-shadow'
+
+  const scoreboard = (
+    <div className="w-full max-w-xs mt-3">
+      <h4 className="font-display text-xs font-bold uppercase tracking-widest text-gray-400 mb-2 text-center">
+        High Scores
+      </h4>
+      {highScores.length === 0 ? (
+        <p className="text-gray-500 text-xs text-center">No scores yet — be the first!</p>
+      ) : (
+        <div className="space-y-1">
+          {highScores.slice(0, 10).map((hs, i) => (
+            <div
+              key={hs.id}
+              className={`flex items-center justify-between text-xs px-3 py-1.5 border border-black/20 ${
+                i === 0 ? 'bg-lime/30 font-bold' : i === 1 ? 'bg-cyan/20' : i === 2 ? 'bg-coral/20' : 'bg-white/50'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <span className="text-gray-400 w-4 text-right">{i + 1}.</span>
+                <span className="text-white font-bold truncate max-w-[120px]">{hs.name}</span>
+              </span>
+              <span className="flex items-center gap-3">
+                <span className="text-gray-400">Lv{hs.level}</span>
+                <span className="text-white font-bold w-12 text-right">{hs.score}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+
+  const nameEntry = (
+    <div className="w-full max-w-xs">
+      {!scoreSaved ? (
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={nameInput}
+            onChange={e => setNameInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && !saving && handleSaveScore()}
+            placeholder="Your name"
+            maxLength={20}
+            className="flex-1 px-3 py-2 bg-white/10 border-2 border-white/30 text-white font-bold text-sm placeholder:text-gray-500 focus:outline-none focus:border-cyan"
+          />
+          <button
+            onClick={handleSaveScore}
+            disabled={saving}
+            className={`${btnClass} bg-cyan text-black ${saving ? 'opacity-50' : ''}`}
+          >
+            {saving ? '...' : 'Save'}
+          </button>
+        </div>
+      ) : (
+        <p className="text-cyan text-xs font-bold text-center uppercase tracking-wider">Score saved!</p>
+      )}
+    </div>
+  )
+
+  const currentLevel = generateLevel(displayLevel + 1)
 
   return (
     <div className="w-full max-w-[540px] mx-auto">
@@ -431,9 +774,9 @@ export default function BottleBreaker() {
       <div className="flex items-center justify-between mb-3 px-1 font-display text-xs font-bold uppercase tracking-wider">
         <span>
           Level {displayLevel + 1}
-          <span className="text-gray-400 ml-1">/ {LEVELS.length}</span>
+          <span className="text-gray-400 ml-1">/ {TOTAL_LEVELS}</span>
         </span>
-        <span className="text-cyan">{levelDef?.name}</span>
+        <span className="text-cyan truncate mx-2">{currentLevel.name}</span>
         <span className="flex gap-3">
           <span>Score: {displayScore}</span>
           <span>
@@ -444,60 +787,72 @@ export default function BottleBreaker() {
         </span>
       </div>
 
-      {/* Canvas container */}
+      {/* Canvas */}
       <div ref={containerRef} className="relative w-full border-3 border-black neo-shadow bg-white">
         <canvas ref={canvasRef} className="block w-full" style={{ touchAction: 'none' }} />
 
-        {/* Overlays */}
+        {/* ── Idle ── */}
         {displayState === 'idle' && (
-          <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-4 px-6">
+          <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-4 px-6 overflow-y-auto py-6">
             <h3 className="font-display text-3xl md:text-4xl font-bold uppercase text-white text-center">
               Bottle Breaker
             </h3>
             <p className="text-gray-300 text-sm text-center max-w-xs">
-              Smash through the bottles before they smash your spirit. Move the paddle with your mouse or finger.
+              Smash through the bottles. 99 levels. 3 lives. Catch power-ups for special abilities!
             </p>
-            <button
-              onClick={startGame}
-              className="px-8 py-3 bg-cyan text-black border-2 border-black font-display font-bold uppercase text-sm hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all neo-shadow"
-            >
+            <div className="flex flex-wrap justify-center gap-2 max-w-xs">
+              {POWERUP_TYPES.map(type => {
+                const def = POWERUP_DEFS[type]
+                return (
+                  <div key={type} className="flex items-center gap-1.5 text-xs text-gray-400">
+                    <span className="inline-block w-4 h-4 border border-black text-center leading-4 font-bold" style={{ backgroundColor: def.colour, fontSize: 8 }}>{def.label}</span>
+                    <span className="capitalize">{type === 'multiball' ? 'Multi-Ball' : type === 'extralife' ? 'Extra Life' : type === 'wide' ? 'Wide Paddle' : type === 'fireball' ? 'Fireball' : 'Slow Ball'}</span>
+                  </div>
+                )
+              })}
+            </div>
+            <button onClick={startGame} className={`${btnClass} bg-cyan text-black`}>
               Start Game
             </button>
+            {highScores.length > 0 && scoreboard}
           </div>
         )}
 
+        {/* ── Toast ── */}
+        {toast && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 animate-bounce">
+            <div className="bg-cyan border-2 border-black neo-shadow px-5 py-2 text-center whitespace-nowrap">
+              <p className="font-display text-sm font-bold uppercase">{toast.message}</p>
+              <p className="text-xs font-bold text-black/60">{toast.sub}</p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Game over ── */}
         {displayState === 'lost' && (
-          <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-4 px-6">
-            <h3 className="font-display text-3xl font-bold uppercase text-coral text-center">
-              Game Over
-            </h3>
+          <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-4 px-6 overflow-y-auto py-6">
+            <h3 className="font-display text-3xl font-bold uppercase text-coral text-center">Game Over</h3>
             <p className="text-white text-lg font-bold">Score: {displayScore}</p>
-            <button
-              onClick={startGame}
-              className="px-8 py-3 bg-coral text-white border-2 border-black font-display font-bold uppercase text-sm hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all neo-shadow"
-            >
-              Try Again
-            </button>
+            <p className="text-gray-400 text-xs">Reached level {displayLevel + 1} — {currentLevel.name}</p>
+            {qualifiesForBoard && nameEntry}
+            <button onClick={startGame} className={`${btnClass} bg-coral text-white`}>Try Again</button>
+            {scoreboard}
           </div>
         )}
 
+        {/* ── Beaten ── */}
         {displayState === 'beaten' && (
-          <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-4 px-6">
-            <div className="px-4 py-1 bg-lime border-2 border-black rotate-[-2deg] neo-shadow mb-2">
+          <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-4 px-6 overflow-y-auto py-6">
+            <div className="px-4 py-1 bg-lime border-2 border-black rotate-[-2deg] neo-shadow mb-1">
               <span className="text-xs font-bold uppercase tracking-widest">Champion</span>
             </div>
-            <h3 className="font-display text-3xl font-bold uppercase text-white text-center">
-              All Bottles Smashed!
-            </h3>
+            <h3 className="font-display text-3xl font-bold uppercase text-white text-center">All 99 Levels Smashed!</h3>
             <p className="text-lime text-lg font-bold">Final Score: {displayScore}</p>
-            <div className="flex gap-3 mt-2">
-              <button
-                onClick={startGame}
-                className="px-6 py-3 bg-white text-black border-2 border-black font-display font-bold uppercase text-sm hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all neo-shadow"
-              >
-                Play Again
-              </button>
+            {qualifiesForBoard && nameEntry}
+            <div className="flex gap-3 mt-1">
+              <button onClick={startGame} className={`${btnClass} bg-white text-black`}>Play Again</button>
             </div>
+            {scoreboard}
           </div>
         )}
       </div>
