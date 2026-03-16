@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import BottleBreaker from '@/components/games/bottle-breaker'
+import ArcadeScoreboard from '@/components/games/arcade-scoreboard'
 
 export default function NotFound() {
   return (
@@ -25,6 +26,11 @@ export default function NotFound() {
       </div>
 
       <BottleBreaker />
+
+      {/* Arcade-style highscore board */}
+      <div className="w-full max-w-[540px] mx-auto mt-12">
+        <ArcadeScoreboard />
+      </div>
     </div>
   )
 }
