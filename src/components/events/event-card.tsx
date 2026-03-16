@@ -4,6 +4,7 @@ import { Badge, Card, CardContent } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
 import { EVENT_TYPE_LABELS } from '@/types/database'
 import type { EventType, EventStatus } from '@prisma/client'
+import { EventRsvpBox } from './event-rsvp-box'
 
 interface EventCardProps {
   event: {
@@ -121,6 +122,9 @@ export function EventCard({ event, variant = 'default' }: EventCardProps) {
                 </div>
               )}
             </div>
+
+            {/* RSVP Attendees */}
+            <EventRsvpBox eventId={event.id} eventSlug={event.slug} compact />
 
             {/* Footer */}
             <div className="flex items-center justify-between pt-3 border-t border-gray-200">

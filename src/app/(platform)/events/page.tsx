@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { EventType } from '@prisma/client'
 import { NewsletterForm } from '@/components/newsletter-form'
 import { CalendarButtons } from '@/components/events/calendar-buttons'
+import { EventRsvpBox } from '@/components/events/event-rsvp-box'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -247,6 +248,7 @@ export default async function EventsPage() {
                       {event.description && (
                         <p className="text-gray-600 text-sm font-medium line-clamp-2">{event.description}</p>
                       )}
+                      <EventRsvpBox eventId={event.id} eventSlug={event.slug} compact />
                     </div>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full md:w-auto">
                       <div className="flex items-center gap-3">
