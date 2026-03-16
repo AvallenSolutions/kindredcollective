@@ -66,23 +66,6 @@ function generateLevel(n: number): LevelDef {
 const TOTAL_LEVELS = 99
 const BOTTLE_COLOURS = [CYAN, CORAL, LIME, AMBER, PURPLE]
 
-const LEVEL_COMPLETE_MESSAGES = [
-  'Nice warm-up! Time to pick up the pace.',
-  'The drinks are flowing! Keep it going.',
-  'Last orders at the bar — but not for you.',
-  'Still standing after the after party!',
-  'You survived the morning after. Respect.',
-]
-
-function getLevelMessage(levelIdx: number): string {
-  if (levelIdx < LEVEL_COMPLETE_MESSAGES.length) return LEVEL_COMPLETE_MESSAGES[levelIdx]
-  if (levelIdx >= 90) return 'Absolutely legendary. Keep going!'
-  if (levelIdx >= 70) return 'Are you even human? Incredible.'
-  if (levelIdx >= 50) return 'Halfway and beyond. Unstoppable.'
-  if (levelIdx >= 30) return 'Serious skills on display here.'
-  if (levelIdx >= 15) return 'Getting into the groove now.'
-  return 'Smashed it! On to the next one.'
-}
 
 // ─── Leaderboard API ─────────────────────────────────────────────────────────
 interface HighScore {
@@ -135,7 +118,8 @@ interface Particle {
   life: number; maxLife: number; colour: string; size: number
 }
 
-type GameState = 'idle' | 'playing' | 'level-complete' | 'lost' | 'beaten'
+type GameState = 'idle' | 'playing' | 'lost' | 'beaten'
+
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function buildBricks(level: LevelDef, canvasW: number): Brick[] {
@@ -203,10 +187,22 @@ export default function BottleBreaker() {
   const [scoreSaved, setScoreSaved] = useState(false)
   const [qualifiesForBoard, setQualifiesForBoard] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState<{ message: string; sub: string } | null>(null)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Load scores on mount
+  function showToast(message: string, sub: string) {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    setToast({ message, sub })
+    toastTimerRef.current = setTimeout(() => {
+      setToast(null)
+      toastTimerRef.current = null
+    }, 2000)
+  }
+
+  // Load scores on mount + cleanup toast timer
   useEffect(() => {
     fetchScores().then(setHighScores)
+    return () => { if (toastTimerRef.current) clearTimeout(toastTimerRef.current) }
   }, [])
 
   function checkQualifies(score: number): boolean {
@@ -248,14 +244,20 @@ export default function BottleBreaker() {
     setNameInput('')
   }, [initLevel])
 
-  const continueToNextLevel = useCallback(() => {
+  const advanceToNextLevel = useCallback((completedLevel: number) => {
     const s = stateRef.current
-    const nextLevel = s.level + 1
+    const nextLevel = completedLevel + 1
+    const completedDef = generateLevel(completedLevel + 1)
+    showToast(
+      `Level ${completedLevel + 1} Complete!`,
+      completedDef.name,
+    )
     if (nextLevel < TOTAL_LEVELS) {
       s.gameState = 'playing'
       initLevel(nextLevel)
       setDisplayState('playing')
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initLevel])
 
   const handleGameEnd = useCallback((state: 'lost' | 'beaten') => {
@@ -391,8 +393,7 @@ export default function BottleBreaker() {
       // Level clear
       if (s.bricks.every(b => !b.alive)) {
         if (s.level + 1 < TOTAL_LEVELS) {
-          s.gameState = 'level-complete'
-          setDisplayState('level-complete')
+          advanceToNextLevel(s.level)
         } else {
           handleGameEnd('beaten')
         }
@@ -453,7 +454,7 @@ export default function BottleBreaker() {
     ctx.stroke()
 
     animRef.current = requestAnimationFrame(loop)
-  }, [handleGameEnd])
+  }, [handleGameEnd, advanceToNextLevel])
 
   // ── Canvas sizing ───────────────────────────────────────────────────────
   const resize = useCallback(() => {
@@ -610,25 +611,13 @@ export default function BottleBreaker() {
           </div>
         )}
 
-        {/* ── Level complete ── */}
-        {displayState === 'level-complete' && (
-          <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center gap-4 px-6">
-            <div className="px-4 py-1 bg-cyan border-2 border-black rotate-[-2deg] neo-shadow mb-1">
-              <span className="text-xs font-bold uppercase tracking-widest">Level {displayLevel + 1} Complete</span>
+        {/* ── Level complete toast ── */}
+        {toast && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 animate-bounce">
+            <div className="bg-cyan border-2 border-black neo-shadow px-5 py-2 text-center whitespace-nowrap">
+              <p className="font-display text-sm font-bold uppercase">{toast.message}</p>
+              <p className="text-xs font-bold text-black/60">{toast.sub}</p>
             </div>
-            <h3 className="font-display text-2xl md:text-3xl font-bold uppercase text-white text-center">
-              {currentLevel.name}
-            </h3>
-            <p className="text-gray-300 text-sm text-center max-w-xs">
-              {getLevelMessage(displayLevel)}
-            </p>
-            <p className="text-cyan text-lg font-bold">Score: {displayScore}</p>
-            <p className="text-gray-400 text-xs">
-              {displayLives} {displayLives === 1 ? 'life' : 'lives'} remaining
-            </p>
-            <button onClick={continueToNextLevel} className={`${btnClass} bg-lime text-black`}>
-              Next Level
-            </button>
           </div>
         )}
 
