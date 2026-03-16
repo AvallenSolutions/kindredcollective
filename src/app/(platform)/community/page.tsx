@@ -376,7 +376,7 @@ export default async function CommunityPage() {
                 <div className="flex items-center gap-2">
                   <PawPrint className="w-6 h-6" />
                   <p className="text-gray-600 text-sm font-medium">
-                    Meet our community's most important members
+                    Meet our community&apos;s most important members
                   </p>
                 </div>
                 <Link

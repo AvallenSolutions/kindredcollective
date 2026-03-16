@@ -435,7 +435,7 @@ export function SettingsContent({ user, member, organisations }: SettingsContent
 
                         <div className="grid md:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="petName">Pet's Name</Label>
+                            <Label htmlFor="petName">Pet&apos;s Name</Label>
                             <Input
                               id="petName"
                               value={profileData.petName}
