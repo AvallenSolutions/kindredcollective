@@ -12,13 +12,13 @@ import {
 // PATCH /api/admin/requests/[id] - Admin: update status
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   const session = await getSession()
   if (!session.isAuthenticated) return unauthorizedResponse()
   if (!session.isAdmin) return forbiddenResponse()
 
-  const { id } = await params
+  const { id } = params
   const body = await request.json()
   const supabase = createAdminClient()
 
@@ -39,13 +39,13 @@ export async function PATCH(
 // DELETE /api/admin/requests/[id] - Admin: delete any RFP
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   const session = await getSession()
   if (!session.isAuthenticated) return unauthorizedResponse()
   if (!session.isAdmin) return forbiddenResponse()
 
-  const { id } = await params
+  const { id } = params
   const supabase = createAdminClient()
 
   const { error } = await supabase.from('RFP').delete().eq('id', id)

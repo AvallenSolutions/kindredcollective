@@ -12,12 +12,12 @@ import {
 // PATCH /api/requests/[id]/responses/[responseId] - Brand shortlists or rejects a response
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; responseId: string }> }
+  { params }: { params: { id: string; responseId: string } }
 ) {
   const session = await getSession()
   if (!session.isAuthenticated || !session.user) return unauthorizedResponse()
 
-  const { id, responseId } = await params
+  const { id, responseId } = params
   const supabase = createAdminClient()
 
   // Verify the RFP belongs to this brand user

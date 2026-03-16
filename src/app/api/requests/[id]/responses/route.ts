@@ -13,7 +13,7 @@ import { applyRateLimit } from '@/lib/api/rate-limit'
 // POST /api/requests/[id]/responses - Supplier submits expression of interest
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   const rateLimitResponse = applyRateLimit(request, 10, 60_000)
   if (rateLimitResponse) return rateLimitResponse
@@ -26,7 +26,7 @@ export async function POST(
     return errorResponse('Only supplier members can respond to requests', 403)
   }
 
-  const { id } = await params
+  const { id } = params
   const supabase = createAdminClient()
 
   // Check the RFP exists and is open

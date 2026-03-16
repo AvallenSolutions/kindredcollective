@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -79,8 +79,8 @@ const RESPONSE_STATUS_STYLES: Record<string, string> = {
   REJECTED: 'bg-red-50 border-red-300 text-red-700',
 }
 
-export default function RFPDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function RFPDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params
   const router = useRouter()
 
   const [rfp, setRfp] = useState<RFP | null>(null)
