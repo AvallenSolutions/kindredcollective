@@ -52,7 +52,7 @@ function PolaroidCard({ pet, index }: { pet: Pet; index: number }) {
           </p>
           <p className="text-xs text-gray-500">
             {pet.petType && <span className="mr-1">{pet.petType} ·</span>}
-            {pet.firstName}'s
+            {pet.firstName}&apos;s
           </p>
         </div>
       </div>
@@ -102,7 +102,7 @@ export default async function PetPhotoboardPage() {
                 <h1 className="font-display text-3xl font-black uppercase tracking-tight">
                   The Pet Photoboard
                 </h1>
-                <p className="text-gray-600 mt-1">Our community's most important members</p>
+                <p className="text-gray-600 mt-1">Our community&apos;s most important members</p>
               </div>
             </div>
 
@@ -123,7 +123,7 @@ export default async function PetPhotoboardPage() {
             <PawPrint className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h2 className="font-display text-2xl font-bold mb-2">No pets yet!</h2>
             <p className="text-gray-500 mb-6 max-w-sm mx-auto">
-              Be the first to add your pet. Head to your profile settings, upload a photo, and turn on "Share on Pet Photoboard".
+              Be the first to add your pet. Head to your profile settings, upload a photo, and turn on &ldquo;Share on Pet Photoboard&rdquo;.
             </p>
             <Link href="/dashboard/settings">
               <Button>
