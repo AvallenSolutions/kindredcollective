@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/session'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { Shield, Users, Building2, Store, Calendar, Gift, Plus, Mail, Star, UserPlus } from 'lucide-react'
+import { Shield, Users, Building2, Store, Calendar, Gift, Plus, Mail, Star, UserPlus, Zap } from 'lucide-react'
 
 export default async function AdminPage() {
   const session = await getSession()
@@ -15,7 +15,7 @@ export default async function AdminPage() {
   const supabase = createAdminClient()
 
   // Fetch counts for dashboard stats
-  const [usersResult, brandsResult, suppliersResult, eventsResult, offersResult, invitesResult, reviewsResult] = await Promise.all([
+  const [usersResult, brandsResult, suppliersResult, eventsResult, offersResult, invitesResult, reviewsResult, rfpsResult] = await Promise.all([
     supabase.from('User').select('*', { count: 'exact', head: true }),
     supabase.from('Brand').select('*', { count: 'exact', head: true }),
     supabase.from('Supplier').select('*', { count: 'exact', head: true }),
@@ -23,6 +23,7 @@ export default async function AdminPage() {
     supabase.from('Offer').select('*', { count: 'exact', head: true }),
     supabase.from('InviteLink').select('*', { count: 'exact', head: true }),
     supabase.from('SupplierReview').select('*', { count: 'exact', head: true }),
+    supabase.from('RFP').select('*', { count: 'exact', head: true }),
   ])
 
   const stats = [
@@ -33,6 +34,7 @@ export default async function AdminPage() {
     { name: 'Events', value: eventsResult.count || 0, icon: Calendar, color: 'bg-green-400', href: '/admin/events' },
     { name: 'Offers', value: offersResult.count || 0, icon: Gift, color: 'bg-orange-400', href: '/admin/offers' },
     { name: 'Reviews', value: reviewsResult.count || 0, icon: Star, color: 'bg-amber-400', href: '/admin/reviews' },
+    { name: 'RFPs', value: rfpsResult.count || 0, icon: Zap, color: 'bg-cyan', href: '/admin/requests' },
   ]
 
   // Fetch recent users
