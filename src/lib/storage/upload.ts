@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export type StorageBucket = 'avatars' | 'brand-images' | 'supplier-images' | 'event-images'
 
@@ -39,7 +39,7 @@ export async function uploadImage(
   bucket: StorageBucket,
   folder: string
 ): Promise<UploadResult> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   // Generate unique filename
   const fileExt = file.name.split('.').pop()?.toLowerCase() || 'jpg'
@@ -79,7 +79,7 @@ export async function deleteImage(
   bucket: StorageBucket,
   path: string
 ): Promise<void> {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { error } = await supabase.storage
     .from(bucket)

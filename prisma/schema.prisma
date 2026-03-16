@@ -158,7 +158,11 @@ model Member {
   linkedinUrl String?
   phone       String?
   isPublic    Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  petName        String?
+  petType        String?
+  petPhotoUrl    String?
+  petPhotoPublic Boolean  @default(false)
+  createdAt      DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -401,15 +401,17 @@ function SupplierEditContent() {
     try {
       const fd = new FormData()
       fd.append('file', file)
-      const res = await fetch(`/api/me/supplier/images?orgId=${orgId}`, { method: 'POST', body: fd })
+      const folder = fieldKey === 'logoUrl' ? 'logos' : 'hero'
+      const res = await fetch(`/api/upload?bucket=supplier-images&folder=${folder}`, { method: 'POST', body: fd })
       if (!res.ok) return null
-      const { data } = await res.json()
+      const result = await res.json()
+      if (!result.url) return null
       await fetch(`/api/me/supplier?orgId=${orgId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [fieldKey]: data.url }),
+        body: JSON.stringify({ [fieldKey]: result.url }),
       })
-      return data.url
+      return result.url
     } finally {
       setUploading(false)
     }

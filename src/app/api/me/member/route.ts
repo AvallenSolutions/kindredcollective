@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     return errorResponse('Member profile already exists. Use PATCH to update.')
   }
 
-  const { firstName, lastName, jobTitle, bio, linkedinUrl, phone, isPublic, company } = body
+  const { firstName, lastName, jobTitle, bio, linkedinUrl, phone, isPublic, company, petName, petType, petPhotoUrl, petPhotoPublic } = body
 
   if (!firstName || !lastName) {
     return errorResponse('First name and last name are required')
@@ -74,6 +74,10 @@ export async function POST(request: NextRequest) {
       linkedinUrl: linkedinUrl || null,
       phone: phone || null,
       isPublic: isPublic ?? true,
+      petName: petName || null,
+      petType: petType || null,
+      petPhotoUrl: petPhotoUrl || null,
+      petPhotoPublic: petPhotoPublic ?? false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
@@ -110,6 +114,10 @@ export async function PATCH(request: NextRequest) {
     'linkedinUrl',
     'phone',
     'isPublic',
+    'petName',
+    'petType',
+    'petPhotoUrl',
+    'petPhotoPublic',
   ]
 
   const updates: Record<string, unknown> = {

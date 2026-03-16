@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
   let query = adminClient
     .from('Offer')
-    .select('*, claims:OfferClaim(count)', { count: 'exact' })
+    .select('*', { count: 'exact' })
     .eq('supplierId', supplier.id)
     .order('createdAt', { ascending: false })
     .range(from, to)
