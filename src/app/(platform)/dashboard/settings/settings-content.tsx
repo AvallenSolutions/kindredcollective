@@ -1,9 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, User, Wine, Building2, Shield, CreditCard, Trash2, CheckCircle, AlertCircle } from 'lucide-react'
+import {
+  ArrowLeft, User, Wine, Building2, Shield, CreditCard, Trash2,
+  CheckCircle, AlertCircle, Upload, Loader2, PawPrint,
+} from 'lucide-react'
 import { Button, Input, Label, Card, CardContent, Badge } from '@/components/ui'
 import { DRINK_CATEGORY_LABELS } from '@/types/database'
 import type { DrinkCategory } from '@prisma/client'
@@ -38,6 +41,9 @@ interface SettingsContentProps {
     linkedinUrl: string | null
     phone: string | null
     isPublic: boolean
+    petName: string | null
+    petType: string | null
+    petPhotoUrl: string | null
   } | null
   organisations: UserOrganisation[]
 }
@@ -62,11 +68,73 @@ export function SettingsContent({ user, member, organisations }: SettingsContent
     linkedinUrl: member?.linkedinUrl || '',
     phone: member?.phone || '',
     isPublic: member?.isPublic ?? true,
+    petName: member?.petName || '',
+    petType: member?.petType || '',
   })
+
+  // Avatar & pet photo state (managed locally for instant preview)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(member?.avatarUrl || null)
+  const [petPhotoUrl, setPetPhotoUrl] = useState<string | null>(member?.petPhotoUrl || null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const [petPhotoUploading, setPetPhotoUploading] = useState(false)
+
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const petPhotoInputRef = useRef<HTMLInputElement>(null)
 
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text })
     setTimeout(() => setMessage(null), 5000)
+  }
+
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/me/avatar', { method: 'POST', body: fd })
+      if (res.ok) {
+        const { data } = await res.json()
+        setAvatarUrl(data.avatarUrl)
+      } else {
+        showMessage('error', 'Failed to upload profile photo')
+      }
+    } catch {
+      showMessage('error', 'Failed to upload profile photo')
+    } finally {
+      setAvatarUploading(false)
+      if (avatarInputRef.current) avatarInputRef.current.value = ''
+    }
+  }
+
+  async function handlePetPhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPetPhotoUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/upload?bucket=avatars&folder=pets', { method: 'POST', body: fd })
+      if (res.ok) {
+        const result = await res.json()
+        if (result.url) {
+          setPetPhotoUrl(result.url)
+          await fetch('/api/me/member', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ petPhotoUrl: result.url }),
+          })
+        }
+      } else {
+        showMessage('error', 'Failed to upload pet photo')
+      }
+    } catch {
+      showMessage('error', 'Failed to upload pet photo')
+    } finally {
+      setPetPhotoUploading(false)
+      if (petPhotoInputRef.current) petPhotoInputRef.current.value = ''
+    }
   }
 
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -75,10 +143,9 @@ export function SettingsContent({ user, member, organisations }: SettingsContent
     setMessage(null)
 
     try {
-      const endpoint = member ? '/api/me/member' : '/api/me/member'
       const method = member ? 'PATCH' : 'POST'
 
-      const res = await fetch(endpoint, {
+      const res = await fetch('/api/me/member', {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -89,6 +156,8 @@ export function SettingsContent({ user, member, organisations }: SettingsContent
           linkedinUrl: profileData.linkedinUrl || null,
           phone: profileData.phone || null,
           isPublic: profileData.isPublic,
+          petName: profileData.petName || null,
+          petType: profileData.petType || null,
         }),
       })
 
@@ -185,20 +254,41 @@ export function SettingsContent({ user, member, organisations }: SettingsContent
                     This information will appear on your member profile in the community directory.
                   </p>
                   <form onSubmit={handleSaveProfile} className="space-y-6">
+
+                    {/* Avatar */}
                     <div className="flex items-center gap-6 mb-8">
-                      <div className="w-20 h-20 bg-cyan border-3 border-black flex items-center justify-center">
-                        {member?.avatarUrl ? (
-                          <img src={member.avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                      <div className="w-20 h-20 bg-cyan border-3 border-black flex-shrink-0 overflow-hidden flex items-center justify-center">
+                        {avatarUrl ? (
+                          <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                         ) : (
                           <span className="font-display text-3xl font-bold">
                             {profileData.firstName.charAt(0)}{profileData.lastName.charAt(0)}
                           </span>
                         )}
                       </div>
-                      <div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Profile photo coming soon
-                        </p>
+                      <div className="space-y-2">
+                        <input
+                          ref={avatarInputRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={handleAvatarUpload}
+                          disabled={avatarUploading}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => avatarInputRef.current?.click()}
+                          disabled={avatarUploading}
+                        >
+                          {avatarUploading ? (
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading…</>
+                          ) : (
+                            <><Upload className="w-4 h-4 mr-2" />{avatarUrl ? 'Change photo' : 'Upload photo'}</>
+                          )}
+                        </Button>
+                        <p className="text-xs text-gray-500">JPG, PNG or WebP · max 5MB</p>
                       </div>
                     </div>
 
@@ -294,6 +384,73 @@ export function SettingsContent({ user, member, organisations }: SettingsContent
                         />
                         <div className="w-11 h-6 bg-gray-300 peer-checked:bg-cyan border-2 border-black peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-2 after:border-black after:h-5 after:w-5 after:transition-all"></div>
                       </label>
+                    </div>
+
+                    {/* Pet section */}
+                    <div className="pt-2 border-t-2 border-dashed border-gray-200">
+                      <div className="flex items-center gap-2 mb-4 mt-4">
+                        <PawPrint className="w-5 h-5" />
+                        <h3 className="font-display font-bold text-base">My Pet</h3>
+                        <span className="text-xs text-gray-500 font-normal">
+                          — a Kindred community tradition
+                        </span>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-20 h-20 border-2 border-dashed border-gray-300 rounded overflow-hidden flex items-center justify-center bg-gray-50 flex-shrink-0">
+                            {petPhotoUrl ? (
+                              <img src={petPhotoUrl} alt="Pet" className="w-full h-full object-cover" />
+                            ) : (
+                              <PawPrint className="w-8 h-8 text-gray-300" />
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <input
+                              ref={petPhotoInputRef}
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              className="hidden"
+                              onChange={handlePetPhotoUpload}
+                              disabled={petPhotoUploading}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => petPhotoInputRef.current?.click()}
+                              disabled={petPhotoUploading}
+                            >
+                              {petPhotoUploading ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Uploading…</>
+                              ) : (
+                                <><Upload className="w-4 h-4 mr-2" />{petPhotoUrl ? 'Change photo' : 'Upload photo'}</>
+                              )}
+                            </Button>
+                            <p className="text-xs text-gray-500">JPG, PNG or WebP · max 5MB</p>
+                          </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="petName">Pet's Name</Label>
+                            <Input
+                              id="petName"
+                              value={profileData.petName}
+                              onChange={(e) => setProfileData({ ...profileData, petName: e.target.value })}
+                              placeholder="e.g. Biscuit"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="petType">Type of pet</Label>
+                            <Input
+                              id="petType"
+                              value={profileData.petType}
+                              onChange={(e) => setProfileData({ ...profileData, petType: e.target.value })}
+                              placeholder="e.g. Dog, Cat, Rabbit…"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="pt-4">

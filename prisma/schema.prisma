@@ -158,6 +158,9 @@ model Member {
   linkedinUrl String?
   phone       String?
   isPublic    Boolean  @default(true)
+  petName     String?
+  petType     String?
+  petPhotoUrl String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
