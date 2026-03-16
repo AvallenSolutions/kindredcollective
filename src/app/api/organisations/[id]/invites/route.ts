@@ -184,7 +184,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       invite,
-      inviteUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/signup?invite=${token}`,
+      inviteUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/join/${token}`,
     }, { status: 201 })
   } catch (error) {
     console.error('Error in POST /api/organisations/[id]/invites:', error)

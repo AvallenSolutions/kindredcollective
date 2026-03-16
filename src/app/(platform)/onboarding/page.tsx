@@ -89,6 +89,11 @@ export default function OnboardingPage() {
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null)
   const [searching, setSearching] = useState(false)
 
+  // Supplier claim verification
+  const [claimEmail, setClaimEmail] = useState('')
+  const [claimCodeSent, setClaimCodeSent] = useState(false)
+  const [claimVerificationCode, setClaimVerificationCode] = useState('')
+
   // Organisation invite
   const [orgInviteToken, setOrgInviteToken] = useState('')
 
@@ -243,9 +248,9 @@ export default function OnboardingPage() {
     }
   }
 
-  // Claim supplier
-  const handleClaimSupplier = async () => {
-    if (!selectedSupplier) return
+  // Claim supplier — step 1: send verification code
+  const handleSendClaimCode = async () => {
+    if (!selectedSupplier || !claimEmail.trim()) return
 
     setLoading(true)
     setError(null)
@@ -254,7 +259,38 @@ export default function OnboardingPage() {
       const response = await fetch('/api/onboarding/claim-supplier', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ supplierId: selectedSupplier.id }),
+        body: JSON.stringify({ supplierId: selectedSupplier.id, companyEmail: claimEmail.trim() }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to initiate claim')
+        setLoading(false)
+        return
+      }
+
+      setClaimCodeSent(true)
+      setError(null)
+    } catch {
+      setError('An unexpected error occurred')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Claim supplier — step 2: verify code and complete claim
+  const handleClaimSupplier = async () => {
+    if (!selectedSupplier || !claimVerificationCode.trim()) return
+
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/onboarding/claim-supplier', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ supplierId: selectedSupplier.id, verificationCode: claimVerificationCode.trim() }),
       })
 
       const data = await response.json()
@@ -276,6 +312,9 @@ export default function OnboardingPage() {
       setSelectedSupplier(null)
       setSearchQuery('')
       setSuppliers([])
+      setClaimEmail('')
+      setClaimCodeSent(false)
+      setClaimVerificationCode('')
       setSubStep(null)
       setError(null)
     } catch {
@@ -689,7 +728,14 @@ export default function OnboardingPage() {
             <Card className="shadow-brutal-lg border-3 border-black">
               <CardHeader>
                 <button
-                  onClick={() => { setSubStep(null); setError(null) }}
+                  onClick={() => {
+                    setSubStep(null)
+                    setError(null)
+                    setSelectedSupplier(null)
+                    setClaimEmail('')
+                    setClaimCodeSent(false)
+                    setClaimVerificationCode('')
+                  }}
                   className="text-sm text-gray-500 hover:text-cyan flex items-center gap-1 mb-2"
                 >
                   <ArrowLeft className="w-3 h-3" /> Back
@@ -727,7 +773,13 @@ export default function OnboardingPage() {
                       {suppliers.map((supplier) => (
                         <div
                           key={supplier.id}
-                          onClick={() => setSelectedSupplier(supplier)}
+                          onClick={() => {
+                            setSelectedSupplier(supplier)
+                            setClaimEmail('')
+                            setClaimCodeSent(false)
+                            setClaimVerificationCode('')
+                            setError(null)
+                          }}
                           className={cn(
                             'p-4 border-3 border-black cursor-pointer transition-all',
                             selectedSupplier?.id === supplier.id
@@ -767,14 +819,60 @@ export default function OnboardingPage() {
                   </div>
                 )}
 
-                {selectedSupplier && (
-                  <Button
-                    onClick={handleClaimSupplier}
-                    disabled={loading}
-                    className="w-full"
-                  >
-                    {loading ? 'Claiming...' : 'Claim This Supplier'}
-                  </Button>
+                {selectedSupplier && !claimCodeSent && (
+                  <div className="space-y-3 pt-2 border-t-2 border-black">
+                    <p className="text-sm font-bold">
+                      Verify you work at {selectedSupplier.companyName}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Enter your company email address. We&apos;ll send a verification code to confirm ownership.
+                    </p>
+                    <Input
+                      type="email"
+                      placeholder="you@yourcompany.com"
+                      value={claimEmail}
+                      onChange={(e) => setClaimEmail(e.target.value)}
+                    />
+                    <Button
+                      onClick={handleSendClaimCode}
+                      disabled={loading || !claimEmail.trim()}
+                      className="w-full"
+                    >
+                      {loading ? 'Sending...' : 'Send Verification Code'}
+                    </Button>
+                  </div>
+                )}
+
+                {selectedSupplier && claimCodeSent && (
+                  <div className="space-y-3 pt-2 border-t-2 border-black">
+                    <div className="bg-lime/20 border-2 border-lime px-4 py-3 text-sm">
+                      Verification code sent to <strong>{claimEmail}</strong>. Check your inbox.
+                    </div>
+                    <p className="text-sm font-bold">Enter verification code</p>
+                    <Input
+                      placeholder="123456"
+                      value={claimVerificationCode}
+                      onChange={(e) => setClaimVerificationCode(e.target.value)}
+                      maxLength={6}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={handleSendClaimCode}
+                        disabled={loading}
+                        className="flex-1"
+                      >
+                        Resend Code
+                      </Button>
+                      <Button
+                        onClick={handleClaimSupplier}
+                        disabled={loading || claimVerificationCode.length < 6}
+                        className="flex-1"
+                      >
+                        {loading ? 'Verifying...' : 'Claim Supplier'}
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>

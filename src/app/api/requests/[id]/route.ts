@@ -12,12 +12,12 @@ import {
 // GET /api/requests/[id]
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   const session = await getSession()
   if (!session.isAuthenticated) return unauthorizedResponse()
 
-  const { id } = await params
+  const { id } = params
   const supabase = createAdminClient()
 
   const { data: rfp, error } = await supabase
@@ -51,12 +51,12 @@ export async function GET(
 // PATCH /api/requests/[id] - Update status or details
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   const session = await getSession()
   if (!session.isAuthenticated || !session.user) return unauthorizedResponse()
 
-  const { id } = await params
+  const { id } = params
   const supabase = createAdminClient()
 
   // Fetch the RFP to verify ownership
@@ -107,12 +107,12 @@ export async function PATCH(
 // DELETE /api/requests/[id]
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
   const session = await getSession()
   if (!session.isAuthenticated || !session.user) return unauthorizedResponse()
 
-  const { id } = await params
+  const { id } = params
   const supabase = createAdminClient()
 
   const { data: existing } = await supabase

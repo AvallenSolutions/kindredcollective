@@ -58,10 +58,12 @@ export default function TeamSettingsPage() {
       const response = await fetch('/api/organisations/my-organisation')
       const data = await response.json()
 
-      if (data.success) {
-        setOrganisation(data.organisation)
-        setUserRole(data.userRole)
-        fetchMembers(data.organisation.id)
+      if (data.success && data.organisations?.length > 0) {
+        // Use the first organisation (most users belong to exactly one)
+        const org = data.organisations[0]
+        setOrganisation({ id: org.id, name: org.name, type: org.type })
+        setUserRole(org.userRole)
+        fetchMembers(org.id)
       } else {
         setError('No organisation found')
         setLoading(false)
@@ -407,6 +409,9 @@ export default function TeamSettingsPage() {
             <CardContent className="pt-6 space-y-4">
               {!inviteUrl ? (
                 <>
+                  <p className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded px-3 py-2">
+                    This invite is for people who already have a Kindred account. To invite someone new to the platform, ask a Kindred admin.
+                  </p>
                   <div className="space-y-2">
                     <Label htmlFor="inviteEmail">Email Address</Label>
                     <Input

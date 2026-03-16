@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAuth } from '@/lib/auth'
 import {
   successResponse,
@@ -9,14 +9,13 @@ import {
   serverErrorResponse,
 } from '@/lib/api/response'
 
-interface RouteParams {
-  params: Promise<{ token: string }>
-}
-
 // GET /api/me/organisation/invite/[token] - Get invite details
-export async function GET(request: NextRequest, { params }: RouteParams) {
-  const { token } = await params
-  const supabase = await createClient()
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { token: string } }
+) {
+  const { token } = params
+  const supabase = createAdminClient()
 
   const { data: invite } = await supabase
     .from('OrganisationInvite')
@@ -52,7 +51,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 }
 
 // POST /api/me/organisation/invite/[token] - Accept invite
-export async function POST(request: NextRequest, { params }: RouteParams) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { token: string } }
+) {
   let user
   try {
     user = await requireAuth()
@@ -60,13 +62,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return unauthorizedResponse()
   }
 
-  const { token } = await params
-  const supabase = await createClient()
+  const { token } = params
+  const supabase = createAdminClient()
 
-  // Get the invite
+  // Get the invite — include role so we honour what was set by the inviter
   const { data: invite } = await supabase
     .from('OrganisationInvite')
-    .select('id, email, organisationId, expiresAt, acceptedAt')
+    .select('id, email, organisationId, role, expiresAt, acceptedAt')
     .eq('token', token)
     .single()
 
@@ -82,30 +84,25 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return errorResponse('This invite has expired')
   }
 
-  // Verify email matches (optional - depends on your requirements)
-  // If you want to enforce email matching:
-  // if (invite.email !== user.email) {
-  //   return errorResponse('This invite was sent to a different email address')
-  // }
-
-  // Check if user is already in an organisation
+  // Check if user is already a member of this specific organisation
   const { data: existingMembership } = await supabase
     .from('OrganisationMember')
     .select('id')
+    .eq('organisationId', invite.organisationId)
     .eq('userId', user.id)
     .single()
 
   if (existingMembership) {
-    return errorResponse('You are already a member of an organisation. Leave your current organisation first.')
+    return errorResponse('You are already a member of this organisation.')
   }
 
-  // Add user to organisation
+  // Add user to organisation using the role stored on the invite
   const { error: memberError } = await supabase
     .from('OrganisationMember')
     .insert({
       organisationId: invite.organisationId,
       userId: user.id,
-      role: 'MEMBER',
+      role: invite.role ?? 'MEMBER',
       joinedAt: new Date().toISOString(),
     })
 
@@ -134,7 +131,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE /api/me/organisation/invite/[token] - Cancel/delete invite (owner only)
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { token: string } }
+) {
   let user
   try {
     user = await requireAuth()
@@ -142,8 +142,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return unauthorizedResponse()
   }
 
-  const { token } = await params
-  const supabase = await createClient()
+  const { token } = params
+  const supabase = createAdminClient()
 
   // Get the invite
   const { data: invite } = await supabase
@@ -156,7 +156,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return notFoundResponse('Invite not found')
   }
 
-  // Verify user is the organisation owner
+  // Verify user is the organisation owner or admin
   const { data: membership } = await supabase
     .from('OrganisationMember')
     .select('role')
@@ -164,8 +164,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     .eq('userId', user.id)
     .single()
 
-  if (membership?.role !== 'OWNER') {
-    return errorResponse('Only the organisation owner can cancel invites', 403)
+  if (!membership || !['OWNER', 'ADMIN'].includes(membership.role)) {
+    return errorResponse('Only the organisation owner or admin can cancel invites', 403)
   }
 
   // Delete invite
