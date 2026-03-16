@@ -239,7 +239,7 @@ export default function NewRequestPage() {
                   />
                   <div>
                     <span className="font-bold text-sm">Remote suppliers welcome</span>
-                    <p className="text-xs text-gray-500">Tick this if the supplier doesn't need to be local</p>
+                    <p className="text-xs text-gray-500">Tick this if the supplier doesn&apos;t need to be local</p>
                   </div>
                 </label>
               </div>
