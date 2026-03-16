@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Search, SlidersHorizontal, Bot, Sparkles, ChevronDown, LayoutGrid, List, Zap, Loader2 } from 'lucide-react'
+import { Search, SlidersHorizontal, ChevronDown, LayoutGrid, List, Zap, Loader2 } from 'lucide-react'
 import { SupplierCard } from '@/components/suppliers/supplier-card'
 import { SUPPLIER_CATEGORY_LABELS } from '@/types/database'
 import type { SupplierCategory } from '@prisma/client'
@@ -40,8 +39,6 @@ type Supplier = {
 }
 
 export default function ExplorePage() {
-  const router = useRouter()
-
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
@@ -53,7 +50,6 @@ export default function ExplorePage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [selectedLocation, setSelectedLocation] = useState('')
   const [selectedCerts, setSelectedCerts] = useState<string[]>([])
-  const [aiQuery, setAiQuery] = useState('')
 
   // Track current filter params to use in "load more"
   const filterRef = useRef({ search: '', categories: [] as string[], location: '', certs: [] as string[] })
@@ -105,13 +101,6 @@ export default function ExplorePage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     setActiveSearch(searchInput.trim())
-  }
-
-  const handleAiSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (aiQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(aiQuery.trim())}`)
-    }
   }
 
   const toggleCategory = (cat: string) => {
@@ -204,35 +193,6 @@ export default function ExplorePage() {
 
         {/* Sidebar Filters (Desktop) */}
         <aside className="hidden lg:block w-72 shrink-0 space-y-8">
-
-          {/* AI Filter Widget */}
-          <div className="bg-black text-white p-6 border-2 border-black neo-shadow relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-2 opacity-20">
-              <Sparkles className="w-16 h-16 rotate-12" />
-            </div>
-            <div className="relative z-10">
-              <h3 className="font-display text-xl font-bold uppercase mb-2 flex items-center gap-2">
-                <Bot className="w-5 h-5" />
-                AI Assistant
-              </h3>
-              <p className="text-xs text-gray-300 mb-4 font-medium">Describe your project needs and let our AI match you with the perfect partner.</p>
-              <form onSubmit={handleAiSearch}>
-                <textarea
-                  className="w-full bg-white/10 border border-white/30 rounded p-2 text-sm text-white placeholder:text-gray-500 mb-3 focus:outline-none focus:border-cyan transition-colors resize-none"
-                  rows={3}
-                  placeholder="e.g. I need 5000 glass bottles with custom embossing delivered to Bristol by Sept..."
-                  value={aiQuery}
-                  onChange={(e) => setAiQuery(e.target.value)}
-                />
-                <button
-                  type="submit"
-                  className="block w-full bg-cyan text-black text-xs font-bold uppercase py-2 text-center hover:bg-white transition-colors border border-transparent hover:border-black"
-                >
-                  Find Matches
-                </button>
-              </form>
-            </div>
-          </div>
 
           {/* Filter Group: Category */}
           <div>

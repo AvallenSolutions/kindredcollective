@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
 import {
   successResponse,
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
   const rateLimitResponse = applyRateLimit(request, 30, 60_000)
   if (rateLimitResponse) return rateLimitResponse
 
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const session = await getSession()
   const { searchParams } = new URL(request.url)
 
@@ -124,7 +124,6 @@ export async function GET(request: NextRequest) {
       resultCount: Object.values(results).flat().length,
       processingMs,
       usedAI: false,
-      createdAt: new Date().toISOString(),
     })
   } catch (e) {
     console.error('[Search] Failed to log search query:', e)
