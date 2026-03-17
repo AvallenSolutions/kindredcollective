@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
   const { data: offer, error } = await adminClient
     .from('Offer')
     .insert({
+      id: crypto.randomUUID(),
       supplierId: supplier.id,
       title, description, type, discountValue, code,
       termsConditions,

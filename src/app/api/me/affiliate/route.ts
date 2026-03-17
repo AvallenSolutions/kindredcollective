@@ -86,6 +86,7 @@ export async function POST(request: NextRequest) {
 
     // Add user as owner
     await adminSupabase.from('OrganisationMember').insert({
+      id: crypto.randomUUID(),
       organisationId: org.id,
       userId: user.id,
       role: 'OWNER',
@@ -151,6 +152,7 @@ export async function POST(request: NextRequest) {
 
   // Add user as owner
   await adminSupabase.from('OrganisationMember').insert({
+    id: crypto.randomUUID(),
     organisationId: org.id,
     userId: user.id,
     role: 'OWNER',

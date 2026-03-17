@@ -125,6 +125,7 @@ export async function POST(request: NextRequest) {
 
   if (org) {
     await adminClient.from('OrganisationMember').insert({
+      id: crypto.randomUUID(),
       organisationId: org.id,
       userId: user.id,
       role: 'OWNER',

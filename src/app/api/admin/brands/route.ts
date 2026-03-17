@@ -160,6 +160,7 @@ export async function POST(request: NextRequest) {
 
     if (org && !orgError) {
       await adminClient.from('OrganisationMember').insert({
+        id: crypto.randomUUID(),
         organisationId: org.id,
         userId: ownerId,
         role: 'OWNER',
