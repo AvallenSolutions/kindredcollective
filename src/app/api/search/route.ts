@@ -119,6 +119,7 @@ export async function GET(request: NextRequest) {
   // Log the search query for analytics
   try {
     await supabase.from('SearchQuery').insert({
+      id: crypto.randomUUID(),
       query: rawQuery,
       userId: session.user?.id || null,
       resultCount: Object.values(results).flat().length,

@@ -48,6 +48,7 @@ export async function POST() {
     const { error } = await supabase
       .from('Member')
       .insert({
+        id: crypto.randomUUID(),
         userId: user.id,
         firstName,
         lastName,

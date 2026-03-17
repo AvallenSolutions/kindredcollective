@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
   const { data: savedBrand, error } = await supabase
     .from('SavedBrand')
     .insert({
+      id: crypto.randomUUID(),
       userId: user.id,
       brandId,
       createdAt: new Date().toISOString(),

@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
   const { data: brand, error } = await adminClient
     .from('Brand')
     .insert({
+      id: crypto.randomUUID(),
       name,
       slug,
       tagline,
@@ -148,6 +149,7 @@ export async function POST(request: NextRequest) {
     const { data: org, error: orgError } = await adminClient
       .from('Organisation')
       .insert({
+        id: crypto.randomUUID(),
         name: brand.name,
         slug: brand.slug,
         type: 'BRAND',
@@ -160,6 +162,7 @@ export async function POST(request: NextRequest) {
 
     if (org && !orgError) {
       await adminClient.from('OrganisationMember').insert({
+        id: crypto.randomUUID(),
         organisationId: org.id,
         userId: ownerId,
         role: 'OWNER',

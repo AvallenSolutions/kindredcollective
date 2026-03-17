@@ -83,6 +83,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { data: claim, error: claimError } = await supabase
     .from('OfferClaim')
     .insert({
+      id: crypto.randomUUID(),
       offerId: id,
       userId: user.id,
       claimedAt: new Date().toISOString(),

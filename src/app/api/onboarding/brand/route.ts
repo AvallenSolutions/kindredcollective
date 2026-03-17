@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
     const { data: brand, error: brandError } = await adminSupabase
       .from('Brand')
       .insert({
+        id: crypto.randomUUID(),
         name,
         slug: finalSlug,
         category,
@@ -68,6 +69,7 @@ export async function POST(request: NextRequest) {
     const { data: organisation, error: orgError } = await adminSupabase
       .from('Organisation')
       .insert({
+        id: crypto.randomUUID(),
         name,
         slug: finalSlug,
         type: 'BRAND',
@@ -90,6 +92,7 @@ export async function POST(request: NextRequest) {
     const { error: memberError } = await adminSupabase
       .from('OrganisationMember')
       .insert({
+        id: crypto.randomUUID(),
         organisationId: organisation.id,
         userId: user.id,
         role: 'OWNER',

@@ -120,6 +120,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { data: rsvp, error } = await supabase
     .from('EventRsvp')
     .insert({
+      id: crypto.randomUUID(),
       eventId: event.id,
       userId: user.id,
       status,

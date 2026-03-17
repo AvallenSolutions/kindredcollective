@@ -174,6 +174,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { data: review, error } = await adminClient
     .from('SupplierReview')
     .insert({
+      id: crypto.randomUUID(),
       supplierId: supplier.id,
       brandId: firstBrand?.id || null,
       userId: user.id,

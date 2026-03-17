@@ -141,6 +141,7 @@ export async function GET(request: Request) {
           await supabase
             .from('Member')
             .insert({
+              id: crypto.randomUUID(),
               userId: user.id,
               firstName: firstName || 'User',
               lastName: lastName || '',
