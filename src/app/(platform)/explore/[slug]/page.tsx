@@ -203,9 +203,9 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
             <Card>
               <CardContent className="p-6">
                 <h2 className="font-display text-xl font-bold mb-4">About</h2>
-                <p className="text-gray-700 leading-relaxed">
+                <div className="text-gray-700 leading-relaxed whitespace-pre-line">
                   {supplier.description}
-                </p>
+                </div>
               </CardContent>
             </Card>
 
