@@ -85,6 +85,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const { data: claim, error } = await supabase
     .from('SupplierClaim')
     .insert({
+      id: crypto.randomUUID(),
       supplierId: supplier.id,
       userId: user.id,
       status: 'PENDING',
@@ -207,6 +208,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const { data: organisation, error: orgError } = await adminSupabase
     .from('Organisation')
     .insert({
+      id: crypto.randomUUID(),
       name: supplier.companyName,
       slug: supplier.slug,
       type: 'SUPPLIER',
@@ -226,6 +228,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   const { error: memberError } = await adminSupabase
     .from('OrganisationMember')
     .insert({
+      id: crypto.randomUUID(),
       organisationId: organisation.id,
       userId: user.id,
       role: 'OWNER',

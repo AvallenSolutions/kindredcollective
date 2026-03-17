@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
     const { error: memberError } = await adminSupabase
       .from('Member')
       .insert({
+        id: crypto.randomUUID(),
         userId: authData.user.id,
         firstName: firstName || 'User',
         lastName: lastName || '',

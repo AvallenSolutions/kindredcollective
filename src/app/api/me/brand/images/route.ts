@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
     const { data: image, error: insertError } = await adminClient
       .from('BrandImage')
       .insert({
+        id: crypto.randomUUID(),
         brandId: brand.id,
         url,
         alt: alt || null,

@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
     const { data: newScore, error } = await supabase
       .from('GameScore')
       .insert({
+        id: crypto.randomUUID(),
         name: sanitizedName,
         score,
         level,

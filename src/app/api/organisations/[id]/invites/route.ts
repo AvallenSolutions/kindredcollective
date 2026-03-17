@@ -162,6 +162,7 @@ export async function POST(
     const { data: invite, error: inviteError } = await adminSupabase
       .from('OrganisationInvite')
       .insert({
+        id: crypto.randomUUID(),
         organisationId: params.id,
         email,
         token,

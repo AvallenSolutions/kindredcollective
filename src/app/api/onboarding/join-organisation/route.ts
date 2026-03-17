@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
     const { error: memberError } = await adminSupabase
       .from('OrganisationMember')
       .insert({
+        id: crypto.randomUUID(),
         organisationId: invite.organisationId,
         userId: user.id,
         role: invite.role, // Use role from invite (ADMIN or MEMBER)

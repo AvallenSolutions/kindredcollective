@@ -129,6 +129,7 @@ export async function PATCH(
       const { data: newOrg, error: orgError } = await supabase
         .from('Organisation')
         .insert({
+          id: crypto.randomUUID(),
           name: supplier.companyName,
           slug: supplier.slug,
           type: 'SUPPLIER',
@@ -159,6 +160,7 @@ export async function PATCH(
       const { error: memberError } = await supabase
         .from('OrganisationMember')
         .insert({
+          id: crypto.randomUUID(),
           organisationId: orgId,
           userId: claim.userId,
           role: 'OWNER',

@@ -121,6 +121,7 @@ export async function POST(request: NextRequest) {
   const { data: invite, error } = await supabase
     .from('OrganisationInvite')
     .insert({
+      id: crypto.randomUUID(),
       organisationId: membership.organisationId,
       email,
       token,

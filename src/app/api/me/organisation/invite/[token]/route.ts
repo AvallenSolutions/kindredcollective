@@ -100,6 +100,7 @@ export async function POST(
   const { error: memberError } = await supabase
     .from('OrganisationMember')
     .insert({
+      id: crypto.randomUUID(),
       organisationId: invite.organisationId,
       userId: user.id,
       role: invite.role ?? 'MEMBER',

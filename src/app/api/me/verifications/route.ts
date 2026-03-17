@@ -233,6 +233,7 @@ export async function POST(request: NextRequest) {
   const { data: relationship, error } = await adminClient
     .from('WorkRelationship')
     .insert({
+      id: crypto.randomUUID(),
       brandId,
       supplierId,
       brandVerified: isBrandSide,
