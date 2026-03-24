@@ -64,7 +64,7 @@ export function Footer() {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-8 border-t-2 border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-bold uppercase text-gray-400">
+        <div className="pt-8 border-t-2 border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4 text-xs font-bold uppercase text-gray-400 text-center">
           <p>&copy; {new Date().getFullYear()} Kindred Collective Inc.</p>
           <div className="flex gap-6">
             <Link href="/privacy" className="hover:text-black">Privacy</Link>

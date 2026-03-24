@@ -97,9 +97,9 @@ export default async function HomePage() {
           <p className="text-xl text-gray-600 font-medium max-w-2xl mx-auto">One membership. Unlimited connections. The tools and community to grow your drinks brand.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[280px]">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:auto-rows-[280px]">
           {/* Verified Suppliers */}
-          <div className="md:col-span-2 bg-white border-3 border-black neo-shadow p-8 rounded-2xl flex flex-col justify-between group hover:-translate-y-1 transition-transform">
+          <div className="md:col-span-2 bg-white border-3 border-black neo-shadow p-6 sm:p-8 rounded-2xl flex flex-col justify-between group hover:-translate-y-1 transition-transform">
             <div>
               <div className="w-12 h-12 bg-cyan border-2 border-black rounded-lg flex items-center justify-center mb-4">
                 <Shield className="w-6 h-6" />
@@ -107,7 +107,7 @@ export default async function HomePage() {
               <h3 className="text-2xl font-display font-bold mb-3 uppercase">Verified Supplier Network</h3>
               <p className="text-gray-600 text-lg">Access a curated directory of trusted packaging, logistics, design, and production partners — all vetted by the community.</p>
             </div>
-            <div className="flex items-center gap-3 mt-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-4">
               <span className="px-3 py-1 bg-lime border-2 border-black text-xs font-bold uppercase">Packaging</span>
               <span className="px-3 py-1 bg-cyan border-2 border-black text-xs font-bold uppercase">Logistics</span>
               <span className="px-3 py-1 bg-coral text-white border-2 border-black text-xs font-bold uppercase">Design</span>
@@ -116,7 +116,7 @@ export default async function HomePage() {
           </div>
 
           {/* Community */}
-          <div className="bg-blue-500 border-3 border-black neo-shadow p-8 rounded-2xl text-white relative overflow-hidden group hover:-translate-y-1 transition-transform">
+          <div className="bg-blue-500 border-3 border-black neo-shadow p-6 sm:p-8 rounded-2xl text-white relative overflow-hidden group hover:-translate-y-1 transition-transform">
             <div className="relative z-10">
               <Users className="w-10 h-10 mb-4" />
               <h3 className="text-2xl font-display font-bold mb-2 uppercase">The Community</h3>
@@ -128,7 +128,7 @@ export default async function HomePage() {
           </div>
 
           {/* Exclusive Events */}
-          <div className="bg-white border-3 border-black neo-shadow p-8 rounded-2xl flex flex-col justify-between group hover:-translate-y-1 transition-transform">
+          <div className="bg-white border-3 border-black neo-shadow p-6 sm:p-8 rounded-2xl flex flex-col justify-between group hover:-translate-y-1 transition-transform">
             <div>
               <div className="w-12 h-12 bg-coral border-2 border-black text-white rounded-lg flex items-center justify-center mb-4">
                 <Calendar className="w-6 h-6" />
@@ -139,7 +139,7 @@ export default async function HomePage() {
           </div>
 
           {/* Member Offers */}
-          <div className="md:col-span-2 bg-black text-white border-3 border-black neo-shadow p-8 rounded-2xl relative overflow-hidden group hover:-translate-y-1 transition-transform">
+          <div className="md:col-span-2 bg-black text-white border-3 border-black neo-shadow p-6 sm:p-8 rounded-2xl relative overflow-hidden group hover:-translate-y-1 transition-transform">
             <div className="absolute top-0 right-0 w-64 h-64 bg-cyan rounded-full blur-[100px] opacity-20"></div>
             <div className="relative z-10 flex flex-col md:flex-row items-center gap-8 h-full">
               <div className="flex-1">
@@ -171,10 +171,10 @@ export default async function HomePage() {
               { label: 'Members', value: stats.members, color: 'bg-lime' },
               { label: 'Events', value: stats.events, color: 'bg-blue-500' },
             ].map((stat) => (
-              <div key={stat.label} className="bg-white border-3 border-black neo-shadow p-6 text-center rounded-xl hover:-translate-y-1 transition-transform">
+              <div key={stat.label} className="bg-white border-3 border-black neo-shadow p-4 sm:p-6 text-center rounded-xl hover:-translate-y-1 transition-transform">
                 <div className={`w-4 h-4 ${stat.color} border border-black rounded-full mx-auto mb-3`}></div>
-                <div className="text-4xl md:text-5xl font-display font-bold mb-2">{stat.value}+</div>
-                <div className="text-sm font-bold uppercase tracking-wide text-gray-500">{stat.label}</div>
+                <div className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-2">{stat.value}+</div>
+                <div className="text-xs sm:text-sm font-bold uppercase tracking-wide text-gray-500">{stat.label}</div>
               </div>
             ))}
           </div>

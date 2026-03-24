@@ -41,7 +41,7 @@ export function Header({ user }: HeaderProps) {
           <div className="w-10 h-10 flex items-center justify-center">
             <Image src="/kindred-logo.png" alt="Kindred Collective logo" width={40} height={40} className="w-10 h-10" />
           </div>
-          <span className="font-display font-bold text-2xl tracking-tighter uppercase">Kindred Collective</span>
+          <span className="font-display font-bold text-lg sm:text-2xl tracking-tighter uppercase">Kindred Collective</span>
         </Link>
 
         {/* Desktop Menu */}
@@ -92,7 +92,7 @@ export function Header({ user }: HeaderProps) {
               </Link>
               <Link
                 href="/signup"
-                className="bg-black text-white px-6 py-2.5 text-sm font-bold uppercase tracking-wide neo-shadow hover:bg-cyan hover:text-black neo-shadow-hover transition-all border-2 border-black"
+                className="bg-black text-white px-3 sm:px-6 py-2.5 text-xs sm:text-sm font-bold uppercase tracking-wide neo-shadow hover:bg-cyan hover:text-black neo-shadow-hover transition-all border-2 border-black"
               >
                 Get Started
               </Link>
