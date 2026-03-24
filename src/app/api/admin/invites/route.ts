@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
 
     // Prepare invite data
     const inviteData: Record<string, string | number | boolean | null> = {
+      id: crypto.randomUUID(),
       token,
       createdBy: user.id,
       createdAt: new Date().toISOString(),
