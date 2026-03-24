@@ -152,17 +152,17 @@ export default async function CommunityPage() {
                 Explore the brands defining the future of independent drinks, connect with members, and join us at upcoming events.
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <Link
                 href="/community/brands"
-                className="px-6 py-3 bg-white border-2 border-black font-bold uppercase hover:bg-black hover:text-white transition-colors neo-shadow flex items-center gap-2"
+                className="px-4 sm:px-6 py-3 bg-white border-2 border-black font-bold uppercase text-sm sm:text-base hover:bg-black hover:text-white transition-colors neo-shadow flex items-center gap-2"
               >
                 <PlusCircle className="w-5 h-5" />
                 List Brand
               </Link>
               <Link
                 href="/signup"
-                className="px-6 py-3 bg-cyan border-2 border-black font-bold uppercase hover:bg-black hover:text-cyan transition-colors neo-shadow flex items-center gap-2"
+                className="px-4 sm:px-6 py-3 bg-cyan border-2 border-black font-bold uppercase text-sm sm:text-base hover:bg-black hover:text-cyan transition-colors neo-shadow flex items-center gap-2"
               >
                 <UserPlus className="w-5 h-5" />
                 Join Member
@@ -191,10 +191,10 @@ export default async function CommunityPage() {
                     {featuredEvent.isVirtual ? 'Online' : [featuredEvent.city, featuredEvent.country].filter(Boolean).join(', ')}
                   </span>
                 </div>
-                <h2 className="font-display text-5xl md:text-6xl font-bold uppercase leading-none mb-6 group-hover:translate-x-2 transition-transform">
+                <h2 className="font-display text-3xl sm:text-5xl md:text-6xl font-bold uppercase leading-none mb-6 group-hover:translate-x-2 transition-transform break-words">
                   {featuredEvent.title}
                 </h2>
-                <p className="text-lg font-medium mb-8 max-w-md border-l-4 border-black pl-4">
+                <p className="text-base sm:text-lg font-medium mb-8 max-w-md border-l-4 border-black pl-4">
                   {featuredEvent.description}
                 </p>
                 <div className="flex flex-wrap gap-4">
@@ -417,11 +417,11 @@ export default async function CommunityPage() {
 
         {/* UPCOMING EVENTS LIST */}
         <section id="events">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-4xl font-display font-bold uppercase">Upcoming Events</h2>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <h2 className="text-3xl sm:text-4xl font-display font-bold uppercase">Upcoming Events</h2>
             <Link
               href="/community/events"
-              className="text-sm font-bold uppercase border-b-2 border-black hover:bg-cyan hover:text-black transition-colors px-2"
+              className="text-sm font-bold uppercase border-b-2 border-black hover:bg-cyan hover:text-black transition-colors px-2 whitespace-nowrap"
             >
               View Calendar
             </Link>

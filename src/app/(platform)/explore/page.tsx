@@ -366,8 +366,8 @@ export default function ExplorePage() {
               <Zap className="w-10 h-10" />
             </div>
             <div>
-              <h3 className="font-display text-3xl font-bold leading-none mb-1">Not seeing what you need?</h3>
-              <p className="font-medium text-lg">Post a Request for Proposal (RFP) and let suppliers come to you.</p>
+              <h3 className="font-display text-2xl sm:text-3xl font-bold leading-none mb-1">Not seeing what you need?</h3>
+              <p className="font-medium text-base sm:text-lg">Post a Request for Proposal (RFP) and let suppliers come to you.</p>
             </div>
           </div>
           <Link

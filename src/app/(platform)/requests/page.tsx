@@ -230,7 +230,7 @@ export default function RequestsPage() {
                             </p>
                             <p className="text-sm text-gray-700 line-clamp-2 mb-3">{rfp.description}</p>
 
-                            <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+                            <div className="flex flex-wrap gap-2 sm:gap-3 text-xs text-gray-500">
                               <Badge variant="outline" className="text-xs">
                                 {SUPPLIER_CATEGORY_LABELS[rfp.category]}
                               </Badge>
@@ -258,7 +258,7 @@ export default function RequestsPage() {
                                   Remote OK
                                 </span>
                               )}
-                              <span className="ml-auto text-gray-400">
+                              <span className="sm:ml-auto text-gray-400">
                                 {responseCount(rfp)} response{responseCount(rfp) !== 1 ? 's' : ''} ·{' '}
                                 {timeAgo(rfp.createdAt)}
                               </span>

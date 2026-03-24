@@ -144,7 +144,7 @@ export default async function EventsPage() {
                     <span className="bg-black text-white px-2 py-1 text-xs font-bold uppercase border border-black">{dateLabel}</span>
                     <span className="font-bold uppercase tracking-wide">{location}</span>
                   </div>
-                  <h2 className="font-display text-5xl md:text-6xl font-bold uppercase leading-none mb-6 group-hover:translate-x-2 transition-transform">
+                  <h2 className="font-display text-3xl sm:text-5xl md:text-6xl font-bold uppercase leading-none mb-6 group-hover:translate-x-2 transition-transform break-words">
                     {featuredEvent.title}
                   </h2>
                   {featuredEvent.description && (
@@ -290,7 +290,7 @@ export default async function EventsPage() {
                 <CalendarPlus className="w-10 h-10" />
               </div>
               <div>
-                <h3 className="font-display text-3xl font-bold uppercase mb-2">Never Miss an Event</h3>
+                <h3 className="font-display text-2xl sm:text-3xl font-bold uppercase mb-2">Never Miss an Event</h3>
                 <p className="text-gray-400 font-medium">Subscribe to our calendar and get automatic updates for all Kindred events.</p>
               </div>
             </div>
@@ -301,9 +301,9 @@ export default async function EventsPage() {
         {/* PAST EVENTS */}
         {past.length > 0 && (
           <section>
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="text-4xl font-display font-bold uppercase">Past Events</h2>
-              <span className="text-sm font-bold uppercase text-gray-400">View highlights &amp; recordings</span>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+              <h2 className="text-3xl sm:text-4xl font-display font-bold uppercase">Past Events</h2>
+              <span className="text-sm font-bold uppercase text-gray-400 whitespace-nowrap">View highlights &amp; recordings</span>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -350,7 +350,7 @@ export default async function EventsPage() {
         <section className="bg-gray-50 p-8 md:p-12 border-2 border-black neo-shadow">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div>
-              <h3 className="font-display text-3xl font-bold uppercase mb-2">Host Your Own Event</h3>
+              <h3 className="font-display text-2xl sm:text-3xl font-bold uppercase mb-2">Host Your Own Event</h3>
               <p className="text-gray-600 font-medium max-w-lg">
                 Want to host a meetup, workshop, or industry event? We&apos;ll help you promote it to our community of 2,400+ drinks industry professionals.
               </p>

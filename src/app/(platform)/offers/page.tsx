@@ -85,7 +85,7 @@ export default function OffersPage() {
       {/* Offer Type Highlights */}
       <section className="bg-white border-b-3 border-black py-6">
         <div className="section-container">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <button
               onClick={() => setSelectedType(selectedType === 'PERCENTAGE_DISCOUNT' ? null : 'PERCENTAGE_DISCOUNT')}
               className={cn(
