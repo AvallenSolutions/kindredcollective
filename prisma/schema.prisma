@@ -700,6 +700,7 @@ model ForumPost {
   id         String          @id @default(cuid())
   title      String
   body       String          @db.Text
+  imageUrl   String?
   type       ForumPostType   @default(DISCUSSION)
   status     ForumPostStatus @default(PUBLISHED)
   isPinned   Boolean         @default(false)

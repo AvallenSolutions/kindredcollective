@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   let query = supabase
     .from('ForumPost')
     .select(`
-      id, title, body, type, status, isPinned, viewCount, createdAt, updatedAt,
+      id, title, body, imageUrl, type, status, isPinned, viewCount, createdAt, updatedAt,
       category:ForumCategory(id, name, slug, color),
       author:User!authorId(
         id, email,
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
   if (!session.isAuthenticated || !session.user) return unauthorizedResponse()
 
   const body = await request.json()
-  const { title, body: postBody, type, categoryId } = body
+  const { title, body: postBody, type, categoryId, imageUrl } = body
 
   if (!title?.trim()) return errorResponse('Title is required')
   if (!postBody?.trim()) return errorResponse('Post body is required')
@@ -116,6 +116,7 @@ export async function POST(request: NextRequest) {
       id: crypto.randomUUID(),
       title: title.trim(),
       body: postBody.trim(),
+      imageUrl: imageUrl || null,
       type: postType,
       categoryId,
       authorId: session.user.id,

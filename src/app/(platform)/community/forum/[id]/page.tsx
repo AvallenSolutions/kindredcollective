@@ -23,7 +23,7 @@ async function getPostData(postId: string, userId: string) {
   const { data: post, error } = await supabase
     .from('ForumPost')
     .select(`
-      id, title, body, type, status, isPinned, viewCount, createdAt, updatedAt,
+      id, title, body, imageUrl, type, status, isPinned, viewCount, createdAt, updatedAt,
       category:ForumCategory(id, name, slug, color),
       author:User!authorId(
         id, email,
@@ -92,6 +92,7 @@ async function getPostData(postId: string, userId: string) {
       id: postData.id,
       title: postData.title,
       body: postData.body,
+      imageUrl: postData.imageUrl,
       type: postData.type,
       isPinned: postData.isPinned,
       viewCount: postData.viewCount,
@@ -221,6 +222,17 @@ export default async function ForumPostPage({
                   horizontal
                 />
               </div>
+
+              {/* Image */}
+              {post.imageUrl && (
+                <div className="mb-6 border-2 border-black overflow-hidden bg-gray-50">
+                  <img
+                    src={post.imageUrl}
+                    alt={post.title}
+                    className="w-full max-h-[500px] object-contain"
+                  />
+                </div>
+              )}
 
               {/* Body */}
               <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-800 leading-relaxed">

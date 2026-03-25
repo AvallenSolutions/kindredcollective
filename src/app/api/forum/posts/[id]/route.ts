@@ -27,7 +27,7 @@ export async function GET(
   const { data: post, error } = await supabase
     .from('ForumPost')
     .select(`
-      id, title, body, type, status, isPinned, viewCount, createdAt, updatedAt,
+      id, title, body, imageUrl, type, status, isPinned, viewCount, createdAt, updatedAt,
       category:ForumCategory(id, name, slug, color),
       author:User!authorId(
         id, email,
@@ -125,6 +125,7 @@ export async function PATCH(
   if (body.body?.trim()) updates.body = body.body.trim()
   if (body.type) updates.type = body.type
   if (body.categoryId) updates.categoryId = body.categoryId
+  if (typeof body.imageUrl === 'string') updates.imageUrl = body.imageUrl || null
 
   // Admin-only fields
   if (session.user.role === 'ADMIN') {
