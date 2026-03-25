@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { PlusCircle, UserPlus, Star, MapPin, Video, ArrowDown, Mail, Calendar, PawPrint } from 'lucide-react'
+import { PlusCircle, UserPlus, Star, MapPin, Video, ArrowDown, Mail, Calendar, PawPrint, MessageSquare } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { DRINK_CATEGORY_LABELS } from '@/types/database'
 import type { DrinkCategory } from '@prisma/client'
@@ -414,6 +414,46 @@ export default async function CommunityPage() {
             </div>
           </section>
         )}
+
+        {/* FORUM TEASER */}
+        <section className="relative">
+          <div className="absolute -top-6 -left-2 bg-coral text-white px-3 py-1 font-bold font-display uppercase text-lg border-2 border-black transform -rotate-1 z-20">
+            Community Forum
+          </div>
+          <div className="bg-white border-2 border-black neo-shadow p-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-6 h-6" />
+                <p className="text-gray-600 text-sm font-medium">
+                  Share ideas, ask questions, and connect with the community.
+                </p>
+              </div>
+              <Link
+                href="/community/forum"
+                className="px-4 py-2 border-2 border-black bg-coral text-white font-bold uppercase text-xs hover:bg-black transition-colors whitespace-nowrap neo-shadow"
+              >
+                Visit Forum &rarr;
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              {[
+                { label: 'Discussions', desc: 'Share your thoughts' },
+                { label: 'Questions', desc: 'Get community help' },
+                { label: 'News', desc: 'Industry updates' },
+                { label: 'Showcases', desc: 'Show off your work' },
+              ].map((item) => (
+                <Link
+                  key={item.label}
+                  href="/community/forum"
+                  className="p-4 border-2 border-black hover:bg-coral/10 transition-colors group"
+                >
+                  <p className="font-display font-bold uppercase text-sm group-hover:text-coral transition-colors">{item.label}</p>
+                  <p className="text-xs text-gray-500 mt-1">{item.desc}</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
 
         {/* UPCOMING EVENTS LIST */}
         <section id="events">

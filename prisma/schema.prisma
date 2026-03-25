@@ -154,6 +154,9 @@ model User {
   createdInvites  InviteLink[] @relation("AdminInvites")
   rfps            RFP[]
   rfpResponses    RFPResponse[]
+  forumPosts      ForumPost[]
+  forumComments   ForumComment[]
+  forumVotes      ForumVote[]
 
   @@index([email])
   @@index([role])
@@ -662,6 +665,98 @@ model RFPResponse {
   @@index([rfpId])
   @@index([supplierId])
   @@index([status])
+}
+
+// ============= FORUM =============
+
+enum ForumPostType {
+  DISCUSSION
+  QUESTION
+  NEWS
+  SHOWCASE
+}
+
+enum ForumPostStatus {
+  PUBLISHED
+  REMOVED // Soft-deleted by admin
+}
+
+model ForumCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  color       String   @default("#00D9FF") // Accent color for the category
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  posts ForumPost[]
+
+  @@index([slug])
+  @@index([order])
+}
+
+model ForumPost {
+  id         String          @id @default(cuid())
+  title      String
+  body       String          @db.Text
+  type       ForumPostType   @default(DISCUSSION)
+  status     ForumPostStatus @default(PUBLISHED)
+  isPinned   Boolean         @default(false)
+  categoryId String
+  authorId   String
+  viewCount  Int             @default(0)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
+  category ForumCategory  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  author   User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments ForumComment[]
+  votes    ForumVote[]
+
+  @@index([categoryId])
+  @@index([authorId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([isPinned])
+}
+
+model ForumComment {
+  id        String   @id @default(cuid())
+  body      String   @db.Text
+  postId    String
+  authorId  String
+  parentId  String?  // For threaded/nested replies
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  post     ForumPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author   User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent   ForumComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  ForumComment[] @relation("CommentReplies")
+  votes    ForumVote[]
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([parentId])
+  @@index([createdAt])
+}
+
+model ForumVote {
+  id        String  @id @default(cuid())
+  value     Int     // 1 for upvote, -1 for downvote
+  userId    String
+  postId    String?
+  commentId String?
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post    ForumPost?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment ForumComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@unique([userId, commentId])
+  @@index([postId])
+  @@index([commentId])
 }
 
 // ============= GAME SCORES (404 Easter Egg) =============
