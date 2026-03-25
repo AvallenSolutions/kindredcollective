@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { MessageSquare, Pin, Trash2, Eye } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { ForumAdminActions } from '@/components/forum/admin-actions'
+import { ForumCategoryManager } from '@/components/forum/category-manager'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,33 +71,12 @@ export default async function AdminForumPage() {
       {/* Categories */}
       <div className="bg-white border-2 border-black neo-shadow mb-8">
         <div className="px-6 py-4 border-b-2 border-black flex items-center justify-between">
-          <h2 className="font-display text-xl font-bold uppercase">Categories</h2>
+          <h2 className="font-display text-xl font-bold uppercase">
+            Categories ({(categories || []).length})
+          </h2>
         </div>
         <div className="p-6">
-          {categories && categories.length > 0 ? (
-            <div className="flex flex-wrap gap-3">
-              {categories.map((cat) => (
-                <div
-                  key={cat.id}
-                  className="px-4 py-2 border-2 border-black flex items-center gap-2"
-                  style={{ backgroundColor: cat.color + '33' }}
-                >
-                  <span
-                    className="w-3 h-3 rounded-full border border-black"
-                    style={{ backgroundColor: cat.color }}
-                  ></span>
-                  <span className="font-bold text-sm uppercase">{cat.name}</span>
-                  {cat.description && (
-                    <span className="text-xs text-gray-500">- {cat.description}</span>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 text-sm">
-              No categories yet. Add them via the database or API to get started.
-            </p>
-          )}
+          <ForumCategoryManager categories={categories || []} />
         </div>
       </div>
 
