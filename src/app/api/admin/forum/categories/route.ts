@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
       description: description?.trim() || null,
       color: color || '#00D9FF',
       order: order || 0,
+      createdAt: new Date().toISOString(),
     })
     .select('id, name, slug')
     .single()

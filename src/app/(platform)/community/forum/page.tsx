@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { MessageSquare, ArrowBigUp, Eye, Plus, Pin, Filter } from 'lucide-react'
+import { MessageSquare, ArrowBigUp, Eye, Plus, Pin, Filter, ImageIcon } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
 import { redirect } from 'next/navigation'
@@ -28,7 +28,7 @@ async function getForumData(category?: string, sort?: string) {
   let query = supabase
     .from('ForumPost')
     .select(`
-      id, title, body, type, isPinned, viewCount, createdAt, updatedAt,
+      id, title, body, imageUrl, type, isPinned, viewCount, createdAt, updatedAt,
       category:ForumCategory(id, name, slug, color),
       author:User!authorId(
         id, email,
@@ -65,6 +65,7 @@ async function getForumData(category?: string, sort?: string) {
       id: post.id,
       title: post.title,
       body: post.body,
+      imageUrl: post.imageUrl,
       type: post.type,
       isPinned: post.isPinned,
       viewCount: post.viewCount,
@@ -261,6 +262,19 @@ export default async function ForumPage({
                             </span>
                           </div>
                         </div>
+
+                        {/* Image Thumbnail */}
+                        {post.imageUrl && (
+                          <div className="hidden sm:block shrink-0 ml-auto">
+                            <div className="w-24 h-24 border-2 border-black overflow-hidden bg-gray-100">
+                              <img
+                                src={post.imageUrl}
+                                alt=""
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </Link>
                   )

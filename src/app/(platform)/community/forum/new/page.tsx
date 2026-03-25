@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Send } from 'lucide-react'
+import { ArrowLeft, Send, ImagePlus, X, Loader2 } from 'lucide-react'
 
 const POST_TYPES = [
   { value: 'DISCUSSION', label: 'Discussion', color: 'bg-cyan' },
@@ -21,11 +21,15 @@ interface Category {
 
 export default function NewForumPostPage() {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [type, setType] = useState('DISCUSSION')
   const [categoryId, setCategoryId] = useState('')
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -43,6 +47,62 @@ export default function NewForumPostPage() {
       .catch(() => {})
   }, [])
 
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Client-side validation
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    if (!validTypes.includes(file.type)) {
+      setError('Please upload a JPG, PNG, WebP, or GIF image')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be under 5MB')
+      return
+    }
+
+    // Show local preview immediately
+    const localUrl = URL.createObjectURL(file)
+    setImagePreview(localUrl)
+    setError('')
+    setUploading(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('/api/upload?bucket=forum-images&folder=posts', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await res.json()
+
+      if (data.success && data.url) {
+        setImageUrl(data.url)
+      } else {
+        setError(data.error || 'Failed to upload image')
+        setImagePreview(null)
+        setImageUrl(null)
+      }
+    } catch {
+      setError('Failed to upload image. Please try again.')
+      setImagePreview(null)
+      setImageUrl(null)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  function removeImage() {
+    setImageUrl(null)
+    setImagePreview(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
@@ -52,7 +112,7 @@ export default function NewForumPostPage() {
       const res = await fetch('/api/forum/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, body, type, categoryId }),
+        body: JSON.stringify({ title, body, type, categoryId, imageUrl }),
       })
 
       const data = await res.json()
@@ -168,11 +228,67 @@ export default function NewForumPostPage() {
             />
           </div>
 
+          {/* Image Upload */}
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wide mb-2">
+              Image <span className="text-gray-400 normal-case">(optional)</span>
+            </label>
+
+            {imagePreview ? (
+              <div className="relative border-2 border-black bg-gray-50 p-2 inline-block">
+                <img
+                  src={imagePreview}
+                  alt="Upload preview"
+                  className="max-h-64 max-w-full object-contain"
+                />
+                {uploading && (
+                  <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                    <div className="flex items-center gap-2 text-sm font-bold">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Uploading...
+                    </div>
+                  </div>
+                )}
+                {!uploading && (
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute -top-3 -right-3 w-7 h-7 bg-coral text-white border-2 border-black flex items-center justify-center hover:bg-black transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-3 px-6 py-4 border-2 border-dashed border-gray-400 hover:border-black bg-gray-50 hover:bg-gray-100 transition-colors w-full text-left group"
+              >
+                <div className="w-10 h-10 bg-gray-200 group-hover:bg-cyan border-2 border-black flex items-center justify-center transition-colors">
+                  <ImagePlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold">Add an image</p>
+                  <p className="text-xs text-gray-500">JPG, PNG, WebP or GIF — max 5MB</p>
+                </div>
+              </button>
+            )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
+          </div>
+
           {/* Submit */}
           <div className="flex items-center gap-4">
             <button
               type="submit"
-              disabled={submitting || !title.trim() || !body.trim() || !categoryId}
+              disabled={submitting || uploading || !title.trim() || !body.trim() || !categoryId}
               className="px-8 py-3 bg-coral border-2 border-black font-bold uppercase hover:bg-black hover:text-coral transition-colors neo-shadow neo-shadow-hover flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send className="w-5 h-5" />
