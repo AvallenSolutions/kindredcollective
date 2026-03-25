@@ -22,6 +22,7 @@ const navigation = [
   { name: 'Offers', href: '/offers', badge: null },
   { name: 'Events', href: '/events', badge: null },
   { name: 'News', href: '/news', badge: null },
+  { name: 'Forum', href: '/community/forum', badge: null },
   { name: 'Community', href: '/community', badge: null },
 ]
 
