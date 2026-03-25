@@ -80,35 +80,55 @@ export async function POST(request: NextRequest) {
   const supabase = createAdminClient()
 
   // Check what already exists to avoid duplicates
-  const { data: existing } = await supabase
+  const { data: existing, error: fetchError } = await supabase
     .from('ForumCategory')
     .select('slug')
 
+  if (fetchError) {
+    console.error('[Admin Forum] Error fetching existing categories:', fetchError)
+    // Table might not exist yet — try inserting all
+  }
+
   const existingSlugs = new Set((existing || []).map(c => c.slug))
 
+  const now = new Date().toISOString()
   const toInsert = DEFAULT_CATEGORIES
     .filter(cat => !existingSlugs.has(cat.slug))
     .map(cat => ({
       id: crypto.randomUUID(),
       ...cat,
+      createdAt: now,
     }))
 
   if (toInsert.length === 0) {
     return successResponse({ message: 'All default categories already exist', created: 0 })
   }
 
-  const { error } = await supabase
-    .from('ForumCategory')
-    .insert(toInsert)
+  // Insert one at a time to handle partial failures gracefully
+  const created: string[] = []
+  const errors: string[] = []
 
-  if (error) {
-    console.error('[Admin Forum] Error seeding categories:', error)
-    return serverErrorResponse('Failed to seed categories')
+  for (const cat of toInsert) {
+    const { error } = await supabase
+      .from('ForumCategory')
+      .insert(cat)
+
+    if (error) {
+      console.error(`[Admin Forum] Error inserting category "${cat.name}":`, error)
+      errors.push(`${cat.name}: ${error.message}`)
+    } else {
+      created.push(cat.name)
+    }
+  }
+
+  if (created.length === 0) {
+    return serverErrorResponse(`Failed to seed categories: ${errors.join('; ')}`)
   }
 
   return successResponse({
-    message: `Created ${toInsert.length} categories`,
-    created: toInsert.length,
-    categories: toInsert.map(c => c.name),
+    message: `Created ${created.length} of ${toInsert.length} categories`,
+    created: created.length,
+    categories: created,
+    ...(errors.length > 0 ? { errors } : {}),
   }, 201)
 }
