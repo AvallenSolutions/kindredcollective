@@ -48,3 +48,42 @@ export async function POST(request: NextRequest) {
 
   return successResponse({ category }, 201)
 }
+
+// DELETE /api/admin/forum/categories - Delete a forum category (admin only)
+export async function DELETE(request: NextRequest) {
+  const rateLimitResponse = applyRateLimit(request, 10, 60_000)
+  if (rateLimitResponse) return rateLimitResponse
+
+  const session = await getSession()
+  if (!session.isAuthenticated || !session.user) return unauthorizedResponse()
+  if (session.user.role !== 'ADMIN') return errorResponse('Admin access required', 403)
+
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+
+  if (!id) return errorResponse('Category ID is required')
+
+  const supabase = createAdminClient()
+
+  // Check if category has posts
+  const { count } = await supabase
+    .from('ForumPost')
+    .select('*', { count: 'exact', head: true })
+    .eq('categoryId', id)
+
+  if (count && count > 0) {
+    return errorResponse(`Cannot delete category with ${count} post${count === 1 ? '' : 's'}. Move or delete posts first.`)
+  }
+
+  const { error } = await supabase
+    .from('ForumCategory')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('[Admin Forum] Error deleting category:', error)
+    return serverErrorResponse('Failed to delete category')
+  }
+
+  return successResponse({ deleted: true })
+}
