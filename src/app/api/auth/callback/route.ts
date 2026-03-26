@@ -63,6 +63,7 @@ export async function GET(request: Request) {
       }
     }
 
+    console.error('[auth/callback] verifyOtp failed:', error.message, { type, tokenHash: tokenHash?.slice(0, 8) + '...' })
     return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
   }
 
@@ -178,10 +179,14 @@ export async function GET(request: Request) {
   var params = {};
   hash.split('&').forEach(function(part) {
     var kv = part.split('=');
-    params[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || '');
+    if (kv[0]) params[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || '');
   });
-  if (params.type === 'recovery' && params.access_token) {
+  if (params.access_token && params.type === 'recovery') {
+    // Password recovery — forward tokens to the reset-password page
     window.location.href = '/reset-password#' + hash;
+  } else if (params.access_token) {
+    // Magic link or other token-based auth — forward to dashboard
+    window.location.href = '/dashboard#' + hash;
   } else {
     window.location.href = '/login?error=auth_callback_error';
   }

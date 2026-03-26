@@ -1,13 +1,30 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '@/components/ui'
 import { createClient } from '@/lib/supabase/client'
 
 export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full max-w-md px-4">
+        <Card className="shadow-brutal-lg">
+          <CardContent className="pt-6 text-center text-gray-600 text-sm py-10">
+            Verifying your reset link...
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
+  )
+}
+
+function ResetPasswordContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -18,6 +35,7 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     const supabase = createClient()
+    let cancelled = false
 
     // Listen for the PASSWORD_RECOVERY event fired when the user arrives
     // via the reset link (hash fragment is picked up by the browser client)
@@ -27,22 +45,42 @@ export default function ResetPasswordPage() {
       }
     })
 
-    // Also handle the case where the session is already established
-    // (e.g. arriving via the server-side callback with token_hash/code)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        setReady(true)
-      } else {
-        // Give the hash-fragment auth event time to fire, then mark invalid
-        const timeout = setTimeout(() => {
-          setInvalid(true)
-        }, 3000)
-        return () => clearTimeout(timeout)
+    async function establishSession() {
+      // Handle PKCE code exchange: Supabase may redirect with ?code=xxx
+      // after verifying the recovery token at its /auth/v1/verify endpoint
+      const code = searchParams.get('code')
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+        if (!exchangeError && !cancelled) {
+          setReady(true)
+          return
+        }
+        if (exchangeError) {
+          console.error('[reset-password] code exchange failed:', exchangeError.message)
+        }
       }
-    })
 
-    return () => subscription.unsubscribe()
-  }, [])
+      // Check if a session already exists (e.g. from server-side callback)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session && !cancelled) {
+        setReady(true)
+        return
+      }
+
+      // Give the hash-fragment auth event time to fire, then mark invalid
+      // (Supabase client library auto-detects tokens in the URL hash)
+      setTimeout(() => {
+        if (!cancelled) setInvalid(true)
+      }, 3000)
+    }
+
+    establishSession()
+
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
