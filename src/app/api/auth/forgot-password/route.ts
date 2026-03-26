@@ -19,33 +19,37 @@ export async function POST(request: NextRequest) {
   const origin = process.env.NEXT_PUBLIC_APP_URL ||
     `${request.nextUrl.protocol}//${request.nextUrl.host}`
 
-  // Step 1: generate a signed recovery token via the admin client so we can
+  // Step 1: generate a signed recovery link via the admin client so we can
   // send the link ourselves without relying on Supabase's email delivery.
-  let hashedToken: string | null = null
+  // We use the action_link from generateLink which routes through Supabase's
+  // own /auth/v1/verify endpoint — this handles token verification reliably
+  // and redirects to our reset-password page with session tokens in the hash.
+  let resetUrl: string | null = null
 
   try {
     const supabase = createAdminClient()
     const { data, error } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email,
+      options: {
+        redirectTo: `${origin}/reset-password`,
+      },
     })
 
     if (error) {
       console.error('[forgot-password] generateLink error:', error)
     } else {
-      hashedToken = data?.properties?.hashed_token ?? null
-      if (!hashedToken) {
-        console.error('[forgot-password] generateLink returned no hashed_token', data)
+      resetUrl = data?.properties?.action_link ?? null
+      if (!resetUrl) {
+        console.error('[forgot-password] generateLink returned no action_link', data)
       }
     }
   } catch (err) {
     console.error('[forgot-password] generateLink threw:', err)
   }
 
-  // Step 2: send the email via Resend (if we have a token).
-  if (hashedToken) {
-    const resetUrl = `${origin}/api/auth/callback?token_hash=${encodeURIComponent(hashedToken)}&type=recovery&next=/reset-password`
-
+  // Step 2: send the email via Resend (if we have a link).
+  if (resetUrl) {
     try {
       await sendPasswordResetEmail(email, resetUrl)
       console.log('[forgot-password] reset email sent to', email)
