@@ -32,31 +32,31 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error('[forgot-password] generateLink error:', error)
-    } else {
-      hashedToken = data?.properties?.hashed_token ?? null
-      if (!hashedToken) {
-        console.error('[forgot-password] generateLink returned no hashed_token', data)
-      }
+      return NextResponse.json({ success: false, error: `generateLink failed: ${error.message}` }, { status: 500 })
+    }
+
+    hashedToken = data?.properties?.hashed_token ?? null
+    if (!hashedToken) {
+      console.error('[forgot-password] generateLink returned no hashed_token', data)
+      return NextResponse.json({ success: false, error: 'No hashed_token in generateLink response' }, { status: 500 })
     }
   } catch (err) {
     console.error('[forgot-password] generateLink threw:', err)
+    return NextResponse.json({ success: false, error: `generateLink threw: ${err instanceof Error ? err.message : String(err)}` }, { status: 500 })
   }
 
-  // Step 2: send the email via Resend (if we have a token).
+  // Step 2: send the email via Resend.
   // Link goes directly to /reset-password which verifies the token client-side
   // using the browser Supabase client — bypasses the server callback entirely.
-  if (hashedToken) {
-    const resetUrl = `${origin}/reset-password?token_hash=${encodeURIComponent(hashedToken)}&type=recovery`
+  const resetUrl = `${origin}/reset-password?token_hash=${encodeURIComponent(hashedToken)}&type=recovery`
 
-    try {
-      await sendPasswordResetEmail(email, resetUrl)
-      console.log('[forgot-password] reset email sent to', email)
-    } catch (err) {
-      console.error('[forgot-password] sendPasswordResetEmail threw:', err)
-    }
+  try {
+    await sendPasswordResetEmail(email, resetUrl)
+    console.log('[forgot-password] reset email sent to', email)
+  } catch (err) {
+    console.error('[forgot-password] sendPasswordResetEmail threw:', err)
+    return NextResponse.json({ success: false, error: `Email send failed: ${err instanceof Error ? err.message : String(err)}` }, { status: 500 })
   }
 
-  // Always return success — prevents email enumeration and avoids leaking
-  // whether the address exists in our system.
   return NextResponse.json({ success: true })
 }
