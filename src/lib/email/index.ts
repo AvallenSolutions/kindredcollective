@@ -4,7 +4,7 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null
 
-const FROM_EMAIL = 'Kindred Collective <noreply@kindredcollective.netlify.app>'
+const FROM_EMAIL = 'Kindred Collective <noreply@kindredcollective.co.uk>'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
 interface SendEmailOptions {
