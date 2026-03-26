@@ -46,8 +46,28 @@ function ResetPasswordContent() {
     })
 
     async function establishSession() {
+      // Verify token_hash directly from query params (sent by our forgot-password email).
+      // This uses the browser Supabase client which handles session/cookie
+      // management natively — no server-side callback needed.
+      const tokenHash = searchParams.get('token_hash')
+      const type = searchParams.get('type') as 'recovery' | 'email' | 'magiclink' | 'signup'
+      if (tokenHash && type) {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type,
+        })
+        if (!verifyError && !cancelled) {
+          setReady(true)
+          return
+        }
+        if (verifyError) {
+          console.error('[reset-password] verifyOtp failed:', verifyError.message)
+          if (!cancelled) setInvalid(true)
+          return
+        }
+      }
+
       // Handle PKCE code exchange: Supabase may redirect with ?code=xxx
-      // after verifying the recovery token at its /auth/v1/verify endpoint
       const code = searchParams.get('code')
       if (code) {
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
