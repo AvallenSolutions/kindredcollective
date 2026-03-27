@@ -50,7 +50,7 @@ export default async function AdminPage() {
     <div className="max-w-7xl mx-auto px-6 py-8">
       {/* Header */}
       <div className="flex items-center gap-3 mb-8">
-        <div className="w-12 h-12 bg-magenta text-white flex items-center justify-center border-2 border-black neo-shadow">
+        <div className="w-12 h-12 bg-magenta text-black flex items-center justify-center border-2 border-black neo-shadow">
           <Shield className="w-6 h-6" />
         </div>
         <div>
@@ -75,7 +75,7 @@ export default async function AdminPage() {
         </Link>
         <Link
           href="/admin/suppliers/new"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-magenta text-white border-2 border-black font-bold uppercase text-sm neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-magenta text-black border-2 border-black font-bold uppercase text-sm neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
         >
           <Plus className="w-4 h-4" /> Add Supplier
         </Link>
@@ -136,7 +136,7 @@ export default async function AdminPage() {
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-bold uppercase border-2 border-black ${
                         user.role === 'ADMIN'
-                          ? 'bg-magenta text-white'
+                          ? 'bg-magenta text-black'
                           : user.role === 'BRAND'
                           ? 'bg-yellow'
                           : 'bg-cyan'
