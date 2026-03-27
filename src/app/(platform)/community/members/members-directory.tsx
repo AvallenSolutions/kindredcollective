@@ -163,18 +163,18 @@ export function MembersDirectory({ members }: MembersDirectoryProps) {
         )}
       </section>
 
-      {/* Join CTA */}
+      {/* Community CTA */}
       <section className="bg-lime border-y-4 border-black py-12">
         <div className="section-container text-center">
           <h2 className="font-display text-2xl lg:text-3xl font-bold mb-4">
-            Join the Community
+            Join the Conversation
           </h2>
           <p className="text-gray-700 mb-6 max-w-xl mx-auto">
-            Create your profile and connect with drinks industry professionals across the UK.
+            Head over to the forum to share ideas, ask questions, and connect with fellow drinks industry professionals.
           </p>
-          <Link href="/signup">
+          <Link href="/community/forum">
             <Button size="lg" className="bg-black text-white hover:bg-gray-800">
-              Create Your Profile
+              Visit the Forum
             </Button>
           </Link>
         </div>
