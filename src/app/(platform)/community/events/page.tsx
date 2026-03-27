@@ -12,7 +12,7 @@ async function getEvents() {
 
     const { data: events, error } = await supabase
       .from('Event')
-      .select('id, title, slug, description, type, status, startDate, endDate, isVirtual, venueName, city, country, capacity, isFree, price, isFeatured')
+      .select('id, title, slug, description, type, status, startDate, endDate, isVirtual, venueName, city, country, capacity, isFree, price, isFeatured, imageUrl')
       .eq('status', 'PUBLISHED')
       .order('startDate', { ascending: true })
 

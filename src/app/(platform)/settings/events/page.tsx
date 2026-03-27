@@ -16,6 +16,8 @@ import {
   Globe,
   MapPin,
   ExternalLink,
+  Upload,
+  ImageIcon,
 } from 'lucide-react'
 import {
   Button,
@@ -74,6 +76,7 @@ interface FormData {
   city: string
   country: string
   virtualUrl: string
+  imageUrl: string
   capacity: string
   isFree: boolean
   price: string
@@ -123,6 +126,7 @@ const EMPTY_FORM: FormData = {
   city: '',
   country: '',
   virtualUrl: '',
+  imageUrl: '',
   capacity: '',
   isFree: true,
   price: '',
@@ -179,6 +183,7 @@ function EventFormModal({
       city: event.city || '',
       country: event.country || '',
       virtualUrl: event.virtualUrl || '',
+      imageUrl: event.imageUrl || '',
       capacity: event.capacity != null ? String(event.capacity) : '',
       isFree: event.isFree,
       price: event.price != null ? String(event.price) : '',
@@ -188,6 +193,36 @@ function EventFormModal({
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string>(event?.imageUrl || '')
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    const reader = new FileReader()
+    reader.onloadend = () => setImagePreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  function clearImage() {
+    setImageFile(null)
+    setImagePreview('')
+    setForm(f => ({ ...f, imageUrl: '' }))
+  }
+
+  async function uploadImage(): Promise<string | null> {
+    if (!imageFile) return null
+    const data = new FormData()
+    data.append('file', imageFile)
+    const res = await fetch('/api/upload?bucket=event-images&folder=events', {
+      method: 'POST',
+      body: data,
+    })
+    if (!res.ok) throw new Error('Failed to upload image')
+    const json = await res.json()
+    return json.url
+  }
 
   function field(key: keyof FormData) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -213,27 +248,34 @@ function EventFormModal({
     setSaving(true)
     setError(null)
 
-    const payload = {
-      title: form.title,
-      slug: form.slug,
-      description: form.description || null,
-      type: form.type,
-      status: form.status,
-      startDate: form.startDate ? new Date(form.startDate).toISOString() : null,
-      endDate: form.endDate ? new Date(form.endDate).toISOString() : null,
-      isVirtual: form.isVirtual,
-      venueName: form.isVirtual ? null : (form.venueName || null),
-      address: form.isVirtual ? null : (form.address || null),
-      city: form.isVirtual ? null : (form.city || null),
-      country: form.isVirtual ? null : (form.country || null),
-      virtualUrl: form.isVirtual ? (form.virtualUrl || null) : null,
-      capacity: form.capacity ? parseInt(form.capacity, 10) : null,
-      isFree: form.isFree,
-      price: form.isFree ? null : (form.price ? parseFloat(form.price) : null),
-      registrationUrl: form.registrationUrl || null,
-    }
-
     try {
+      // Upload image first if a new file was selected
+      let imageUrl: string | null = form.imageUrl || null
+      if (imageFile) {
+        imageUrl = await uploadImage()
+      }
+
+      const payload = {
+        title: form.title,
+        slug: form.slug,
+        description: form.description || null,
+        type: form.type,
+        status: form.status,
+        startDate: form.startDate ? new Date(form.startDate).toISOString() : null,
+        endDate: form.endDate ? new Date(form.endDate).toISOString() : null,
+        isVirtual: form.isVirtual,
+        venueName: form.isVirtual ? null : (form.venueName || null),
+        address: form.isVirtual ? null : (form.address || null),
+        city: form.isVirtual ? null : (form.city || null),
+        country: form.isVirtual ? null : (form.country || null),
+        virtualUrl: form.isVirtual ? (form.virtualUrl || null) : null,
+        imageUrl,
+        capacity: form.capacity ? parseInt(form.capacity, 10) : null,
+        isFree: form.isFree,
+        price: form.isFree ? null : (form.price ? parseFloat(form.price) : null),
+        registrationUrl: form.registrationUrl || null,
+      }
+
       const url = isEdit ? `/api/me/events/${event.id}` : '/api/me/events'
       const method = isEdit ? 'PATCH' : 'POST'
       const res = await fetch(url, {
@@ -304,6 +346,38 @@ function EventFormModal({
             <div className="space-y-1">
               <Label htmlFor="description">Description</Label>
               <Textarea id="description" value={form.description} onChange={field('description')} rows={4} placeholder="What's this event about?" />
+            </div>
+
+            {/* Event Image */}
+            <div className="space-y-2">
+              <Label>Event Image</Label>
+              {imagePreview ? (
+                <div className="relative">
+                  <div className="relative w-full h-40 border-2 border-black overflow-hidden bg-gray-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={imagePreview} alt="Event preview" className="w-full h-full object-cover" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="absolute top-2 right-2 bg-white border-2 border-black p-1 hover:bg-gray-100"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 cursor-pointer hover:border-black hover:bg-gray-50 transition-colors">
+                  <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                  <span className="text-sm text-gray-500 font-medium">Click to upload event image</span>
+                  <span className="text-xs text-gray-400 mt-1">Recommended: 1200 x 630px (JPG, PNG, WebP)</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </label>
+              )}
             </div>
           </div>
 

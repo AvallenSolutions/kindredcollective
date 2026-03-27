@@ -26,6 +26,7 @@ interface EventData {
   isFree: boolean
   price: number | null
   isFeatured: boolean
+  imageUrl: string | null
 }
 
 interface EventsDirectoryProps {

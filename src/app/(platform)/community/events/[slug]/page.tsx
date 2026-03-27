@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -188,6 +189,22 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
           </div>
         </div>
       </section>
+
+      {/* Event Image */}
+      {event.imageUrl && (
+        <section className="section-container pt-8">
+          <div className="relative w-full h-64 md:h-80 lg:h-96 border-3 border-black overflow-hidden">
+            <Image
+              src={event.imageUrl}
+              alt={event.title}
+              fill
+              className="object-cover"
+              sizes="(max-width: 1200px) 100vw, 1200px"
+              priority
+            />
+          </div>
+        </section>
+      )}
 
       {/* Main Content */}
       <section className="section-container py-8 lg:py-12">
