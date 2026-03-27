@@ -70,8 +70,6 @@ export function EventsDirectory({ events }: EventsDirectoryProps) {
     return grouped
   }, [filteredEvents])
 
-  const featuredEvents = filteredEvents.filter((e) => e.isFeatured)
-
   return (
     <>
       {/* Filters */}
@@ -177,20 +175,8 @@ export function EventsDirectory({ events }: EventsDirectoryProps) {
 
         {filteredEvents.length > 0 ? (
           <>
-            {featuredEvents.length > 0 && timeFilter !== 'past' && (
-              <div className="mb-12">
-                <h2 className="font-display text-xl font-bold mb-6">Featured Events</h2>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {featuredEvents.map((event) => (
-                    <EventCard key={event.id} event={event as any} variant="featured" />
-                  ))}
-                </div>
-              </div>
-            )}
-
             {Object.entries(eventsByMonth).map(([month, monthEvents]) => {
-              const nonFeatured = monthEvents.filter((e) => !e.isFeatured)
-              if (nonFeatured.length === 0) return null
+              if (monthEvents.length === 0) return null
 
               return (
                 <div key={month} className="mb-12">
@@ -199,7 +185,7 @@ export function EventsDirectory({ events }: EventsDirectoryProps) {
                     {month}
                   </h2>
                   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {nonFeatured.map((event) => (
+                    {monthEvents.map((event) => (
                       <EventCard key={event.id} event={event as any} />
                     ))}
                   </div>
