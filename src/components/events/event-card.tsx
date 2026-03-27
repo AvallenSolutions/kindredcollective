@@ -1,5 +1,6 @@
+import Image from 'next/image'
 import Link from 'next/link'
-import { Calendar, MapPin, Users, Video, Clock, ArrowRight } from 'lucide-react'
+import { Calendar, MapPin, Users, Video, Clock, ArrowRight, ImageIcon } from 'lucide-react'
 import { Badge, Card, CardContent } from '@/components/ui'
 import { cn, formatDate } from '@/lib/utils'
 import { EVENT_TYPE_LABELS } from '@/types/database'
@@ -24,6 +25,7 @@ interface EventCardProps {
     isFree: boolean
     price: number | null
     isFeatured: boolean
+    imageUrl?: string | null
     attendeeCount?: number
   }
   variant?: 'default' | 'featured'
@@ -64,6 +66,23 @@ export function EventCard({ event, variant = 'default' }: EventCardProps) {
               </Badge>
             </div>
           </div>
+
+          {/* Event Image */}
+          {event.imageUrl ? (
+            <div className="relative w-full h-40 border-b-3 border-black overflow-hidden">
+              <Image
+                src={event.imageUrl}
+                alt={event.title}
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              />
+            </div>
+          ) : (
+            <div className="relative w-full h-40 border-b-3 border-black overflow-hidden bg-gray-100 flex items-center justify-center">
+              <ImageIcon className="w-10 h-10 text-gray-300" />
+            </div>
+          )}
 
           {/* Content */}
           <div className="p-5">
