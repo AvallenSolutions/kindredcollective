@@ -338,6 +338,113 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   })
 }
 
+// ── Email Confirmation Email ────────────────────────────────────────
+
+export async function sendEmailConfirmationEmail(
+  to: string,
+  confirmUrl: string,
+  firstName?: string
+) {
+  return sendEmail({
+    to,
+    subject: 'Confirm your Kindred Collective email',
+    html: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirm your email</title>
+</head>
+<body style="margin:0;padding:0;background:#f3f4f6;font-family:'Inter',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;">
+
+          <!-- Header / Logo -->
+          <tr>
+            <td style="background:#00D9FF;border:3px solid #000;padding:24px 32px;">
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding-right:12px;">
+                    <div style="width:48px;height:48px;background:#1a6bff;border:3px solid #000;display:inline-flex;align-items:center;justify-content:center;font-family:'Space Grotesk',Arial,sans-serif;font-size:24px;font-weight:900;color:#fff;text-align:center;line-height:48px;">K</div>
+                  </td>
+                  <td>
+                    <span style="font-family:'Space Grotesk',Arial,sans-serif;font-size:22px;font-weight:900;letter-spacing:-0.5px;text-transform:uppercase;color:#000;">Kindred Collective</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="background:#fff;border:3px solid #000;border-top:0;padding:40px 32px;">
+
+              <!-- Tag line -->
+              <div style="display:inline-block;background:#fff;border:2px solid #000;padding:4px 12px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;">
+                Email Confirmation
+              </div>
+
+              <h1 style="font-family:'Space Grotesk',Arial,sans-serif;font-size:28px;font-weight:900;letter-spacing:-0.5px;text-transform:uppercase;margin:0 0 16px;color:#000;">
+                Welcome${firstName ? `, ${firstName}` : ''}!
+              </h1>
+
+              <p style="font-size:15px;line-height:1.6;color:#374151;margin:0 0 24px;">
+                Thanks for signing up to Kindred Collective. Please confirm your email address by clicking the button below to activate your account.
+              </p>
+
+              <!-- CTA button -->
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 32px;">
+                <tr>
+                  <td>
+                    <a href="${confirmUrl}"
+                       style="display:inline-block;background:#00D9FF;color:#000;font-family:'Space Grotesk',Arial,sans-serif;font-size:14px;font-weight:900;letter-spacing:1px;text-transform:uppercase;text-decoration:none;padding:14px 32px;border:3px solid #000;box-shadow:4px 4px 0 #000;">
+                      Confirm Email &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="font-size:13px;color:#6b7280;margin:0 0 8px;">
+                If you didn&rsquo;t create an account with Kindred Collective, you can safely ignore this email.
+              </p>
+
+              <p style="font-size:13px;color:#6b7280;margin:0 0 32px;">
+                Having trouble with the button? Copy and paste this link into your browser:
+              </p>
+              <p style="font-size:12px;margin:0 0 32px;">
+                <a href="${confirmUrl}" style="color:#1a6bff;word-break:break-all;">${confirmUrl}</a>
+              </p>
+
+              <!-- Divider -->
+              <hr style="border:none;border-top:2px solid #e5e7eb;margin:0 0 24px;" />
+
+              <!-- Footer -->
+              <p style="font-size:12px;color:#9ca3af;margin:0;">
+                &copy; ${new Date().getFullYear()} Kindred Collective &mdash; The home for independent drinks.<br/>
+                <a href="${APP_URL}" style="color:#9ca3af;">${APP_URL}</a>
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Bottom accent bar -->
+          <tr>
+            <td style="background:#000;height:4px;border:3px solid #000;border-top:0;"></td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `,
+  })
+}
+
 // ── Supplier Claim Verification Email ───────────────────────────────
 
 export async function sendClaimVerificationEmail(

@@ -2,13 +2,11 @@
 
 import { Suspense, useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { Loader2, Mail } from 'lucide-react'
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle } from '@/components/ui'
-import { createClient } from '@/lib/supabase/client'
 
 function SignupForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const inviteToken = searchParams.get('invite')
 
@@ -22,6 +20,7 @@ function SignupForm() {
   const [loading, setLoading] = useState(false)
   const [inviteValidating, setInviteValidating] = useState(true)
   const [inviteValid, setInviteValid] = useState(false)
+  const [signupComplete, setSignupComplete] = useState(false)
 
   // Validate invite token on mount
   useEffect(() => {
@@ -118,22 +117,8 @@ function SignupForm() {
         return
       }
 
-      // Sign in the user after successful signup
-      const supabase = createClient()
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      })
-
-      if (signInError) {
-        // User created but needs to verify email
-        router.push('/login?message=verify_email')
-        return
-      }
-
-      // Redirect to onboarding to complete profile setup
-      router.push('/onboarding')
-      router.refresh()
+      // Show the "check your email" confirmation screen
+      setSignupComplete(true)
     } catch {
       setError('An unexpected error occurred')
       setLoading(false)
@@ -143,6 +128,7 @@ function SignupForm() {
   const handleOAuthSignup = async (provider: 'google' | 'linkedin_oidc') => {
     if (!inviteToken) return
 
+    const { createClient } = await import('@/lib/supabase/client')
     const supabase = createClient()
 
     await supabase.auth.signInWithOAuth({
@@ -151,6 +137,40 @@ function SignupForm() {
         redirectTo: `${window.location.origin}/api/auth/callback?invite=${inviteToken}`,
       },
     })
+  }
+
+  // Show confirmation screen after successful signup
+  if (signupComplete) {
+    return (
+      <div className="w-full max-w-md px-4">
+        <Card className="shadow-brutal-lg">
+          <CardContent className="p-8 text-center">
+            <div className="w-16 h-16 bg-cyan border-3 border-black mx-auto mb-6 flex items-center justify-center">
+              <Mail className="w-8 h-8" />
+            </div>
+            <h2 className="font-display text-2xl font-bold mb-3">Check your email</h2>
+            <p className="text-gray-600 mb-2">
+              We&apos;ve sent a confirmation link to
+            </p>
+            <p className="font-bold text-black mb-6">{formData.email}</p>
+            <p className="text-sm text-gray-500 mb-6">
+              Click the link in the email to confirm your account and get started with Kindred Collective.
+            </p>
+            <div className="bg-amber-50 border-2 border-amber-300 p-4 mb-6">
+              <p className="text-sm text-amber-800">
+                Can&apos;t find the email? Check your spam folder.
+              </p>
+            </div>
+            <Link
+              href="/login"
+              className="block w-full text-center px-4 py-2 bg-cyan border-2 border-black font-bold uppercase text-sm neo-shadow hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
+            >
+              Go to Login
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (

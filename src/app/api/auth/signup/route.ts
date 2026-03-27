@@ -1,9 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendEmailConfirmationEmail } from '@/lib/email'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
-  const supabase = await createClient()
   const adminSupabase = createAdminClient()
   const body = await request.json()
 
@@ -64,15 +63,15 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // Create auth user - always as MEMBER
-  const { data: authData, error: authError } = await supabase.auth.signUp({
+  // Create auth user via admin API so Supabase does NOT send its default
+  // confirmation email — we send our own branded one via Resend instead.
+  const { data: authData, error: authError } = await adminSupabase.auth.admin.createUser({
     email,
     password,
-    options: {
-      data: {
-        first_name: firstName,
-        last_name: lastName,
-      },
+    email_confirm: false,
+    user_metadata: {
+      first_name: firstName,
+      last_name: lastName,
     },
   })
 
@@ -135,8 +134,6 @@ export async function POST(request: NextRequest) {
   }
 
   // Update invite usage count by counting actual users who used this token.
-  // This avoids race conditions from concurrent signups reading the same
-  // usedCount value and both incrementing to the same number.
   const { count: usageCount } = await adminSupabase
     .from('User')
     .select('id', { count: 'exact', head: true })
@@ -147,6 +144,34 @@ export async function POST(request: NextRequest) {
     .update({ usedCount: usageCount || 0 })
     .eq('id', invite.id)
 
+  // Generate a confirmation link token via admin API and send branded email
+  const origin = process.env.NEXT_PUBLIC_APP_URL ||
+    `${request.nextUrl.protocol}//${request.nextUrl.host}`
+
+  try {
+    const { data: linkData, error: linkError } = await adminSupabase.auth.admin.generateLink({
+      type: 'signup',
+      email,
+      password,
+    })
+
+    if (linkError) {
+      console.error('[Signup] generateLink error:', linkError)
+    } else {
+      const hashedToken = linkData?.properties?.hashed_token
+      if (hashedToken) {
+        const confirmUrl = `${origin}/api/auth/callback?token_hash=${encodeURIComponent(hashedToken)}&type=signup`
+        await sendEmailConfirmationEmail(email, confirmUrl, firstName)
+        console.log('[Signup] confirmation email sent to', email)
+      } else {
+        console.error('[Signup] generateLink returned no hashed_token')
+      }
+    }
+  } catch (err) {
+    // Non-fatal: user was created, they can request a new confirmation email
+    console.error('[Signup] Failed to send confirmation email:', err)
+  }
+
   return NextResponse.json({
     success: true,
     user: {
@@ -154,8 +179,6 @@ export async function POST(request: NextRequest) {
       email: authData.user.email,
       role: 'MEMBER',
     },
-    message: authData.user.email_confirmed_at
-      ? 'Account created successfully'
-      : 'Please check your email to verify your account',
+    message: 'Please check your email to confirm your account',
   })
 }
