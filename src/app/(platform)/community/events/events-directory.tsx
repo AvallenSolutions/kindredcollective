@@ -25,7 +25,6 @@ interface EventData {
   capacity: number | null
   isFree: boolean
   price: number | null
-  isFeatured: boolean
   imageUrl: string | null
 }
 

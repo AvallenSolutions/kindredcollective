@@ -24,11 +24,9 @@ interface EventCardProps {
     capacity: number | null
     isFree: boolean
     price: number | null
-    isFeatured: boolean
     imageUrl?: string | null
     attendeeCount?: number
   }
-  variant?: 'default' | 'featured'
 }
 
 const typeColors: Record<EventType, string> = {
@@ -42,13 +40,12 @@ const typeColors: Record<EventType, string> = {
   OTHER: 'bg-gray-400',
 }
 
-export function EventCard({ event, variant = 'default' }: EventCardProps) {
+export function EventCard({ event }: EventCardProps) {
   const typeColor = typeColors[event.type] || 'bg-gray-400'
-  const isFeatured = variant === 'featured' || event.isFeatured
 
   return (
     <Link href={`/community/events/${event.slug}`}>
-      <Card className={cn('h-full group cursor-pointer', isFeatured && 'border-4 border-cyan')}>
+      <Card className="h-full group cursor-pointer">
         <CardContent className="p-0">
           {/* Date Banner */}
           <div className={cn('p-4 border-b-3 border-black', typeColor)}>
@@ -86,13 +83,6 @@ export function EventCard({ event, variant = 'default' }: EventCardProps) {
 
           {/* Content */}
           <div className="p-5">
-            {/* Featured Badge */}
-            {isFeatured && (
-              <Badge variant="coral" className="mb-3">
-                Featured
-              </Badge>
-            )}
-
             {/* Title */}
             <h3 className="font-display text-lg font-bold mb-2 group-hover:text-cyan transition-colors">
               {event.title}
