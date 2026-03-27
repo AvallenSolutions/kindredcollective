@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { PlusCircle, Star, MapPin, Video, ArrowDown, Mail, Calendar, PawPrint, MessageSquare } from 'lucide-react'
+import { PlusCircle, MapPin, Video, ArrowDown, Mail, Calendar, PawPrint, MessageSquare } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { DRINK_CATEGORY_LABELS } from '@/types/database'
 import type { DrinkCategory } from '@prisma/client'
@@ -111,27 +111,16 @@ async function getCommunityData() {
     .order('startDate', { ascending: true })
     .limit(3)
 
-  // Fetch a featured event
-  const { data: featuredEvents } = await supabase
-    .from('Event')
-    .select('id, title, slug, description, startDate, city, country, isVirtual, isFeatured')
-    .eq('status', 'PUBLISHED')
-    .eq('isFeatured', true)
-    .gte('startDate', new Date().toISOString())
-    .order('startDate', { ascending: true })
-    .limit(1)
-
   return {
     brands: brands || [],
     members: memberData,
     events: events || [],
-    featuredEvent: featuredEvents?.[0] || null,
     pets: (pets || []).filter(p => !!p.petPhotoUrl),
   }
 }
 
 export default async function CommunityPage() {
-  const { brands, members, events, featuredEvent, pets } = await getCommunityData()
+  const { brands, members, events, pets } = await getCommunityData()
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -167,55 +156,6 @@ export default async function CommunityPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-12 space-y-20">
-
-        {/* FEATURED EVENT */}
-        {featuredEvent && (
-          <section className="relative">
-            <div className="absolute -top-6 -left-2 bg-black text-cyan px-3 py-1 font-bold font-display uppercase text-lg border-2 border-black transform -rotate-2 z-20">
-              Featured Event
-            </div>
-            <div className="bg-coral border-2 border-black p-0 neo-shadow-lg grid grid-cols-1 lg:grid-cols-2 overflow-hidden group">
-              <div className="p-8 md:p-12 flex flex-col justify-center relative z-10">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="bg-black text-white px-2 py-1 text-xs font-bold uppercase border border-black">
-                    {new Date(featuredEvent.startDate).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })}
-                  </span>
-                  <span className="font-bold uppercase tracking-wide">
-                    {featuredEvent.isVirtual ? 'Online' : [featuredEvent.city, featuredEvent.country].filter(Boolean).join(', ')}
-                  </span>
-                </div>
-                <h2 className="font-display text-3xl sm:text-5xl md:text-6xl font-bold uppercase leading-none mb-6 group-hover:translate-x-2 transition-transform break-words">
-                  {featuredEvent.title}
-                </h2>
-                <p className="text-base sm:text-lg font-medium mb-8 max-w-md border-l-4 border-black pl-4">
-                  {featuredEvent.description}
-                </p>
-                <div className="flex flex-wrap gap-4">
-                  <Link
-                    href={`/community/events/${featuredEvent.slug}`}
-                    className="px-8 py-3 bg-black text-cyan border-2 border-black font-bold uppercase hover:bg-white hover:text-black transition-colors neo-shadow neo-shadow-hover"
-                  >
-                    Get Tickets &rarr;
-                  </Link>
-                  <Link
-                    href={`/community/events/${featuredEvent.slug}`}
-                    className="px-8 py-3 bg-transparent text-black border-2 border-black font-bold uppercase hover:bg-white transition-colors"
-                  >
-                    View Details
-                  </Link>
-                </div>
-              </div>
-              <div className="relative h-64 lg:h-auto border-t-2 lg:border-t-0 lg:border-l-2 border-black bg-coral/50">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <Star className="w-24 h-24 text-black/10" />
-                </div>
-                <div className="absolute top-0 right-0 w-32 h-32 bg-cyan border-l-2 border-b-2 border-black flex items-center justify-center">
-                  <Star className="w-12 h-12 animate-spin" style={{ animationDuration: '8s' }} />
-                </div>
-              </div>
-            </div>
-          </section>
-        )}
 
         {/* BRAND PROFILES SHOWCASE */}
         <section id="brands">
