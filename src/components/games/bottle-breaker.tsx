@@ -11,6 +11,40 @@ const PURPLE = '#A855F7'
 const BLACK = '#000000'
 const WHITE = '#FFFFFF'
 
+// ─── Layout patterns ────────────────────────────────────────────────────────
+type LayoutPattern = 'full' | 'checkerboard' | 'diamond' | 'pyramid' | 'columns' | 'zigzag' | 'border' | 'scatter' | 'stripes' | 'wings'
+
+const PATTERNS: LayoutPattern[] = [
+  'full', 'checkerboard', 'diamond', 'pyramid', 'columns',
+  'zigzag', 'border', 'scatter', 'stripes', 'wings',
+]
+
+function shouldPlace(pattern: LayoutPattern, r: number, c: number, rows: number, cols: number): boolean {
+  switch (pattern) {
+    case 'full': return true
+    case 'checkerboard': return (r + c) % 2 === 0
+    case 'diamond': {
+      const cr = (rows - 1) / 2, cc = (cols - 1) / 2
+      return (Math.abs(r - cr) / Math.max(rows, 1) + Math.abs(c - cc) / Math.max(cols, 1)) <= 0.5
+    }
+    case 'pyramid': {
+      const skip = Math.floor((r * cols) / (2 * rows))
+      return c >= skip && c < cols - skip
+    }
+    case 'columns': return c % 3 !== 1
+    case 'zigzag': return r % 2 === 0 ? c < cols - 1 : c > 0
+    case 'border': return r === 0 || r === rows - 1 || c === 0 || c === cols - 1
+    case 'scatter': return ((r * 7 + c * 13 + r * c * 3) % 10) < 7
+    case 'stripes': return r % 2 === 0
+    case 'wings': {
+      const mid = Math.floor(cols / 2)
+      const gap = Math.max(0, 2 - r)
+      return c < mid - gap || c > mid + gap
+    }
+    default: return true
+  }
+}
+
 // ─── Level generation (99 levels) ────────────────────────────────────────────
 interface LevelDef {
   name: string
@@ -19,6 +53,7 @@ interface LevelDef {
   ballSpeed: number
   maxHits: number
   paddleWidth: number
+  pattern: LayoutPattern
 }
 
 const NAMED_LEVELS: Record<number, string> = {
@@ -40,6 +75,7 @@ function generateLevel(n: number): LevelDef {
     ballSpeed: 4 + t * 4,
     maxHits: n >= 4 ? Math.min(1 + Math.floor(t * 3), 3) : 1,
     paddleWidth: Math.max(100 - Math.floor(t * 40), 60),
+    pattern: PATTERNS[(n - 1) % PATTERNS.length],
   }
 }
 
@@ -103,9 +139,12 @@ async function submitScore(name: string, score: number, level: number): Promise<
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+type BrickShape = 'bottle' | 'can' | 'shot' | 'keg'
+
 interface Brick {
   x: number; y: number; w: number; h: number
-  hits: number; colour: string; alive: boolean
+  hits: number; maxHits: number; colour: string; alive: boolean
+  shape: BrickShape; breakable: boolean
 }
 interface Ball {
   x: number; y: number; dx: number; dy: number; r: number
@@ -123,24 +162,322 @@ interface ActiveEffect {
   remaining: number
 }
 
+const STEEL = '#6B7280'
+const DARK_STEEL = '#4B5563'
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-function buildBricks(level: LevelDef, canvasW: number): Brick[] {
+function buildBricks(level: LevelDef, canvasW: number, levelNum: number): Brick[] {
   const bricks: Brick[] = []
-  const padding = 6, topOffset = 50, brickH = 22
+  const padding = 6, topOffset = 50, brickH = 28, shotH = 14
   const brickW = (canvasW - padding * (level.cols + 1)) / level.cols
+
+  // Determine which brick types appear at this level
+  const hasKegs = levelNum >= 6        // Unbreakable kegs from level 6
+  const hasShots = levelNum >= 3       // Thin shot glasses from level 3
+  const hasMultiHit = level.maxHits > 1
+
   for (let r = 0; r < level.rows; r++) {
     const rowColour = BOTTLE_COLOURS[r % BOTTLE_COLOURS.length]
     for (let c = 0; c < level.cols; c++) {
+      if (!shouldPlace(level.pattern, r, c, level.rows, level.cols)) continue
+
+      // Decide brick type based on position and level
+      const hash = (r * 7 + c * 13 + levelNum * 3) % 20
+      let shape: BrickShape = (r + c) % 2 === 0 ? 'bottle' : 'can'
+      let breakable = true
+      let hits = 1
+      let h = brickH
+
+      // Kegs: placed sparingly, usually in middle rows
+      if (hasKegs && r > 0 && r < level.rows - 1 && hash === 0) {
+        shape = 'keg'
+        breakable = false
+        hits = 999
+      }
+      // Shot glasses: thin bricks, appear in specific positions
+      else if (hasShots && hash >= 17) {
+        shape = 'shot'
+        h = shotH
+      }
+      // Multi-hit: top rows get extra durability
+      else if (hasMultiHit && r < 2) {
+        hits = level.maxHits
+      }
+
+      const yOffset = shape === 'shot' ? (brickH - shotH) / 2 : 0 // Centre thin bricks vertically
+
       bricks.push({
         x: padding + c * (brickW + padding),
-        y: topOffset + r * (brickH + padding),
-        w: brickW, h: brickH,
-        hits: r < 2 && level.maxHits > 1 ? level.maxHits : 1,
-        colour: rowColour, alive: true,
+        y: topOffset + r * (brickH + padding) + yOffset,
+        w: brickW, h,
+        hits, maxHits: hits, colour: breakable ? rowColour : STEEL,
+        alive: true, shape, breakable,
       })
     }
   }
   return bricks
+}
+
+// ─── Bottle & can drawing ───────────────────────────────────────────────────
+function drawBottleShape(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, colour: string, isMultiHit: boolean) {
+  const bodyH = h * 0.55
+  const bodyY = y + h - bodyH
+  const neckW = w * 0.32
+  const neckX = x + (w - neckW) / 2
+  const neckH = h * 0.35
+  const neckY = y + h * 0.1
+  const capW = neckW + 6
+  const capH = h * 0.1
+  const capX = x + (w - capW) / 2
+
+  // Shadow
+  ctx.fillStyle = BLACK
+  ctx.beginPath()
+  ctx.rect(capX + 3, y + 3, capW, capH)
+  ctx.rect(neckX + 3, neckY + 3, neckW, neckH)
+  ctx.rect(x + 3, bodyY + 3, w, bodyH)
+  ctx.fill()
+
+  // Fill body
+  const fill = isMultiHit ? WHITE : colour
+  ctx.fillStyle = fill
+  ctx.fillRect(x, bodyY, w, bodyH)
+  ctx.fillRect(neckX, neckY, neckW, neckH)
+
+  // Cap
+  ctx.fillStyle = BLACK
+  ctx.fillRect(capX, y, capW, capH)
+
+  // Outline - bottle silhouette
+  ctx.strokeStyle = BLACK
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(capX, y + capH)
+  ctx.lineTo(capX, y)
+  ctx.lineTo(capX + capW, y)
+  ctx.lineTo(capX + capW, y + capH)
+  ctx.lineTo(neckX + neckW, neckY)
+  ctx.lineTo(neckX + neckW, bodyY)
+  ctx.lineTo(x + w, bodyY)
+  ctx.lineTo(x + w, y + h)
+  ctx.lineTo(x, y + h)
+  ctx.lineTo(x, bodyY)
+  ctx.lineTo(neckX, bodyY)
+  ctx.lineTo(neckX, neckY)
+  ctx.lineTo(capX, y + capH)
+  ctx.stroke()
+
+  // Highlight stripe
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'
+  ctx.fillRect(x + 3, bodyY + 3, 3, bodyH - 6)
+
+  // Multi-hit indicator
+  if (isMultiHit) {
+    ctx.strokeStyle = colour
+    ctx.lineWidth = 2
+    ctx.setLineDash([4, 3])
+    ctx.strokeRect(x + 3, bodyY + 3, w - 6, bodyH - 6)
+    ctx.setLineDash([])
+  }
+}
+
+function drawCanShape(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, colour: string, isMultiHit: boolean) {
+  const rimH = 3
+  const bodyX = x + 2
+  const bodyW = w - 4
+  const tabW = 8
+  const tabH = 4
+  const tabX = x + w - tabW - 6
+  const tabY = y + 1
+
+  // Shadow
+  ctx.fillStyle = BLACK
+  ctx.beginPath()
+  ctx.roundRect(x + 3, y + 3, w, h, 3)
+  ctx.fill()
+
+  // Main body
+  const fill = isMultiHit ? WHITE : colour
+  ctx.fillStyle = fill
+  ctx.beginPath()
+  ctx.roundRect(x, y, w, h, 3)
+  ctx.fill()
+
+  // Outline
+  ctx.strokeStyle = BLACK
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.roundRect(x, y, w, h, 3)
+  ctx.stroke()
+
+  // Top rim
+  ctx.fillStyle = 'rgba(0,0,0,0.15)'
+  ctx.fillRect(bodyX, y, bodyW, rimH)
+  ctx.strokeStyle = BLACK
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  ctx.moveTo(x, y + rimH)
+  ctx.lineTo(x + w, y + rimH)
+  ctx.stroke()
+
+  // Bottom rim
+  ctx.fillRect(bodyX, y + h - rimH, bodyW, rimH)
+  ctx.beginPath()
+  ctx.moveTo(x, y + h - rimH)
+  ctx.lineTo(x + w, y + h - rimH)
+  ctx.stroke()
+
+  // Pull tab
+  ctx.strokeStyle = BLACK
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  ctx.roundRect(tabX, tabY, tabW, tabH, 1)
+  ctx.stroke()
+
+  // Highlight stripe
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'
+  ctx.fillRect(x + 4, y + rimH + 2, 3, h - rimH * 2 - 4)
+
+  // Multi-hit indicator
+  if (isMultiHit) {
+    ctx.strokeStyle = colour
+    ctx.lineWidth = 2
+    ctx.setLineDash([4, 3])
+    ctx.strokeRect(x + 4, y + 4, w - 8, h - 8)
+    ctx.setLineDash([])
+  }
+}
+
+function drawShotShape(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, colour: string) {
+  // Shot glass: small, tapered, thin
+  const topW = w * 0.85
+  const botW = w * 0.55
+  const topX = x + (w - topW) / 2
+  const botX = x + (w - botW) / 2
+
+  // Shadow
+  ctx.fillStyle = BLACK
+  ctx.beginPath()
+  ctx.moveTo(topX + 3, y + 3)
+  ctx.lineTo(topX + topW + 3, y + 3)
+  ctx.lineTo(botX + botW + 3, y + h + 3)
+  ctx.lineTo(botX + 3, y + h + 3)
+  ctx.closePath()
+  ctx.fill()
+
+  // Body
+  ctx.fillStyle = colour
+  ctx.globalAlpha = 0.7
+  ctx.beginPath()
+  ctx.moveTo(topX, y)
+  ctx.lineTo(topX + topW, y)
+  ctx.lineTo(botX + botW, y + h)
+  ctx.lineTo(botX, y + h)
+  ctx.closePath()
+  ctx.fill()
+  ctx.globalAlpha = 1
+
+  // Outline
+  ctx.strokeStyle = BLACK
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(topX, y)
+  ctx.lineTo(topX + topW, y)
+  ctx.lineTo(botX + botW, y + h)
+  ctx.lineTo(botX, y + h)
+  ctx.closePath()
+  ctx.stroke()
+
+  // Liquid line
+  ctx.fillStyle = colour
+  ctx.globalAlpha = 0.5
+  const liqY = y + h * 0.35
+  const liqLX = topX + (botX - topX) * 0.35
+  const liqRX = topX + topW + (botX + botW - topX - topW) * 0.35
+  ctx.fillRect(liqLX, liqY, liqRX - liqLX, h * 0.6)
+  ctx.globalAlpha = 1
+}
+
+function drawKegShape(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+  // Keg/barrel: bulging sides, steel bands, indestructible look
+  const bulge = 3
+
+  // Shadow
+  ctx.fillStyle = BLACK
+  ctx.beginPath()
+  ctx.moveTo(x + 3, y + 3)
+  ctx.lineTo(x + w + 3, y + 3)
+  ctx.quadraticCurveTo(x + w + bulge + 3, y + h / 2 + 3, x + w + 3, y + h + 3)
+  ctx.lineTo(x + 3, y + h + 3)
+  ctx.quadraticCurveTo(x - bulge + 3, y + h / 2 + 3, x + 3, y + 3)
+  ctx.fill()
+
+  // Main body
+  ctx.fillStyle = DARK_STEEL
+  ctx.beginPath()
+  ctx.moveTo(x, y)
+  ctx.lineTo(x + w, y)
+  ctx.quadraticCurveTo(x + w + bulge, y + h / 2, x + w, y + h)
+  ctx.lineTo(x, y + h)
+  ctx.quadraticCurveTo(x - bulge, y + h / 2, x, y)
+  ctx.fill()
+
+  // Outline
+  ctx.strokeStyle = BLACK
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(x, y)
+  ctx.lineTo(x + w, y)
+  ctx.quadraticCurveTo(x + w + bulge, y + h / 2, x + w, y + h)
+  ctx.lineTo(x, y + h)
+  ctx.quadraticCurveTo(x - bulge, y + h / 2, x, y)
+  ctx.stroke()
+
+  // Steel bands
+  ctx.strokeStyle = STEEL
+  ctx.lineWidth = 2
+  const bandY1 = y + h * 0.25
+  const bandY2 = y + h * 0.75
+  for (const bandY of [bandY1, bandY2]) {
+    const frac = (bandY - y) / h
+    const extra = bulge * Math.sin(frac * Math.PI)
+    ctx.beginPath()
+    ctx.moveTo(x - extra * 0.5, bandY)
+    ctx.lineTo(x + w + extra * 0.5, bandY)
+    ctx.stroke()
+  }
+
+  // Metallic highlight
+  ctx.fillStyle = 'rgba(255,255,255,0.15)'
+  ctx.fillRect(x + 4, y + 2, 3, h - 4)
+
+  // "X" mark to indicate indestructible
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)'
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  ctx.moveTo(x + w / 2 - 4, y + h / 2 - 4)
+  ctx.lineTo(x + w / 2 + 4, y + h / 2 + 4)
+  ctx.moveTo(x + w / 2 + 4, y + h / 2 - 4)
+  ctx.lineTo(x + w / 2 - 4, y + h / 2 + 4)
+  ctx.stroke()
+}
+
+function drawHitCounter(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, hits: number, maxHits: number, colour: string) {
+  // Show remaining hits as small dots at the bottom of the brick
+  if (maxHits <= 1) return
+  const dotR = 2.5
+  const totalW = hits * (dotR * 2 + 2) - 2
+  const startX = x + (w - totalW) / 2
+  const dotY = y + h - dotR - 2
+  for (let i = 0; i < hits; i++) {
+    ctx.fillStyle = i < hits ? colour : 'rgba(0,0,0,0.2)'
+    ctx.beginPath()
+    ctx.arc(startX + i * (dotR * 2 + 2) + dotR, dotY, dotR, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.strokeStyle = BLACK
+    ctx.lineWidth = 1
+    ctx.stroke()
+  }
 }
 
 function makeBall(canvasW: number, paddleY: number, speed: number): Ball {
@@ -312,7 +649,7 @@ export default function BottleBreaker() {
     const s = stateRef.current
     const lv = generateLevel(levelIdx + 1)
     s.level = levelIdx
-    s.bricks = buildBricks(lv, s.canvasW)
+    s.bricks = buildBricks(lv, s.canvasW, levelIdx + 1)
     s.basePaddleW = lv.paddleWidth
     s.baseBallSpeed = lv.ballSpeed
     s.paddle.w = lv.paddleWidth
@@ -460,6 +797,26 @@ export default function BottleBreaker() {
             ball.y + ball.r > brick.y &&
             ball.y - ball.r < brick.y + brick.h
           ) {
+            // Unbreakable kegs: always bounce, never destroy (unless fireball)
+            if (!brick.breakable && !isFireball) {
+              const oL = (ball.x + ball.r) - brick.x
+              const oR = (brick.x + brick.w) - (ball.x - ball.r)
+              const oT = (ball.y + ball.r) - brick.y
+              const oB = (brick.y + brick.h) - (ball.y - ball.r)
+              if (Math.min(oL, oR) < Math.min(oT, oB)) ball.dx = -ball.dx
+              else ball.dy = -ball.dy
+              // Spark particles on keg hit
+              for (let sp = 0; sp < 3; sp++) {
+                const angle = Math.random() * Math.PI * 2
+                s.particles.push({
+                  x: ball.x, y: ball.y,
+                  dx: Math.cos(angle) * 2, dy: Math.sin(angle) * 2,
+                  life: 15, maxLife: 15, colour: WHITE, size: 2,
+                })
+              }
+              break
+            }
+
             // Fireball: smash through without bouncing
             if (!isFireball) {
               const oL = (ball.x + ball.r) - brick.x
@@ -471,10 +828,10 @@ export default function BottleBreaker() {
             }
 
             if (isFireball) {
-              // Fireball destroys in one hit
+              // Fireball destroys in one hit (even kegs!)
               brick.alive = false
               brick.hits = 0
-              s.score += 10
+              s.score += brick.breakable ? 10 : 25
               spawnParticles(s, brick)
               maybeDropPowerUp(s, brick)
               // Don't break — keep smashing through
@@ -482,7 +839,7 @@ export default function BottleBreaker() {
               brick.hits--
               if (brick.hits <= 0) {
                 brick.alive = false
-                s.score += 10
+                s.score += brick.shape === 'shot' ? 15 : 10
                 spawnParticles(s, brick)
                 maybeDropPowerUp(s, brick)
               } else {
@@ -534,7 +891,7 @@ export default function BottleBreaker() {
       }
 
       // ── Level clear ──
-      if (s.bricks.every(b => !b.alive)) {
+      if (s.bricks.filter(b => b.breakable).every(b => !b.alive)) {
         if (s.level + 1 < TOTAL_LEVELS) {
           advanceToNextLevel(s.level)
         } else {
@@ -553,23 +910,25 @@ export default function BottleBreaker() {
     }
     ctx.globalAlpha = 1
 
-    // Bricks
+    // Bricks (bottles, cans, shots, kegs)
     for (const brick of s.bricks) {
       if (!brick.alive) continue
-      const isMultiHit = brick.hits > 1
-      ctx.fillStyle = BLACK
-      ctx.fillRect(brick.x + 3, brick.y + 3, brick.w, brick.h)
-      ctx.fillStyle = isMultiHit ? WHITE : brick.colour
-      ctx.fillRect(brick.x, brick.y, brick.w, brick.h)
-      ctx.strokeStyle = BLACK
-      ctx.lineWidth = 2
-      ctx.strokeRect(brick.x, brick.y, brick.w, brick.h)
-      if (isMultiHit) {
-        ctx.strokeStyle = brick.colour
-        ctx.lineWidth = 2
-        ctx.setLineDash([4, 3])
-        ctx.strokeRect(brick.x + 4, brick.y + 4, brick.w - 8, brick.h - 8)
-        ctx.setLineDash([])
+      const isMultiHit = brick.breakable && brick.hits > 1
+      switch (brick.shape) {
+        case 'bottle':
+          drawBottleShape(ctx, brick.x, brick.y, brick.w, brick.h, brick.colour, isMultiHit)
+          if (isMultiHit) drawHitCounter(ctx, brick.x, brick.y, brick.w, brick.h, brick.hits, brick.maxHits, brick.colour)
+          break
+        case 'can':
+          drawCanShape(ctx, brick.x, brick.y, brick.w, brick.h, brick.colour, isMultiHit)
+          if (isMultiHit) drawHitCounter(ctx, brick.x, brick.y, brick.w, brick.h, brick.hits, brick.maxHits, brick.colour)
+          break
+        case 'shot':
+          drawShotShape(ctx, brick.x, brick.y, brick.w, brick.h, brick.colour)
+          break
+        case 'keg':
+          drawKegShape(ctx, brick.x, brick.y, brick.w, brick.h)
+          break
       }
     }
 
@@ -798,7 +1157,7 @@ export default function BottleBreaker() {
               Bottle Breaker
             </h3>
             <p className="text-gray-300 text-sm text-center max-w-xs">
-              Smash through the bottles. 99 levels. 3 lives. Catch power-ups for special abilities!
+              Smash bottles, cans &amp; shot glasses. Watch out for unbreakable kegs! 99 levels. 3 lives. Catch power-ups!
             </p>
             <div className="flex flex-wrap justify-center gap-2 max-w-xs">
               {POWERUP_TYPES.map(type => {
