@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft, User, Wine, Building2, Shield, CreditCard, Trash2,
+  ArrowLeft, User, Wine, Building2, Shield, Trash2,
   CheckCircle, AlertCircle, Upload, Loader2, PawPrint,
 } from 'lucide-react'
 import { Button, Input, Label, Card, CardContent, Badge } from '@/components/ui'
@@ -12,7 +12,7 @@ import { DRINK_CATEGORY_LABELS } from '@/types/database'
 import type { DrinkCategory } from '@prisma/client'
 import { cn } from '@/lib/utils'
 
-type SettingsTab = 'profile' | 'organisations' | 'privacy' | 'billing'
+type SettingsTab = 'profile' | 'organisations' | 'privacy'
 
 interface UserOrganisation {
   organisationId: string
@@ -182,7 +182,6 @@ export function SettingsContent({ user, member, organisations }: SettingsContent
     { id: 'profile' as const, label: 'Personal Profile', icon: User },
     { id: 'organisations' as const, label: 'Organisations', icon: Building2 },
     { id: 'privacy' as const, label: 'Privacy', icon: Shield },
-    { id: 'billing' as const, label: 'Billing', icon: CreditCard },
   ]
 
   return (
@@ -619,28 +618,6 @@ export function SettingsContent({ user, member, organisations }: SettingsContent
               </Card>
             )}
 
-            {/* Billing Tab */}
-            {activeTab === 'billing' && (
-              <Card>
-                <CardContent className="p-6">
-                  <h2 className="font-display text-xl font-bold mb-6">
-                    Billing & Subscription
-                  </h2>
-                  <div className="p-6 bg-lime/20 border-3 border-lime mb-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-display font-bold">Current Plan</span>
-                      <Badge variant="lime">Free</Badge>
-                    </div>
-                    <p className="text-sm text-gray-600">
-                      You&apos;re on the free plan. Upgrade to access premium features.
-                    </p>
-                  </div>
-                  <Button size="lg" className="w-full">
-                    Upgrade to Pro
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
           </div>
         </div>
       </section>
