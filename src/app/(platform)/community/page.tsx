@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { PlusCircle, UserPlus, Star, MapPin, Video, ArrowDown, Mail, Calendar, PawPrint, MessageSquare } from 'lucide-react'
+import { PlusCircle, Star, MapPin, Video, ArrowDown, Mail, Calendar, PawPrint, MessageSquare } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { DRINK_CATEGORY_LABELS } from '@/types/database'
 import type { DrinkCategory } from '@prisma/client'
@@ -159,13 +159,6 @@ export default async function CommunityPage() {
               >
                 <PlusCircle className="w-5 h-5" />
                 List Brand
-              </Link>
-              <Link
-                href="/signup"
-                className="px-4 sm:px-6 py-3 bg-cyan border-2 border-black font-bold uppercase text-sm sm:text-base hover:bg-black hover:text-cyan transition-colors neo-shadow flex items-center gap-2"
-              >
-                <UserPlus className="w-5 h-5" />
-                Join Member
               </Link>
             </div>
           </div>
