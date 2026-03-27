@@ -138,7 +138,7 @@ export default async function EventsPage() {
               <div className="absolute -top-6 -left-2 bg-black text-cyan px-3 py-1 font-bold font-display uppercase text-lg border-2 border-black transform -rotate-2 z-20">
                 Featured Event
               </div>
-              <div className="bg-coral border-2 border-black p-0 neo-shadow-lg grid grid-cols-1 lg:grid-cols-2 overflow-hidden group">
+              <Link href={`/community/events/${featuredEvent.slug}`} className="bg-coral border-2 border-black p-0 neo-shadow-lg grid grid-cols-1 lg:grid-cols-2 overflow-hidden group">
                 <div className="p-8 md:p-12 flex flex-col justify-center relative z-10">
                   <div className="flex items-center gap-2 mb-4">
                     <span className="bg-black text-white px-2 py-1 text-xs font-bold uppercase border border-black">{dateLabel}</span>
@@ -153,13 +153,12 @@ export default async function EventsPage() {
                     </p>
                   )}
                   <div className="flex flex-wrap gap-4">
-                    <Link
-                      href={`/community/events/${featuredEvent.slug}`}
+                    <span
                       className="px-8 py-3 bg-black text-cyan border-2 border-black font-bold uppercase hover:bg-white hover:text-black transition-colors neo-shadow neo-shadow-hover flex items-center gap-2"
                     >
                       <Ticket className="w-5 h-5" />
                       View Event
-                    </Link>
+                    </span>
                   </div>
                 </div>
                 <div className="relative h-64 lg:h-auto border-t-2 lg:border-t-0 lg:border-l-2 border-black">
@@ -178,7 +177,7 @@ export default async function EventsPage() {
                     <Star className="w-12 h-12 animate-spin" style={{ animationDuration: '8s' }} />
                   </div>
                 </div>
-              </div>
+              </Link>
             </section>
           )
         })()}
@@ -226,8 +225,9 @@ export default async function EventsPage() {
                 const typeLabel = eventTypeLabels[event.type as EventType] || 'Event'
                 const hoverColor = eventTypeHoverColors[event.type as EventType] || 'group-hover:text-cyan'
                 return (
-                  <div
+                  <Link
                     key={event.id}
+                    href={`/community/events/${event.slug}`}
                     className="group bg-white border-2 border-black p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-6 hover:bg-gray-50 transition-colors neo-shadow-hover cursor-pointer"
                   >
                     <div className="shrink-0 flex flex-row md:flex-col items-center border-2 border-black">
@@ -267,14 +267,13 @@ export default async function EventsPage() {
                           <Users className="w-3 h-3" /> {event.attendees}
                         </span>
                       </div>
-                      <Link
-                        href={`/community/events/${event.slug}`}
+                      <span
                         className="px-4 py-2 bg-cyan text-black border-2 border-black font-bold uppercase text-xs hover:bg-black hover:text-cyan transition-colors whitespace-nowrap"
                       >
                         RSVP
-                      </Link>
+                      </span>
                     </div>
-                  </div>
+                  </Link>
                 )
               })}
             </div>
@@ -312,7 +311,7 @@ export default async function EventsPage() {
                 const dateLabel = date.toLocaleString('en-GB', { month: 'short', year: 'numeric' })
                 const location = event.city || event.country || 'TBC'
                 return (
-                  <div key={event.id} className="group bg-white border-2 border-black neo-shadow hover:neo-shadow-lg transition-all">
+                  <Link key={event.id} href={`/community/events/${event.slug}`} className="group bg-white border-2 border-black neo-shadow hover:neo-shadow-lg transition-all">
                     <div className="h-40 overflow-hidden border-b-2 border-black relative">
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <span className="px-4 py-2 bg-white text-black font-bold uppercase text-sm border-2 border-black">
@@ -339,7 +338,7 @@ export default async function EventsPage() {
                         {event.attendees} attendees
                       </p>
                     </div>
-                  </div>
+                  </Link>
                 )
               })}
             </div>
