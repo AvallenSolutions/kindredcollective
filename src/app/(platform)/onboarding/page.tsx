@@ -59,7 +59,6 @@ export default function OnboardingPage() {
 
   // Profile form data
   const [profileData, setProfileData] = useState({
-    company: '',
     jobTitle: '',
     bio: '',
     linkedinUrl: '',
@@ -191,7 +190,6 @@ export default function OnboardingPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          company: profileData.company || null,
           jobTitle: profileData.jobTitle || null,
           bio: profileData.bio || null,
           linkedinUrl: profileData.linkedinUrl || null,
@@ -411,18 +409,6 @@ export default function OnboardingPage() {
                   {error}
                 </div>
               )}
-
-              <div className="space-y-2">
-                <Label htmlFor="company" className="uppercase tracking-wide text-xs font-bold">
-                  Company
-                </Label>
-                <Input
-                  id="company"
-                  placeholder="Your company name"
-                  value={profileData.company}
-                  onChange={(e) => setProfileData({ ...profileData, company: e.target.value })}
-                />
-              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="jobTitle" className="uppercase tracking-wide text-xs font-bold">
