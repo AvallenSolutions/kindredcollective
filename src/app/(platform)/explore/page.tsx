@@ -78,19 +78,39 @@ export default function ExplorePage() {
 
         // Randomise first page results and ensure Alkatera appears
         if (!append && pg === 1) {
+          // If Alkatera isn't in the results, fetch and inject it
+          const hasAlkatera = items.some(
+            (s) => s.companyName.toLowerCase().includes('alkatera')
+          )
+          if (!hasAlkatera) {
+            try {
+              const alkRes = await fetch('/api/suppliers?search=alkatera&limit=1')
+              const alkData = await alkRes.json()
+              if (alkData.success && alkData.data.suppliers?.length > 0) {
+                items.push(alkData.data.suppliers[0])
+              }
+            } catch {
+              // ignore
+            }
+          }
+
           // Fisher-Yates shuffle
           for (let i = items.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [items[i], items[j]] = [items[j], items[i]]
           }
-          // Ensure Alkatera is in the first 12 results
+
+          // Ensure Alkatera is within the first 12
           const alkateraIndex = items.findIndex(
-            (s) => s.companyName.toLowerCase() === 'alkatera'
+            (s) => s.companyName.toLowerCase().includes('alkatera')
           )
-          if (alkateraIndex > PAGE_SIZE - 1) {
+          if (alkateraIndex >= PAGE_SIZE) {
             const randomPos = Math.floor(Math.random() * PAGE_SIZE)
             ;[items[randomPos], items[alkateraIndex]] = [items[alkateraIndex], items[randomPos]]
           }
+
+          // Trim back to page size
+          items = items.slice(0, PAGE_SIZE)
         }
 
         setSuppliers((prev) => (append ? [...prev, ...items] : items))
