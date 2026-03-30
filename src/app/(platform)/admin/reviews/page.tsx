@@ -28,6 +28,7 @@ interface Review {
   wouldRecommend: boolean
   serviceRating: number | null
   valueRating: number | null
+  isAnonymous: boolean
   isPublic: boolean
   isVerified: boolean
   createdAt: string
@@ -279,7 +280,14 @@ export default function AdminReviewsPage() {
                     {/* Reviewer */}
                     <td className="px-6 py-4">
                       <div>
-                        <p className="font-bold text-sm">{review.reviewerName}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-bold text-sm">{review.reviewerName}</p>
+                          {review.isAnonymous && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-bold bg-gray-200 text-gray-600 border border-gray-400">
+                              Anonymous
+                            </span>
+                          )}
+                        </div>
                         {review.reviewerCompany && (
                           <p className="text-xs text-gray-500">{review.reviewerCompany}</p>
                         )}
