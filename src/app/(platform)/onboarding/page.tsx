@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Building2,
@@ -19,35 +19,32 @@ import {
 import { Button, Input, Label, Card, CardContent, CardHeader, CardTitle, Badge } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
-type Step = 'profile' | 'brands' | 'suppliers' | 'complete'
-type SubStep = null | 'brand-create' | 'supplier-search' | 'supplier-create' | 'join-org'
+type Step = 'profile' | 'company' | 'complete'
+type SubStep = null | 'brand-create' | 'supplier-create' | 'join-org'
 
-interface Supplier {
+interface Company {
   id: string
-  companyName: string
+  name: string
   slug: string
   category: string
   description?: string
   logoUrl?: string
+  type: 'BRAND' | 'SUPPLIER'
+  hasOwner: boolean
 }
 
-interface CreatedBrand {
+interface ConnectedCompany {
   id: string
   name: string
+  type: 'BRAND' | 'SUPPLIER'
   category: string
-}
-
-interface CreatedSupplier {
-  id: string
-  companyName: string
-  category: string
+  role: 'OWNER' | 'MEMBER'
 }
 
 const STEPS: { key: Step; label: string; number: number }[] = [
   { key: 'profile', label: 'Your Profile', number: 1 },
-  { key: 'brands', label: 'Brand Affiliations', number: 2 },
-  { key: 'suppliers', label: 'Supplier Affiliations', number: 3 },
-  { key: 'complete', label: 'Done', number: 4 },
+  { key: 'company', label: 'Your Company', number: 2 },
+  { key: 'complete', label: 'Done', number: 3 },
 ]
 
 export default function OnboardingPage() {
@@ -83,23 +80,17 @@ export default function OnboardingPage() {
     services: '',
   })
 
-  // Supplier search
+  // Company search
   const [searchQuery, setSearchQuery] = useState('')
-  const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null)
+  const [searchResults, setSearchResults] = useState<Company[]>([])
   const [searching, setSearching] = useState(false)
-
-  // Supplier claim verification
-  const [claimEmail, setClaimEmail] = useState('')
-  const [claimCodeSent, setClaimCodeSent] = useState(false)
-  const [claimVerificationCode, setClaimVerificationCode] = useState('')
+  const [hasSearched, setHasSearched] = useState(false)
 
   // Organisation invite
   const [orgInviteToken, setOrgInviteToken] = useState('')
 
-  // Track created affiliations
-  const [createdBrands, setCreatedBrands] = useState<CreatedBrand[]>([])
-  const [createdSuppliers, setCreatedSuppliers] = useState<CreatedSupplier[]>([])
+  // Track connected companies
+  const [connectedCompanies, setConnectedCompanies] = useState<ConnectedCompany[]>([])
 
   // Verify user is authenticated on mount
   useEffect(() => {
@@ -118,19 +109,73 @@ export default function OnboardingPage() {
       })
   }, [router])
 
-  // Search suppliers
-  const handleSearchSuppliers = async () => {
+  // Live search with debounce
+  const handleSearchCompanies = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setSearchResults([])
+      setHasSearched(false)
+      return
+    }
+
     setSearching(true)
+    setHasSearched(true)
     try {
-      const response = await fetch(`/api/onboarding/search-suppliers?q=${encodeURIComponent(searchQuery)}`)
+      const response = await fetch(`/api/onboarding/search-companies?q=${encodeURIComponent(query)}`)
       const data = await response.json()
       if (data.success) {
-        setSuppliers(data.suppliers)
+        setSearchResults(data.companies)
       }
     } catch (err) {
-      console.error('Error searching suppliers:', err)
+      console.error('Error searching companies:', err)
     } finally {
       setSearching(false)
+    }
+  }, [])
+
+  // Debounced search on input change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleSearchCompanies(searchQuery)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery, handleSearchCompanies])
+
+  // Connect to existing company
+  const handleConnectCompany = async (company: Company) => {
+    setLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch('/api/onboarding/connect-company', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyId: company.id, companyType: company.type }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        setError(data.error || 'Failed to connect to company')
+        setLoading(false)
+        return
+      }
+
+      setConnectedCompanies(prev => [...prev, {
+        id: company.id,
+        name: company.name,
+        type: company.type,
+        category: company.category,
+        role: data.role || 'MEMBER',
+      }])
+
+      setSearchQuery('')
+      setSearchResults([])
+      setHasSearched(false)
+      setError(null)
+    } catch {
+      setError('An unexpected error occurred')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -159,8 +204,7 @@ export default function OnboardingPage() {
         return
       }
 
-      // Move to brands step
-      setStep('brands')
+      setStep('company')
       setError(null)
     } catch {
       setError('An unexpected error occurred')
@@ -189,14 +233,14 @@ export default function OnboardingPage() {
         return
       }
 
-      // Add to created brands list
-      setCreatedBrands(prev => [...prev, {
+      setConnectedCompanies(prev => [...prev, {
         id: data.brand?.id || data.id || 'new',
         name: brandData.name,
+        type: 'BRAND',
         category: brandData.category,
+        role: 'OWNER',
       }])
 
-      // Reset form and go back to brands overview
       setBrandData({ name: '', category: 'SPIRITS', description: '', logoUrl: '' })
       setSubStep(null)
       setError(null)
@@ -230,91 +274,15 @@ export default function OnboardingPage() {
         return
       }
 
-      // Add to created suppliers list
-      setCreatedSuppliers(prev => [...prev, {
+      setConnectedCompanies(prev => [...prev, {
         id: data.supplier?.id || data.id || 'new',
-        companyName: supplierData.companyName,
+        name: supplierData.companyName,
+        type: 'SUPPLIER',
         category: supplierData.category,
+        role: 'OWNER',
       }])
 
-      // Reset form and go back to suppliers overview
       setSupplierData({ companyName: '', category: 'PACKAGING', description: '', logoUrl: '', services: '' })
-      setSubStep(null)
-      setError(null)
-    } catch {
-      setError('An unexpected error occurred')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Claim supplier — step 1: send verification code
-  const handleSendClaimCode = async () => {
-    if (!selectedSupplier || !claimEmail.trim()) return
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      const response = await fetch('/api/onboarding/claim-supplier', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ supplierId: selectedSupplier.id, companyEmail: claimEmail.trim() }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.error || 'Failed to initiate claim')
-        setLoading(false)
-        return
-      }
-
-      setClaimCodeSent(true)
-      setError(null)
-    } catch {
-      setError('An unexpected error occurred')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Claim supplier — step 2: verify code and complete claim
-  const handleClaimSupplier = async () => {
-    if (!selectedSupplier || !claimVerificationCode.trim()) return
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      const response = await fetch('/api/onboarding/claim-supplier', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ supplierId: selectedSupplier.id, verificationCode: claimVerificationCode.trim() }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        setError(data.error || 'Failed to claim supplier')
-        setLoading(false)
-        return
-      }
-
-      // Add to created suppliers list
-      setCreatedSuppliers(prev => [...prev, {
-        id: selectedSupplier.id,
-        companyName: selectedSupplier.companyName,
-        category: selectedSupplier.category,
-      }])
-
-      // Reset and go back
-      setSelectedSupplier(null)
-      setSearchQuery('')
-      setSuppliers([])
-      setClaimEmail('')
-      setClaimCodeSent(false)
-      setClaimVerificationCode('')
       setSubStep(null)
       setError(null)
     } catch {
@@ -344,20 +312,14 @@ export default function OnboardingPage() {
         return
       }
 
-      // Add to appropriate list based on org type
-      if (data.organisation?.type === 'BRAND' || data.organisationType === 'BRAND') {
-        setCreatedBrands(prev => [...prev, {
-          id: data.organisation?.id || 'joined',
-          name: data.organisation?.name || 'Joined Organisation',
-          category: '',
-        }])
-      } else {
-        setCreatedSuppliers(prev => [...prev, {
-          id: data.organisation?.id || 'joined',
-          companyName: data.organisation?.name || 'Joined Organisation',
-          category: '',
-        }])
-      }
+      const orgType = data.organisation?.type || data.organisationType || 'SUPPLIER'
+      setConnectedCompanies(prev => [...prev, {
+        id: data.organisation?.id || 'joined',
+        name: data.organisation?.name || 'Joined Organisation',
+        type: orgType,
+        category: '',
+        role: 'MEMBER',
+      }])
 
       setOrgInviteToken('')
       setSubStep(null)
@@ -502,7 +464,7 @@ export default function OnboardingPage() {
               <div className="flex gap-3 pt-4">
                 <Button
                   variant="outline"
-                  onClick={() => setStep('brands')}
+                  onClick={() => setStep('company')}
                   className="flex-1"
                 >
                   Skip for Now
@@ -524,9 +486,9 @@ export default function OnboardingPage() {
   }
 
   // ──────────────────────────────────────
-  // STEP 2: Brand Affiliations
+  // STEP 2: Find Your Company
   // ──────────────────────────────────────
-  if (step === 'brands') {
+  if (step === 'company') {
     // Sub-step: Create Brand
     if (subStep === 'brand-create') {
       return (
@@ -622,258 +584,6 @@ export default function OnboardingPage() {
                 >
                   {loading ? 'Creating...' : 'Create Brand'}
                 </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )
-    }
-
-    // Main brands step
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="font-display text-3xl font-bold mb-2 uppercase tracking-tight">
-              Brand Affiliations
-            </h1>
-            <p className="text-gray-600">
-              Are you associated with any drinks brands?
-            </p>
-          </div>
-
-          <StepIndicator />
-
-          {/* Created brands list */}
-          {createdBrands.length > 0 && (
-            <div className="mb-6 space-y-3">
-              <p className="text-sm font-bold uppercase tracking-wide text-gray-500">Your Brands</p>
-              {createdBrands.map((brand) => (
-                <Card key={brand.id} className="border-3 border-black bg-cyan/10">
-                  <CardContent className="p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-cyan border-2 border-black flex items-center justify-center shrink-0">
-                      <Wine className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-display font-bold text-sm">{brand.name}</h3>
-                      {brand.category && (
-                        <p className="text-xs text-gray-500">{brand.category}</p>
-                      )}
-                    </div>
-                    <Check className="w-5 h-5 text-lime-600 ml-auto" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          <div className="grid md:grid-cols-2 gap-4">
-            <Card
-              className="cursor-pointer hover:shadow-brutal-lg transition-all hover:-translate-y-1 border-3 border-black"
-              onClick={() => { setSubStep('brand-create'); setError(null) }}
-            >
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-cyan border-3 border-black flex items-center justify-center mx-auto mb-4">
-                  <Plus className="w-6 h-6" />
-                </div>
-                <h3 className="font-display font-bold mb-2">Create New Brand</h3>
-                <p className="text-sm text-gray-600">
-                  Register your drinks brand on Kindred
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card
-              className="cursor-pointer hover:shadow-brutal-lg transition-all hover:-translate-y-1 border-3 border-black"
-              onClick={() => setStep('suppliers')}
-            >
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-gray-100 border-3 border-black flex items-center justify-center mx-auto mb-4">
-                  <ArrowRight className="w-6 h-6" />
-                </div>
-                <h3 className="font-display font-bold mb-2">Skip</h3>
-                <p className="text-sm text-gray-600">
-                  I&apos;m not associated with a brand
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Navigation */}
-          <div className="flex justify-between mt-8">
-            <Button variant="outline" onClick={() => setStep('profile')}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-            <Button onClick={() => setStep('suppliers')}>
-              Continue
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ──────────────────────────────────────
-  // STEP 3: Supplier Affiliations
-  // ──────────────────────────────────────
-  if (step === 'suppliers') {
-    // Sub-step: Search & Claim
-    if (subStep === 'supplier-search') {
-      return (
-        <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4">
-          <div className="max-w-4xl mx-auto">
-            <StepIndicator />
-            <Card className="shadow-brutal-lg border-3 border-black">
-              <CardHeader>
-                <button
-                  onClick={() => {
-                    setSubStep(null)
-                    setError(null)
-                    setSelectedSupplier(null)
-                    setClaimEmail('')
-                    setClaimCodeSent(false)
-                    setClaimVerificationCode('')
-                  }}
-                  className="text-sm text-gray-500 hover:text-cyan flex items-center gap-1 mb-2"
-                >
-                  <ArrowLeft className="w-3 h-3" /> Back
-                </button>
-                <div className="w-12 h-12 bg-coral border-3 border-black flex items-center justify-center mb-4">
-                  <Search className="w-6 h-6 text-white" />
-                </div>
-                <CardTitle className="font-display text-2xl uppercase tracking-tight">
-                  Find Your Supplier
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {error && (
-                  <div className="bg-coral/10 border-2 border-coral text-coral px-4 py-3 text-sm">
-                    {error}
-                  </div>
-                )}
-
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Search for your company..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSearchSuppliers()}
-                  />
-                  <Button onClick={handleSearchSuppliers} disabled={searching}>
-                    {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                  </Button>
-                </div>
-
-                {suppliers.length > 0 && (
-                  <div className="space-y-3">
-                    <p className="text-sm text-gray-600">Found {suppliers.length} suppliers</p>
-                    <div className="grid gap-3">
-                      {suppliers.map((supplier) => (
-                        <div
-                          key={supplier.id}
-                          onClick={() => {
-                            setSelectedSupplier(supplier)
-                            setClaimEmail('')
-                            setClaimCodeSent(false)
-                            setClaimVerificationCode('')
-                            setError(null)
-                          }}
-                          className={cn(
-                            'p-4 border-3 border-black cursor-pointer transition-all',
-                            selectedSupplier?.id === supplier.id
-                              ? 'bg-cyan shadow-brutal'
-                              : 'bg-white hover:bg-gray-50'
-                          )}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h3 className="font-bold">{supplier.companyName}</h3>
-                              <p className="text-sm text-gray-600">{supplier.category}</p>
-                              {supplier.description && (
-                                <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                                  {supplier.description}
-                                </p>
-                              )}
-                            </div>
-                            {selectedSupplier?.id === supplier.id && (
-                              <Check className="w-5 h-5" />
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {suppliers.length === 0 && searchQuery && !searching && (
-                  <div className="text-center py-8">
-                    <p className="text-gray-600 mb-4">No suppliers found. Is your company not listed?</p>
-                    <Button
-                      variant="outline"
-                      onClick={() => { setSubStep('supplier-create'); setError(null) }}
-                    >
-                      Create New Supplier Profile
-                    </Button>
-                  </div>
-                )}
-
-                {selectedSupplier && !claimCodeSent && (
-                  <div className="space-y-3 pt-2 border-t-2 border-black">
-                    <p className="text-sm font-bold">
-                      Verify you work at {selectedSupplier.companyName}
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      Enter your company email address. We&apos;ll send a verification code to confirm ownership.
-                    </p>
-                    <Input
-                      type="email"
-                      placeholder="you@yourcompany.com"
-                      value={claimEmail}
-                      onChange={(e) => setClaimEmail(e.target.value)}
-                    />
-                    <Button
-                      onClick={handleSendClaimCode}
-                      disabled={loading || !claimEmail.trim()}
-                      className="w-full"
-                    >
-                      {loading ? 'Sending...' : 'Send Verification Code'}
-                    </Button>
-                  </div>
-                )}
-
-                {selectedSupplier && claimCodeSent && (
-                  <div className="space-y-3 pt-2 border-t-2 border-black">
-                    <div className="bg-lime/20 border-2 border-lime px-4 py-3 text-sm">
-                      Verification code sent to <strong>{claimEmail}</strong>. Check your inbox.
-                    </div>
-                    <p className="text-sm font-bold">Enter verification code</p>
-                    <Input
-                      placeholder="123456"
-                      value={claimVerificationCode}
-                      onChange={(e) => setClaimVerificationCode(e.target.value)}
-                      maxLength={6}
-                    />
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={handleSendClaimCode}
-                        disabled={loading}
-                        className="flex-1"
-                      >
-                        Resend Code
-                      </Button>
-                      <Button
-                        onClick={handleClaimSupplier}
-                        disabled={loading || claimVerificationCode.length < 6}
-                        className="flex-1"
-                      >
-                        {loading ? 'Verifying...' : 'Claim Supplier'}
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>
@@ -1065,36 +775,54 @@ export default function OnboardingPage() {
       )
     }
 
-    // Main suppliers step
+    // ── Main company step: search-first approach ──
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="font-display text-3xl font-bold mb-2 uppercase tracking-tight">
-              Supplier Affiliations
+              Find Your Company
             </h1>
             <p className="text-gray-600">
-              Are you associated with any suppliers?
+              Search to see if your company is already on Kindred, or create a new listing.
             </p>
           </div>
 
           <StepIndicator />
 
-          {/* Created suppliers list */}
-          {createdSuppliers.length > 0 && (
+          {/* Connected companies list */}
+          {connectedCompanies.length > 0 && (
             <div className="mb-6 space-y-3">
-              <p className="text-sm font-bold uppercase tracking-wide text-gray-500">Your Suppliers</p>
-              {createdSuppliers.map((supplier) => (
-                <Card key={supplier.id} className="border-3 border-black bg-coral/10">
+              <p className="text-sm font-bold uppercase tracking-wide text-gray-500">Your Companies</p>
+              {connectedCompanies.map((company) => (
+                <Card key={company.id} className={cn(
+                  'border-3 border-black',
+                  company.type === 'BRAND' ? 'bg-cyan/10' : 'bg-coral/10'
+                )}>
                   <CardContent className="p-4 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-coral border-2 border-black flex items-center justify-center shrink-0">
-                      <Store className="w-5 h-5 text-white" />
+                    <div className={cn(
+                      'w-10 h-10 border-2 border-black flex items-center justify-center shrink-0',
+                      company.type === 'BRAND' ? 'bg-cyan' : 'bg-coral'
+                    )}>
+                      {company.type === 'BRAND' ? (
+                        <Wine className="w-5 h-5" />
+                      ) : (
+                        <Store className="w-5 h-5 text-white" />
+                      )}
                     </div>
                     <div>
-                      <h3 className="font-display font-bold text-sm">{supplier.companyName}</h3>
-                      {supplier.category && (
-                        <p className="text-xs text-gray-500">{supplier.category}</p>
-                      )}
+                      <h3 className="font-display font-bold text-sm">{company.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={company.type === 'BRAND' ? 'cyan' : 'coral'} className="text-xs">
+                          {company.type === 'BRAND' ? 'Brand' : 'Supplier'}
+                        </Badge>
+                        <Badge variant={company.role === 'OWNER' ? 'lime' : 'default'} className="text-xs">
+                          {company.role === 'OWNER' ? 'Owner' : 'Member'}
+                        </Badge>
+                        {company.category && (
+                          <span className="text-xs text-gray-500">{company.category}</span>
+                        )}
+                      </div>
                     </div>
                     <Check className="w-5 h-5 text-lime-600 ml-auto" />
                   </CardContent>
@@ -1103,76 +831,174 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <Card
-              className="cursor-pointer hover:shadow-brutal-lg transition-all hover:-translate-y-1 border-3 border-black"
-              onClick={() => { setSubStep('supplier-search'); setError(null) }}
-            >
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-coral border-3 border-black flex items-center justify-center mx-auto mb-4">
-                  <Search className="w-6 h-6 text-white" />
+          {/* Search box */}
+          <Card className="shadow-brutal-lg border-3 border-black mb-6">
+            <CardHeader>
+              <div className="w-12 h-12 bg-cyan border-3 border-black flex items-center justify-center mb-4">
+                <Search className="w-6 h-6" />
+              </div>
+              <CardTitle className="font-display text-2xl uppercase tracking-tight">
+                Search Companies
+              </CardTitle>
+              <p className="text-gray-600 text-sm">
+                Type your company name to see if it&apos;s already listed.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {error && (
+                <div className="bg-coral/10 border-2 border-coral text-coral px-4 py-3 text-sm">
+                  {error}
                 </div>
-                <h3 className="font-display font-bold mb-2">Search & Claim</h3>
-                <p className="text-sm text-gray-600">
-                  We&apos;re already listed, let me claim our profile
-                </p>
-              </CardContent>
-            </Card>
+              )}
 
-            <Card
-              className="cursor-pointer hover:shadow-brutal-lg transition-all hover:-translate-y-1 border-3 border-black"
-              onClick={() => { setSubStep('supplier-create'); setError(null) }}
-            >
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-cyan border-3 border-black flex items-center justify-center mx-auto mb-4">
-                  <Plus className="w-6 h-6" />
-                </div>
-                <h3 className="font-display font-bold mb-2">Create New Supplier</h3>
-                <p className="text-sm text-gray-600">
-                  We&apos;re not listed yet, let&apos;s create a profile
-                </p>
-              </CardContent>
-            </Card>
+              <div className="relative">
+                <Input
+                  placeholder="Search for your company..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+                {searching && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                  </div>
+                )}
+              </div>
 
-            <Card
-              className="cursor-pointer hover:shadow-brutal-lg transition-all hover:-translate-y-1 border-3 border-black"
-              onClick={() => { setSubStep('join-org'); setError(null) }}
-            >
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-lime border-3 border-black flex items-center justify-center mx-auto mb-4">
-                  <Users className="w-6 h-6" />
+              {/* Search results */}
+              {searchResults.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-600">
+                    Found {searchResults.length} {searchResults.length === 1 ? 'company' : 'companies'}
+                  </p>
+                  <div className="grid gap-3 max-h-[400px] overflow-y-auto">
+                    {searchResults.map((company) => {
+                      const alreadyConnected = connectedCompanies.some(c => c.id === company.id)
+                      return (
+                        <div
+                          key={`${company.type}-${company.id}`}
+                          className={cn(
+                            'p-4 border-3 border-black transition-all',
+                            alreadyConnected
+                              ? 'bg-lime/10 opacity-75'
+                              : 'bg-white hover:bg-gray-50'
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="font-bold truncate">{company.name}</h3>
+                                <Badge
+                                  variant={company.type === 'BRAND' ? 'cyan' : 'coral'}
+                                  className="text-xs shrink-0"
+                                >
+                                  {company.type === 'BRAND' ? 'Brand' : 'Supplier'}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600">{company.category}</p>
+                              {company.description && (
+                                <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                                  {company.description}
+                                </p>
+                              )}
+                            </div>
+                            {alreadyConnected ? (
+                              <div className="flex items-center gap-1 text-sm text-lime-600 font-bold shrink-0">
+                                <Check className="w-4 h-4" />
+                                Connected
+                              </div>
+                            ) : (
+                              <Button
+                                onClick={() => handleConnectCompany(company)}
+                                disabled={loading}
+                                className="shrink-0"
+                                size="sm"
+                              >
+                                {loading ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : company.hasOwner ? (
+                                  'Join Team'
+                                ) : (
+                                  'Claim Ownership'
+                                )}
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-                <h3 className="font-display font-bold mb-2">Join Team via Invite</h3>
-                <p className="text-sm text-gray-600">
-                  My colleague has an invite code for me
-                </p>
-              </CardContent>
-            </Card>
+              )}
 
-            <Card
-              className="cursor-pointer hover:shadow-brutal-lg transition-all hover:-translate-y-1 border-3 border-black"
-              onClick={() => setStep('complete')}
-            >
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-gray-100 border-3 border-black flex items-center justify-center mx-auto mb-4">
-                  <ArrowRight className="w-6 h-6" />
+              {/* No results */}
+              {searchResults.length === 0 && hasSearched && !searching && searchQuery.length >= 2 && (
+                <div className="text-center py-6 border-t-2 border-gray-100">
+                  <p className="text-gray-600 mb-2">
+                    No companies found matching &ldquo;{searchQuery}&rdquo;
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    You can create a new listing below.
+                  </p>
                 </div>
-                <h3 className="font-display font-bold mb-2">Skip</h3>
-                <p className="text-sm text-gray-600">
-                  I&apos;m not associated with a supplier
-                </p>
-              </CardContent>
-            </Card>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Create / Join options */}
+          <div className="mb-6">
+            <p className="text-sm font-bold uppercase tracking-wide text-gray-500 mb-3">
+              Or add your company manually
+            </p>
+            <div className="grid md:grid-cols-3 gap-4">
+              <Card
+                className="cursor-pointer hover:shadow-brutal-lg transition-all hover:-translate-y-1 border-3 border-black"
+                onClick={() => { setSubStep('brand-create'); setError(null) }}
+              >
+                <CardContent className="p-5 text-center">
+                  <div className="w-10 h-10 bg-cyan border-3 border-black flex items-center justify-center mx-auto mb-3">
+                    <Wine className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-display font-bold text-sm mb-1">Create Brand</h3>
+                  <p className="text-xs text-gray-600">Register a drinks brand</p>
+                </CardContent>
+              </Card>
+
+              <Card
+                className="cursor-pointer hover:shadow-brutal-lg transition-all hover:-translate-y-1 border-3 border-black"
+                onClick={() => { setSubStep('supplier-create'); setError(null) }}
+              >
+                <CardContent className="p-5 text-center">
+                  <div className="w-10 h-10 bg-coral border-3 border-black flex items-center justify-center mx-auto mb-3">
+                    <Store className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="font-display font-bold text-sm mb-1">Create Supplier</h3>
+                  <p className="text-xs text-gray-600">List your services</p>
+                </CardContent>
+              </Card>
+
+              <Card
+                className="cursor-pointer hover:shadow-brutal-lg transition-all hover:-translate-y-1 border-3 border-black"
+                onClick={() => { setSubStep('join-org'); setError(null) }}
+              >
+                <CardContent className="p-5 text-center">
+                  <div className="w-10 h-10 bg-lime border-3 border-black flex items-center justify-center mx-auto mb-3">
+                    <Link2 className="w-5 h-5" />
+                  </div>
+                  <h3 className="font-display font-bold text-sm mb-1">Join via Invite</h3>
+                  <p className="text-xs text-gray-600">Use a colleague&apos;s code</p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           {/* Navigation */}
-          <div className="flex justify-between mt-8">
-            <Button variant="outline" onClick={() => setStep('brands')}>
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={() => setStep('profile')}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
             </Button>
             <Button onClick={() => setStep('complete')}>
-              Continue
+              {connectedCompanies.length > 0 ? 'Continue' : 'Skip for Now'}
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
@@ -1182,11 +1008,9 @@ export default function OnboardingPage() {
   }
 
   // ──────────────────────────────────────
-  // STEP 4: Complete
+  // STEP 3: Complete
   // ──────────────────────────────────────
   if (step === 'complete') {
-    const totalAffiliations = createdBrands.length + createdSuppliers.length
-
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white py-12 px-4">
         <div className="max-w-2xl mx-auto">
@@ -1202,27 +1026,29 @@ export default function OnboardingPage() {
               </h1>
               <p className="text-gray-600 mb-8 max-w-md mx-auto">
                 Welcome to Kindred Collective. Your profile is ready
-                {totalAffiliations > 0 && (
-                  <> and you&apos;ve linked {totalAffiliations} organisation{totalAffiliations !== 1 ? 's' : ''}</>
+                {connectedCompanies.length > 0 && (
+                  <> and you&apos;ve linked {connectedCompanies.length} organisation{connectedCompanies.length !== 1 ? 's' : ''}</>
                 )}.
               </p>
 
               {/* Summary */}
-              {totalAffiliations > 0 && (
+              {connectedCompanies.length > 0 && (
                 <div className="mb-8 space-y-3 text-left max-w-sm mx-auto">
                   <p className="text-sm font-bold uppercase tracking-wide text-gray-500 text-center">
                     Your Organisations
                   </p>
-                  {createdBrands.map((brand) => (
-                    <div key={brand.id} className="flex items-center gap-3 p-3 bg-cyan/10 border-2 border-black">
-                      <Badge variant="cyan" className="text-xs">Brand</Badge>
-                      <span className="font-bold text-sm">{brand.name}</span>
-                    </div>
-                  ))}
-                  {createdSuppliers.map((supplier) => (
-                    <div key={supplier.id} className="flex items-center gap-3 p-3 bg-coral/10 border-2 border-black">
-                      <Badge variant="coral" className="text-xs">Supplier</Badge>
-                      <span className="font-bold text-sm">{supplier.companyName}</span>
+                  {connectedCompanies.map((company) => (
+                    <div
+                      key={company.id}
+                      className={cn(
+                        'flex items-center gap-3 p-3 border-2 border-black',
+                        company.type === 'BRAND' ? 'bg-cyan/10' : 'bg-coral/10'
+                      )}
+                    >
+                      <Badge variant={company.type === 'BRAND' ? 'cyan' : 'coral'} className="text-xs">
+                        {company.type === 'BRAND' ? 'Brand' : 'Supplier'}
+                      </Badge>
+                      <span className="font-bold text-sm">{company.name}</span>
                     </div>
                   ))}
                 </div>
