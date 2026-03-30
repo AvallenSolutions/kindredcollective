@@ -43,7 +43,7 @@ async function getEvent(slug: string, isAdmin: boolean = false) {
 
     let query = supabase
       .from('Event')
-      .select('*, createdBy:User!createdById(email, member:Member(firstName, lastName))')
+      .select('*, createdBy:User!left(email, member:Member!left(firstName, lastName))')
       .eq('slug', slug)
 
     // Admins can view all statuses; everyone else only sees PUBLISHED
