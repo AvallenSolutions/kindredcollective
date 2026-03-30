@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   const { data: supplier, error } = await supabase
     .from('Supplier')
-    .select('*, user:User(email, role), offers:Offer(*), reviews:SupplierReview(*)')
+    .select('*, offers:Offer(*), reviews:SupplierReview(*)')
     .eq('id', id)
     .single()
 
@@ -71,7 +71,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     'isPublic',
     'isVerified',
     'claimStatus',
-    'userId',
     'subcategories',
     'certifications',
     'moqMin',

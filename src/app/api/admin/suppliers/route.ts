@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('Supplier')
-    .select('*, user:User(email)', { count: 'exact' })
+    .select('*', { count: 'exact' })
     .order('createdAt', { ascending: false })
     .range(from, to)
 

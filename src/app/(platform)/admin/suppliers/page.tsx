@@ -20,6 +20,7 @@ interface Supplier {
 export default function AdminSuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 0 })
 
@@ -35,16 +36,23 @@ export default function AdminSuppliersPage() {
     })
     if (search) params.set('search', search)
 
-    const res = await fetch(`/api/admin/suppliers?${params}`)
-    const data = await res.json()
+    try {
+      const res = await fetch(`/api/admin/suppliers?${params}`)
+      const data = await res.json()
 
-    if (data.success) {
-      setSuppliers(data.data.suppliers || [])
-      setPagination(prev => ({
-        ...prev,
-        total: data.data.pagination.total,
-        totalPages: data.data.pagination.totalPages,
-      }))
+      if (data.success) {
+        setSuppliers(data.data.suppliers || [])
+        setPagination(prev => ({
+          ...prev,
+          total: data.data.pagination.total,
+          totalPages: data.data.pagination.totalPages,
+        }))
+        setError(null)
+      } else {
+        setError(data.error || 'Failed to load suppliers')
+      }
+    } catch {
+      setError('Failed to connect to server')
     }
     setLoading(false)
   }
@@ -105,6 +113,13 @@ export default function AdminSuppliersPage() {
           </div>
         </div>
       </div>
+
+      {/* Error */}
+      {error && (
+        <div className="mb-6 bg-red-50 border-2 border-red-300 text-red-700 px-4 py-3 text-sm">
+          {error}
+        </div>
+      )}
 
       {/* Suppliers Table */}
       <div className="bg-white border-2 border-black neo-shadow">
