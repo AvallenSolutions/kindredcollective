@@ -71,10 +71,15 @@ export function BrandCard({ brand }: BrandCardProps) {
             )}
 
             {/* Category Badge Overlay */}
-            <div className="absolute top-3 left-3">
-              <Badge variant="outline" className="bg-white/90 backdrop-blur-sm">
-                {DRINK_CATEGORY_LABELS[brand.category]}
-              </Badge>
+            <div className="absolute top-3 left-3 flex flex-wrap gap-1">
+              {((brand as any).categories && (brand as any).categories.length > 0
+                ? (brand as any).categories
+                : [brand.category]
+              ).map((cat: string) => (
+                <Badge key={cat} variant="outline" className="bg-white/90 backdrop-blur-sm">
+                  {DRINK_CATEGORY_LABELS[cat as DrinkCategory] || cat}
+                </Badge>
+              ))}
             </div>
           </div>
 

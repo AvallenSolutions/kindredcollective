@@ -68,6 +68,7 @@ interface FormData {
   description: string
   story: string
   category: DrinkCategory
+  categories: DrinkCategory[]
   subcategories: string
   yearFounded: string
   location: string
@@ -75,7 +76,6 @@ interface FormData {
   websiteUrl: string
   instagramUrl: string
   linkedinUrl: string
-
 }
 
 // ---------------------------------------------------------------------------
@@ -275,6 +275,7 @@ function BrandEditContent() {
     description: '',
     story: '',
     category: 'SPIRITS',
+    categories: ['SPIRITS'],
     subcategories: '',
     yearFounded: '',
     location: '',
@@ -307,12 +308,16 @@ function BrandEditContent() {
         setLogoUrl(data.logoUrl)
         setHeroImageUrl(data.heroImageUrl)
         setGalleryImages(data.images || [])
+        const cats = data.categories && data.categories.length > 0
+          ? data.categories
+          : data.category ? [data.category] : ['SPIRITS']
         setForm({
           name: data.name || '',
           tagline: data.tagline || '',
           description: data.description || '',
           story: data.story || '',
           category: data.category || 'SPIRITS',
+          categories: cats,
           subcategories: (data.subcategories || []).join(', '),
           yearFounded: data.yearFounded ? String(data.yearFounded) : '',
           location: data.location || '',
@@ -374,7 +379,8 @@ function BrandEditContent() {
       tagline: form.tagline || null,
       description: form.description || null,
       story: form.story || null,
-      category: form.category,
+      category: form.categories[0] || form.category,
+      categories: form.categories,
       subcategories: subcats,
       yearFounded: form.yearFounded ? parseInt(form.yearFounded, 10) : null,
       location: form.location || null,
@@ -471,12 +477,37 @@ function BrandEditContent() {
             <Input id="tagline" value={form.tagline} onChange={field('tagline')} placeholder="A short punchy line" />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="category">Category *</Label>
-            <Select id="category" value={form.category} onChange={field('category')}>
-              {DRINK_CATEGORIES.map(c => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </Select>
+            <Label>Categories *</Label>
+            <p className="text-xs text-gray-500 mb-2">Select all that apply</p>
+            <div className="grid grid-cols-2 gap-2">
+              {DRINK_CATEGORIES.map(c => {
+                const checked = form.categories.includes(c.value)
+                return (
+                  <label
+                    key={c.value}
+                    className={`flex items-center gap-2 px-3 py-2 border-2 cursor-pointer transition-colors ${
+                      checked ? 'border-black bg-cyan/20 font-bold' : 'border-gray-200 hover:border-gray-400'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        setForm(f => {
+                          const cats = checked
+                            ? f.categories.filter(v => v !== c.value)
+                            : [...f.categories, c.value]
+                          if (cats.length === 0) return f
+                          return { ...f, categories: cats, category: cats[0] }
+                        })
+                      }}
+                      className="w-4 h-4 border-2 border-black accent-black"
+                    />
+                    <span className="text-sm">{c.label}</span>
+                  </label>
+                )
+              })}
+            </div>
           </div>
           <div className="space-y-1">
             <Label htmlFor="description">Description</Label>

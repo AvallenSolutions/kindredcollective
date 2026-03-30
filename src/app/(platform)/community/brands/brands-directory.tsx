@@ -48,8 +48,12 @@ export function BrandsDirectory({ brands }: BrandsDirectoryProps) {
         if (!matchesSearch) return false
       }
 
-      if (selectedCategory && brand.category !== selectedCategory) {
-        return false
+      if (selectedCategory) {
+        const brandCategories = (brand as any).categories as string[] | undefined
+        const matchesCategory = brandCategories && brandCategories.length > 0
+          ? brandCategories.includes(selectedCategory)
+          : brand.category === selectedCategory
+        if (!matchesCategory) return false
       }
 
       return true

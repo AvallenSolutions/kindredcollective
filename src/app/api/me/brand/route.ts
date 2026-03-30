@@ -180,7 +180,7 @@ export async function PATCH(request: NextRequest) {
   const body = await request.json()
 
   const allowedFields = [
-    'name', 'tagline', 'description', 'story', 'category', 'subcategories',
+    'name', 'tagline', 'description', 'story', 'category', 'categories', 'subcategories',
     'yearFounded', 'location', 'country', 'websiteUrl', 'instagramUrl',
     'linkedinUrl', 'logoUrl', 'heroImageUrl', 'isPublic',
   ]

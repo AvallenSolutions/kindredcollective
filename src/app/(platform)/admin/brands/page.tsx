@@ -11,6 +11,7 @@ interface Brand {
   name: string
   slug: string
   category: string
+  categories: string[]
   location: string | null
   isPublic: boolean
   isVerified: boolean
@@ -152,7 +153,9 @@ export default function AdminBrandsPage() {
                         <p className="text-sm text-gray-500">/{brand.slug}</p>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm">{brand.category}</td>
+                    <td className="px-6 py-4 text-sm">
+                      {(brand.categories && brand.categories.length > 0 ? brand.categories : [brand.category]).join(', ')}
+                    </td>
                     <td className="px-6 py-4 text-sm">{brand.location || '-'}</td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
