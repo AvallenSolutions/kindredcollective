@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
         category,
         description,
         logoUrl,
+        subcategories: [],
         isPublic: true,
         isVerified: false,
         createdAt: new Date().toISOString(),

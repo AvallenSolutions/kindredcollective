@@ -43,7 +43,7 @@ export function BrandsDirectory({ brands }: BrandsDirectoryProps) {
           brand.name.toLowerCase().includes(searchLower) ||
           brand.tagline?.toLowerCase().includes(searchLower) ||
           brand.description?.toLowerCase().includes(searchLower) ||
-          brand.subcategories.some((s: string) => s.toLowerCase().includes(searchLower))
+          (brand.subcategories || []).some((s: string) => s.toLowerCase().includes(searchLower))
 
         if (!matchesSearch) return false
       }

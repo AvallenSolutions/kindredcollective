@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Building2, Plus, Pencil, Trash2, Search, ArrowLeft, Eye, EyeOff, CheckCircle } from 'lucide-react'
+import { Building2, Plus, Pencil, Trash2, Search, ArrowLeft, Eye, EyeOff, CheckCircle, ShieldCheck, ShieldOff } from 'lucide-react'
 import { Button } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 interface Brand {
   id: string
@@ -64,6 +65,17 @@ export default function AdminBrandsPage() {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ isPublic: !currentlyPublic }),
+    })
+    if (res.ok) {
+      fetchBrands()
+    }
+  }
+
+  async function toggleVerified(id: string, currentlyVerified: boolean) {
+    const res = await fetch(`/api/admin/brands/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isVerified: !currentlyVerified }),
     })
     if (res.ok) {
       fetchBrands()
@@ -162,6 +174,16 @@ export default function AdminBrandsPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => toggleVerified(brand.id, brand.isVerified)}
+                          className={cn(
+                            'p-2 border-2 border-black transition-colors',
+                            brand.isVerified ? 'bg-cyan hover:bg-gray-100' : 'hover:bg-cyan'
+                          )}
+                          title={brand.isVerified ? 'Remove verification' : 'Verify brand'}
+                        >
+                          {brand.isVerified ? <ShieldOff className="w-4 h-4" /> : <ShieldCheck className="w-4 h-4" />}
+                        </button>
                         <button
                           onClick={() => toggleVisibility(brand.id, brand.isPublic)}
                           className="p-2 border-2 border-black hover:bg-gray-100 transition-colors"

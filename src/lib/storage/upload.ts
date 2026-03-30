@@ -11,6 +11,20 @@ const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
 /**
+ * Recommended image dimensions and sizes for each upload context.
+ * Used to display guidance text next to upload controls.
+ */
+export const IMAGE_GUIDELINES = {
+  avatar: { width: 400, height: 400, maxMB: 5, hint: 'Recommended: 400x400px · JPG, PNG or WebP · max 5MB' },
+  petPhoto: { width: 400, height: 400, maxMB: 5, hint: 'Recommended: 400x400px · JPG, PNG or WebP · max 5MB' },
+  logo: { width: 400, height: 400, maxMB: 5, hint: 'Recommended: 400x400px · JPG, PNG or WebP · max 5MB' },
+  hero: { width: 1200, height: 630, maxMB: 5, hint: 'Recommended: 1200x630px · JPG, PNG or WebP · max 5MB' },
+  gallery: { width: 800, height: 800, maxMB: 5, hint: 'Recommended: 800x800px · JPG, PNG or WebP · max 5MB' },
+  event: { width: 1200, height: 630, maxMB: 5, hint: 'Recommended: 1200x630px · JPG, PNG or WebP · max 5MB' },
+  forum: { width: 1200, height: 800, maxMB: 5, hint: 'Recommended: max 1200x800px · JPG, PNG, WebP or GIF · max 5MB' },
+} as const
+
+/**
  * Validate file type and size
  */
 export function validateFile(file: File): { valid: boolean; error?: string } {

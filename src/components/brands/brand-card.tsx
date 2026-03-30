@@ -1,3 +1,6 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
 import { MapPin, Calendar, ArrowRight, CheckCircle } from 'lucide-react'
 import { Badge, Card, CardContent } from '@/components/ui'
@@ -34,6 +37,7 @@ const categoryColors: Record<DrinkCategory, string> = {
 
 export function BrandCard({ brand }: BrandCardProps) {
   const categoryColor = categoryColors[brand.category] || 'bg-gray-400'
+  const [imgError, setImgError] = useState(false)
 
   return (
     <Link href={`/community/brands/${brand.slug}`}>
@@ -46,17 +50,19 @@ export function BrandCard({ brand }: BrandCardProps) {
               categoryColor
             )}
           >
-            {brand.heroImageUrl ? (
+            {!imgError && brand.heroImageUrl ? (
               <img
                 src={brand.heroImageUrl}
                 alt={brand.name}
                 className="w-full h-full object-cover"
+                onError={() => setImgError(true)}
               />
-            ) : brand.logoUrl ? (
+            ) : !imgError && brand.logoUrl ? (
               <img
                 src={brand.logoUrl}
                 alt={brand.name}
                 className="h-20 w-20 object-contain"
+                onError={() => setImgError(true)}
               />
             ) : (
               <span className="font-display text-5xl font-bold text-black/30">
@@ -109,7 +115,7 @@ export function BrandCard({ brand }: BrandCardProps) {
 
             {/* Subcategories */}
             <div className="flex flex-wrap gap-1 mb-4">
-              {brand.subcategories.slice(0, 3).map((sub) => (
+              {(brand.subcategories || []).slice(0, 3).map((sub) => (
                 <span
                   key={sub}
                   className="px-2 py-0.5 bg-gray-100 text-xs text-gray-600 border border-gray-200"

@@ -27,6 +27,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui'
+import { IMAGE_GUIDELINES } from '@/lib/storage/upload'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -97,12 +98,14 @@ const DRINK_CATEGORIES: { value: DrinkCategory; label: string }[] = [
 
 function ImageUploader({
   label,
+  hint,
   currentUrl,
   onUploaded,
   uploading,
   onUpload,
 }: {
   label: string
+  hint?: string
   currentUrl: string | null
   onUploaded: (url: string) => void
   uploading: boolean
@@ -152,7 +155,7 @@ function ImageUploader({
               <><Upload className="w-4 h-4 mr-2" />{currentUrl ? 'Replace' : 'Upload'}</>
             )}
           </Button>
-          <p className="text-xs text-gray-500">JPG, PNG or WebP · max 5MB</p>
+          <p className="text-xs text-gray-500">{hint || 'JPG, PNG or WebP · max 5MB'}</p>
         </div>
       </div>
     </div>
@@ -210,6 +213,7 @@ function GalleryUploader({
   return (
     <div className="space-y-3">
       <Label>Gallery Images</Label>
+      <p className="text-xs text-gray-500">{IMAGE_GUIDELINES.gallery.hint}</p>
       <div className="grid grid-cols-4 gap-3">
         {images.map(img => (
           <div key={img.id} className="relative group aspect-square border-2 border-black rounded overflow-hidden bg-gray-100">
@@ -547,6 +551,7 @@ function BrandEditContent() {
         <CardContent className="space-y-6">
           <ImageUploader
             label="Logo"
+            hint={IMAGE_GUIDELINES.logo.hint}
             currentUrl={logoUrl}
             uploading={logoUploading}
             onUpload={file => uploadSingleImage(file, setLogoUploading, 'logoUrl')}
@@ -554,6 +559,7 @@ function BrandEditContent() {
           />
           <ImageUploader
             label="Hero / Cover Image"
+            hint={IMAGE_GUIDELINES.hero.hint}
             currentUrl={heroImageUrl}
             uploading={heroUploading}
             onUpload={file => uploadSingleImage(file, setHeroUploading, 'heroImageUrl')}

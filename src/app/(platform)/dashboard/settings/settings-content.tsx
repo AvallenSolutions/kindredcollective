@@ -11,6 +11,7 @@ import { Button, Input, Label, Card, CardContent, Badge } from '@/components/ui'
 import { DRINK_CATEGORY_LABELS } from '@/types/database'
 import type { DrinkCategory } from '@prisma/client'
 import { cn } from '@/lib/utils'
+import { IMAGE_GUIDELINES } from '@/lib/storage/upload'
 
 type SettingsTab = 'profile' | 'organisations' | 'privacy'
 
@@ -290,7 +291,7 @@ export function SettingsContent({ user, member, organisations }: SettingsContent
                             <><Upload className="w-4 h-4 mr-2" />{avatarUrl ? 'Change photo' : 'Upload photo'}</>
                           )}
                         </Button>
-                        <p className="text-xs text-gray-500">JPG, PNG or WebP · max 5MB</p>
+                        <p className="text-xs text-gray-500">{IMAGE_GUIDELINES.avatar.hint}</p>
                       </div>
                     </div>
 
@@ -428,7 +429,7 @@ export function SettingsContent({ user, member, organisations }: SettingsContent
                                 <><Upload className="w-4 h-4 mr-2" />{petPhotoUrl ? 'Change photo' : 'Upload photo'}</>
                               )}
                             </Button>
-                            <p className="text-xs text-gray-500">JPG, PNG or WebP · max 5MB</p>
+                            <p className="text-xs text-gray-500">{IMAGE_GUIDELINES.petPhoto.hint}</p>
                           </div>
                         </div>
 
