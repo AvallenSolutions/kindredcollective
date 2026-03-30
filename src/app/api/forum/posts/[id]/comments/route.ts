@@ -86,5 +86,5 @@ export async function POST(
     return serverErrorResponse('Failed to create comment')
   }
 
-  return successResponse({ comment: { ...comment, voteScore: 0, userVote: 0 } }, 201)
+  return successResponse({ comment: { ...(comment as Record<string, unknown>), voteScore: 0, userVote: 0 } }, 201)
 }
