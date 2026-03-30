@@ -62,8 +62,9 @@ export async function GET(request: NextRequest) {
       .in('id', creatorIds)
 
     if (users) {
-      for (const u of users) {
-        creatorMap[u.id] = { email: u.email, member: u.member }
+      for (const u of users as any[]) {
+        const memberData = Array.isArray(u.member) ? u.member[0] || null : u.member
+        creatorMap[u.id] = { email: u.email, member: memberData }
       }
     }
   }
