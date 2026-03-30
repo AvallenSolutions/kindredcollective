@@ -51,24 +51,34 @@ export async function POST(
     if (!parent) return errorResponse('Parent comment not found')
   }
 
+  const insertPayload: Record<string, unknown> = {
+    id: crypto.randomUUID(),
+    body: commentBody.trim(),
+    postId,
+    authorId: session.user.id,
+    parentId: parentId || null,
+    updatedAt: new Date().toISOString(),
+  }
+  if (imageUrl) {
+    insertPayload.imageUrl = imageUrl
+  }
+
+  const selectFields = imageUrl
+    ? `id, body, imageUrl, parentId, createdAt, updatedAt,
+       author:User!authorId(
+         id, email,
+         member:Member(firstName, lastName, avatarUrl, jobTitle, company)
+       )`
+    : `id, body, parentId, createdAt, updatedAt,
+       author:User!authorId(
+         id, email,
+         member:Member(firstName, lastName, avatarUrl, jobTitle, company)
+       )`
+
   const { data: comment, error } = await supabase
     .from('ForumComment')
-    .insert({
-      id: crypto.randomUUID(),
-      body: commentBody.trim(),
-      imageUrl: imageUrl || null,
-      postId,
-      authorId: session.user.id,
-      parentId: parentId || null,
-      updatedAt: new Date().toISOString(),
-    })
-    .select(`
-      id, body, imageUrl, parentId, createdAt, updatedAt,
-      author:User!authorId(
-        id, email,
-        member:Member(firstName, lastName, avatarUrl, jobTitle, company)
-      )
-    `)
+    .insert(insertPayload)
+    .select(selectFields)
     .single()
 
   if (error) {
