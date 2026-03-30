@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { Badge, Button, Card, CardContent } from '@/components/ui'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getSession } from '@/lib/auth/session'
 import { EVENT_TYPE_LABELS } from '@/types/database'
 import type { EventType } from '@prisma/client'
 import { cn, formatDate } from '@/lib/utils'
@@ -36,16 +37,21 @@ const typeColors: Record<EventType, string> = {
   OTHER: 'bg-gray-400',
 }
 
-async function getEvent(slug: string) {
+async function getEvent(slug: string, isAdmin: boolean = false) {
   try {
     const supabase = createAdminClient()
 
-    const { data: event, error } = await supabase
+    let query = supabase
       .from('Event')
-      .select('*')
+      .select('*, createdBy:User!createdById(email, member:Member(firstName, lastName))')
       .eq('slug', slug)
-      .eq('status', 'PUBLISHED')
-      .single()
+
+    // Admins can view all statuses; everyone else only sees PUBLISHED
+    if (!isAdmin) {
+      query = query.eq('status', 'PUBLISHED')
+    }
+
+    const { data: event, error } = await query.single()
 
     if (error || !event) {
       return null
@@ -106,7 +112,9 @@ async function getEvent(slug: string) {
 
 export default async function EventDetailPage({ params }: EventDetailPageProps) {
   const { slug } = await params
-  const event = await getEvent(slug)
+  const session = await getSession()
+  const isAdmin = session.user?.role === 'ADMIN'
+  const event = await getEvent(slug, isAdmin)
 
   if (!event) {
     notFound()
@@ -114,9 +122,24 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 
   const typeColor = typeColors[event.type as EventType] || 'bg-gray-400'
   const isPast = new Date(event.startDate) < new Date()
+  const isDraft = event.status !== 'PUBLISHED'
+
+  const creatorName = event.createdBy?.member
+    ? `${event.createdBy.member.firstName} ${event.createdBy.member.lastName}`
+    : event.createdBy?.email || null
 
   return (
     <div className="min-h-screen">
+      {/* Draft Banner */}
+      {isDraft && isAdmin && (
+        <div className="bg-yellow-300 border-b-2 border-black px-6 py-3 text-center">
+          <p className="font-bold text-sm uppercase">
+            This event is not published — only admins can see this preview.
+            Status: {event.status}
+          </p>
+        </div>
+      )}
+
       {/* Header */}
       <section className={cn(typeColor, 'border-b-4 border-black')}>
         <div className="section-container py-8">
@@ -169,6 +192,12 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
                     <> - {new Date(event.endDate).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</>
                   )}
                 </span>
+                {creatorName && (
+                  <span className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Posted by {creatorName}
+                  </span>
+                )}
               </div>
             </div>
 

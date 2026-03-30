@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Calendar, Plus, Pencil, Trash2, Search, ArrowLeft } from 'lucide-react'
+import { Calendar, Plus, Pencil, Trash2, Search, ArrowLeft, Eye, EyeOff, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui'
 
 interface Event {
@@ -16,6 +16,10 @@ interface Event {
   city: string | null
   isVirtual: boolean
   createdAt: string
+  createdBy: {
+    email: string
+    member: { firstName: string; lastName: string } | null
+  } | null
 }
 
 export default function AdminEventsPage() {
@@ -50,6 +54,16 @@ export default function AdminEventsPage() {
       }))
     }
     setLoading(false)
+  }
+
+  async function toggleStatus(id: string, currentStatus: string) {
+    const newStatus = currentStatus === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED'
+    const res = await fetch(`/api/admin/events/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus }),
+    })
+    if (res.ok) fetchEvents()
   }
 
   async function deleteEvent(id: string, title: string) {
@@ -126,6 +140,7 @@ export default function AdminEventsPage() {
                 <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide">Type</th>
                 <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide">Date</th>
                 <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide">Location</th>
+                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide">Created By</th>
                 <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wide">Status</th>
                 <th className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wide">Actions</th>
               </tr>
@@ -133,13 +148,13 @@ export default function AdminEventsPage() {
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                     Loading...
                   </td>
                 </tr>
               ) : events.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                     No events found
                   </td>
                 </tr>
@@ -160,6 +175,17 @@ export default function AdminEventsPage() {
                     <td className="px-6 py-4 text-sm">
                       {event.isVirtual ? 'Virtual' : event.city || '-'}
                     </td>
+                    <td className="px-6 py-4 text-sm">
+                      {event.createdBy ? (
+                        <span>
+                          {event.createdBy.member
+                            ? `${event.createdBy.member.firstName} ${event.createdBy.member.lastName}`
+                            : event.createdBy.email}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">System</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-bold uppercase border-2 border-black ${
@@ -175,15 +201,39 @@ export default function AdminEventsPage() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => toggleStatus(event.id, event.status)}
+                          className={`p-2 border-2 border-black transition-colors ${
+                            event.status === 'PUBLISHED'
+                              ? 'bg-green-400 hover:bg-gray-200'
+                              : 'hover:bg-green-400'
+                          }`}
+                          title={event.status === 'PUBLISHED' ? 'Unpublish' : 'Publish'}
+                        >
+                          {event.status === 'PUBLISHED' ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
+                        </button>
+                        <Link
+                          href={`/community/events/${event.slug}`}
+                          className="p-2 border-2 border-black hover:bg-cyan transition-colors"
+                          title="Preview event"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </Link>
                         <Link
                           href={`/admin/events/${event.id}`}
                           className="p-2 border-2 border-black hover:bg-cyan transition-colors"
+                          title="Edit event"
                         >
                           <Pencil className="w-4 h-4" />
                         </Link>
                         <button
                           onClick={() => deleteEvent(event.id, event.title)}
                           className="p-2 border-2 border-black hover:bg-red-500 hover:text-white transition-colors"
+                          title="Delete event"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('Event')
-    .select('*, rsvps:EventRsvp(count)', { count: 'exact' })
+    .select('*, rsvps:EventRsvp(count), createdBy:User!createdById(email, member:Member(firstName, lastName))', { count: 'exact' })
     .order('startDate', { ascending: true })
     .range(from, to)
 
