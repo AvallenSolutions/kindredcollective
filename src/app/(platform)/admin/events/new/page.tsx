@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Calendar, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui'
+import { IMAGE_GUIDELINES } from '@/lib/storage/upload'
 
 const EVENT_TYPES = [
   'TRADE_SHOW',
@@ -414,7 +415,7 @@ export default function NewEventPage() {
               <label className="flex flex-col items-center justify-center border-2 border-dashed border-black p-12 cursor-pointer hover:bg-gray-50">
                 <Upload className="w-8 h-8 mb-2 text-gray-400" />
                 <span className="text-sm text-gray-500">Click to upload event image</span>
-                <span className="text-xs text-gray-400 mt-1">Recommended: 1200x630px</span>
+                <span className="text-xs text-gray-400 mt-1">{IMAGE_GUIDELINES.event.hint}</span>
                 <input
                   type="file"
                   accept="image/*"

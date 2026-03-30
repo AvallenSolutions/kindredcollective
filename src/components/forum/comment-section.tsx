@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { MessageSquare, Reply, Send, ImagePlus, X } from 'lucide-react'
 import { formatDate, getInitials } from '@/lib/utils'
+import { IMAGE_GUIDELINES } from '@/lib/storage/upload'
 import { ForumVoteButton } from './vote-button'
 
 interface Comment {
@@ -353,6 +354,7 @@ export function ForumCommentSection({ postId, comments: initialComments }: Forum
                 <ImagePlus className="w-4 h-4" />
                 Add Image
               </button>
+              <span className="text-xs text-gray-400">{IMAGE_GUIDELINES.forum.hint}</span>
             </div>
           </form>
         </div>
