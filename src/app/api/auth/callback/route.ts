@@ -139,7 +139,7 @@ export async function GET(request: Request) {
         const lastName = metadata.last_name || metadata.full_name?.split(' ').slice(1).join(' ') || ''
 
         if (firstName || lastName) {
-          await supabase
+          await adminSupabase
             .from('Member')
             .insert({
               id: crypto.randomUUID(),
