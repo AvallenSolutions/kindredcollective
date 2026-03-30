@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
-import { MessageSquare, Reply, Send } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { MessageSquare, Reply, Send, ImagePlus, X } from 'lucide-react'
 import { formatDate, getInitials } from '@/lib/utils'
 import { ForumVoteButton } from './vote-button'
 
 interface Comment {
   id: string
   body: string
+  imageUrl: string | null
   parentId: string | null
   createdAt: string
   voteScore: number
@@ -25,12 +26,25 @@ interface ForumCommentSectionProps {
   comments: Comment[]
 }
 
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+
 export function ForumCommentSection({ postId, comments: initialComments }: ForumCommentSectionProps) {
   const [comments, setComments] = useState<Comment[]>(initialComments)
   const [newComment, setNewComment] = useState('')
   const [replyTo, setReplyTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // Image upload state for top-level comment
+  const [topImage, setTopImage] = useState<File | null>(null)
+  const [topImagePreview, setTopImagePreview] = useState<string | null>(null)
+  const topFileRef = useRef<HTMLInputElement>(null!)
+
+  // Image upload state for reply
+  const [replyImage, setReplyImage] = useState<File | null>(null)
+  const [replyImagePreview, setReplyImagePreview] = useState<string | null>(null)
+  const replyFileRef = useRef<HTMLInputElement>(null!)
 
   // Build threaded structure
   const topLevel = comments.filter(c => !c.parentId)
@@ -42,13 +56,56 @@ export function ForumCommentSection({ postId, comments: initialComments }: Forum
     replyMap.set(reply.parentId!, arr)
   }
 
-  async function submitComment(body: string, parentId?: string) {
+  function handleFileSelect(file: File | undefined, setImage: (f: File | null) => void, setPreview: (s: string | null) => void) {
+    if (!file) return
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      alert('Please upload a JPG, PNG, WebP, or GIF image.')
+      return
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      alert('Image must be under 5MB.')
+      return
+    }
+
+    setImage(file)
+    const reader = new FileReader()
+    reader.onload = (e) => setPreview(e.target?.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  function clearImage(setImage: (f: File | null) => void, setPreview: (s: string | null) => void, fileRef: React.RefObject<HTMLInputElement>) {
+    setImage(null)
+    setPreview(null)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  async function uploadImage(file: File): Promise<string | null> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const res = await fetch('/api/upload?bucket=forum-images&folder=comments', {
+      method: 'POST',
+      body: formData,
+    })
+
+    const data = await res.json()
+    if (data.success) return data.url
+    return null
+  }
+
+  async function submitComment(body: string, parentId?: string, imageFile?: File | null) {
     setSubmitting(true)
     try {
+      let imageUrl: string | null = null
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile)
+      }
+
       const res = await fetch(`/api/forum/posts/${postId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body, parentId: parentId || null }),
+        body: JSON.stringify({ body, parentId: parentId || null, imageUrl }),
       })
 
       const data = await res.json()
@@ -57,6 +114,8 @@ export function ForumCommentSection({ postId, comments: initialComments }: Forum
         setNewComment('')
         setReplyTo(null)
         setReplyText('')
+        clearImage(setTopImage, setTopImagePreview, topFileRef)
+        clearImage(setReplyImage, setReplyImagePreview, replyFileRef)
       }
     } catch {
       // Silently fail
@@ -67,12 +126,48 @@ export function ForumCommentSection({ postId, comments: initialComments }: Forum
 
   function handleSubmitTopLevel(e: React.FormEvent) {
     e.preventDefault()
-    if (newComment.trim()) submitComment(newComment.trim())
+    if (newComment.trim() || topImage) submitComment(newComment.trim(), undefined, topImage)
   }
 
   function handleSubmitReply(e: React.FormEvent, parentId: string) {
     e.preventDefault()
-    if (replyText.trim()) submitComment(replyText.trim(), parentId)
+    if (replyText.trim() || replyImage) submitComment(replyText.trim(), parentId, replyImage)
+  }
+
+  function renderImageUpload(
+    preview: string | null,
+    fileRef: React.RefObject<HTMLInputElement>,
+    setImage: (f: File | null) => void,
+    setPreview: (s: string | null) => void,
+    compact: boolean = false,
+  ) {
+    return (
+      <>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={(e) => handleFileSelect(e.target.files?.[0], setImage, setPreview)}
+        />
+        {preview && (
+          <div className="relative inline-block mt-2 mb-1">
+            <img
+              src={preview}
+              alt="Upload preview"
+              className={`border-2 border-black object-cover ${compact ? 'max-h-32' : 'max-h-48'}`}
+            />
+            <button
+              type="button"
+              onClick={() => clearImage(setImage, setPreview, fileRef)}
+              className="absolute -top-2 -right-2 w-6 h-6 bg-black text-white rounded-full flex items-center justify-center hover:bg-coral transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+      </>
+    )
   }
 
   function renderComment(comment: Comment, depth: number = 0) {
@@ -110,6 +205,18 @@ export function ForumCommentSection({ postId, comments: initialComments }: Forum
               {/* Body */}
               <p className="text-sm text-gray-800 whitespace-pre-wrap mb-2">{comment.body}</p>
 
+              {/* Comment image */}
+              {comment.imageUrl && (
+                <div className="mb-3 border-2 border-black overflow-hidden bg-gray-50 inline-block">
+                  <img
+                    src={comment.imageUrl}
+                    alt="Comment image"
+                    className="max-h-[300px] max-w-full object-contain cursor-pointer"
+                    onClick={() => window.open(comment.imageUrl!, '_blank')}
+                  />
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex items-center gap-3">
                 <div className="sm:hidden">
@@ -126,6 +233,7 @@ export function ForumCommentSection({ postId, comments: initialComments }: Forum
                     onClick={() => {
                       setReplyTo(replyTo === comment.id ? null : comment.id)
                       setReplyText('')
+                      clearImage(setReplyImage, setReplyImagePreview, replyFileRef)
                     }}
                     className="inline-flex items-center gap-1 text-xs font-bold uppercase text-gray-500 hover:text-coral transition-colors"
                   >
@@ -146,10 +254,11 @@ export function ForumCommentSection({ postId, comments: initialComments }: Forum
                     className="w-full px-3 py-2 border-2 border-black bg-white text-sm focus:outline-none focus:border-coral transition-colors resize-y"
                     autoFocus
                   />
+                  {renderImageUpload(replyImagePreview, replyFileRef, setReplyImage, setReplyImagePreview, true)}
                   <div className="flex items-center gap-2 mt-2">
                     <button
                       type="submit"
-                      disabled={submitting || !replyText.trim()}
+                      disabled={submitting || (!replyText.trim() && !replyImage)}
                       className="px-4 py-1.5 bg-coral border-2 border-black text-xs font-bold uppercase hover:bg-black hover:text-coral transition-colors disabled:opacity-50 flex items-center gap-1"
                     >
                       <Send className="w-3 h-3" />
@@ -157,7 +266,18 @@ export function ForumCommentSection({ postId, comments: initialComments }: Forum
                     </button>
                     <button
                       type="button"
-                      onClick={() => setReplyTo(null)}
+                      onClick={() => replyFileRef.current?.click()}
+                      className="px-3 py-1.5 border-2 border-black text-xs font-bold uppercase hover:bg-gray-100 transition-colors flex items-center gap-1"
+                    >
+                      <ImagePlus className="w-3 h-3" />
+                      Image
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReplyTo(null)
+                        clearImage(setReplyImage, setReplyImagePreview, replyFileRef)
+                      }}
                       className="px-4 py-1.5 border-2 border-black text-xs font-bold uppercase hover:bg-gray-100 transition-colors"
                     >
                       Cancel
@@ -194,14 +314,23 @@ export function ForumCommentSection({ postId, comments: initialComments }: Forum
               rows={4}
               className="w-full px-4 py-3 border-2 border-black bg-white font-medium focus:outline-none focus:border-coral transition-colors resize-y"
             />
-            <div className="mt-3">
+            {renderImageUpload(topImagePreview, topFileRef, setTopImage, setTopImagePreview)}
+            <div className="flex items-center gap-2 mt-3">
               <button
                 type="submit"
-                disabled={submitting || !newComment.trim()}
+                disabled={submitting || (!newComment.trim() && !topImage)}
                 className="px-6 py-2.5 bg-coral border-2 border-black font-bold uppercase text-sm hover:bg-black hover:text-coral transition-colors neo-shadow disabled:opacity-50 flex items-center gap-2"
               >
                 <Send className="w-4 h-4" />
                 {submitting ? 'Posting...' : 'Comment'}
+              </button>
+              <button
+                type="button"
+                onClick={() => topFileRef.current?.click()}
+                className="px-4 py-2.5 border-2 border-black font-bold uppercase text-sm hover:bg-gray-100 transition-colors flex items-center gap-2"
+              >
+                <ImagePlus className="w-4 h-4" />
+                Add Image
               </button>
             </div>
           </form>

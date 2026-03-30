@@ -725,6 +725,7 @@ model ForumPost {
 model ForumComment {
   id        String   @id @default(cuid())
   body      String   @db.Text
+  imageUrl  String?
   postId    String
   authorId  String
   parentId  String?  // For threaded/nested replies

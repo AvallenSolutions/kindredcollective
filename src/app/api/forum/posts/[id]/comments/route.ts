@@ -35,7 +35,7 @@ export async function POST(
   if (!post) return notFoundResponse('Post not found')
 
   const body = await request.json()
-  const { body: commentBody, parentId } = body
+  const { body: commentBody, parentId, imageUrl } = body
 
   if (!commentBody?.trim()) return errorResponse('Comment body is required')
 
@@ -56,13 +56,14 @@ export async function POST(
     .insert({
       id: crypto.randomUUID(),
       body: commentBody.trim(),
+      imageUrl: imageUrl || null,
       postId,
       authorId: session.user.id,
       parentId: parentId || null,
       updatedAt: new Date().toISOString(),
     })
     .select(`
-      id, body, parentId, createdAt, updatedAt,
+      id, body, imageUrl, parentId, createdAt, updatedAt,
       author:User!authorId(
         id, email,
         member:Member(firstName, lastName, avatarUrl, jobTitle, company)
