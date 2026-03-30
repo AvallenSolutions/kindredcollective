@@ -44,8 +44,8 @@ async function getPostData(postId: string, userId: string) {
     .eq('id', postId)
     .then(() => {})
 
-  // Fetch comments (try with imageUrl column, fall back without if column doesn't exist yet)
-  let { data: comments, error: commentsError } = await supabase
+  // Fetch comments
+  const { data: comments } = await supabase
     .from('ForumComment')
     .select(`
       id, body, imageUrl, parentId, createdAt, updatedAt,
@@ -57,22 +57,6 @@ async function getPostData(postId: string, userId: string) {
     `)
     .eq('postId', postId)
     .order('createdAt', { ascending: true })
-
-  if (commentsError) {
-    const fallback = await supabase
-      .from('ForumComment')
-      .select(`
-        id, body, parentId, createdAt, updatedAt,
-        author:User!authorId(
-          id, email,
-          member:Member(firstName, lastName, avatarUrl, jobTitle, company)
-        ),
-        votes:ForumVote(value, userId)
-      `)
-      .eq('postId', postId)
-      .order('createdAt', { ascending: true })
-    comments = fallback.data
-  }
 
   const postData = post as any
   const voteScore = (postData.votes || []).reduce((sum: number, v: any) => sum + v.value, 0)
