@@ -790,6 +790,51 @@ export default function OnboardingPage() {
 
           <StepIndicator />
 
+          {/* Explainer card — shown until the user connects to a company */}
+          {connectedCompanies.length === 0 && (
+            <Card className="mb-6 border-3 border-black bg-gradient-to-br from-cyan/5 to-lime/5">
+              <CardContent className="p-6">
+                <h3 className="font-display font-bold text-lg mb-3 uppercase tracking-tight">
+                  How does this work?
+                </h3>
+                <div className="space-y-3 text-sm text-gray-700">
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 bg-cyan border-2 border-black flex items-center justify-center shrink-0">
+                      <Search className="w-4 h-4" />
+                    </div>
+                    <p>
+                      <strong>Search first</strong> &mdash; type your company name below. Many brands and suppliers are already listed on Kindred.
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 bg-lime border-2 border-black flex items-center justify-center shrink-0">
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <p>
+                      <strong>Claim ownership</strong> &mdash; if your company is listed but nobody has claimed it yet, you can claim it as the owner and manage the profile.
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 bg-coral border-2 border-black flex items-center justify-center shrink-0">
+                      <Users className="w-4 h-4 text-white" />
+                    </div>
+                    <p>
+                      <strong>Join your team</strong> &mdash; if a colleague has already claimed your company, you can join as a team member.
+                    </p>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 bg-white border-2 border-black flex items-center justify-center shrink-0">
+                      <Plus className="w-4 h-4" />
+                    </div>
+                    <p>
+                      <strong>Not listed?</strong> &mdash; no problem, you can create a new brand or supplier profile from scratch.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Connected companies list */}
           {connectedCompanies.length > 0 && (
             <div className="mb-6 space-y-3">
