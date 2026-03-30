@@ -65,7 +65,10 @@ async function getEvent(slug: string, isAdmin: boolean = false) {
         .select('email, member:Member(firstName, lastName)')
         .eq('id', event.createdById)
         .single()
-      if (user) createdBy = { email: user.email, member: user.member }
+      if (user) {
+        const memberData = Array.isArray(user.member) ? user.member[0] || null : user.member
+        createdBy = { email: user.email, member: memberData }
+      }
     }
     ;(event as any).createdBy = createdBy
 
