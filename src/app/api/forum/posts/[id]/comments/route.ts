@@ -51,40 +51,44 @@ export async function POST(
     if (!parent) return errorResponse('Parent comment not found')
   }
 
-  const insertPayload: Record<string, unknown> = {
-    id: crypto.randomUUID(),
-    body: commentBody.trim(),
-    postId,
-    authorId: session.user.id,
-    parentId: parentId || null,
-    updatedAt: new Date().toISOString(),
-  }
-  if (imageUrl) {
-    insertPayload.imageUrl = imageUrl
-  }
+  const commentId = crypto.randomUUID()
+  const now = new Date().toISOString()
 
-  const selectFields = imageUrl
-    ? `id, body, imageUrl, parentId, createdAt, updatedAt,
-       author:User!authorId(
-         id, email,
-         member:Member(firstName, lastName, avatarUrl, jobTitle, company)
-       )`
-    : `id, body, parentId, createdAt, updatedAt,
-       author:User!authorId(
-         id, email,
-         member:Member(firstName, lastName, avatarUrl, jobTitle, company)
-       )`
-
-  const { data: comment, error } = await supabase
+  // Insert the comment
+  const { error: insertError } = await supabase
     .from('ForumComment')
-    .insert(insertPayload)
-    .select(selectFields)
-    .single()
+    .insert({
+      id: commentId,
+      body: commentBody.trim(),
+      imageUrl: imageUrl || null,
+      postId,
+      authorId: session.user.id,
+      parentId: parentId || null,
+      updatedAt: now,
+    })
 
-  if (error || !comment) {
-    console.error('[Forum] Error creating comment:', error)
+  if (insertError) {
+    console.error('[Forum] Error creating comment:', insertError)
     return serverErrorResponse('Failed to create comment')
   }
 
-  return successResponse({ comment: { ...(comment as Record<string, unknown>), voteScore: 0, userVote: 0 } }, 201)
+  // Fetch the created comment with author details
+  const { data: comment, error: fetchError } = await supabase
+    .from('ForumComment')
+    .select(`
+      id, body, imageUrl, parentId, createdAt, updatedAt,
+      author:User!authorId(
+        id, email,
+        member:Member(firstName, lastName, avatarUrl, jobTitle, company)
+      )
+    `)
+    .eq('id', commentId)
+    .single()
+
+  if (fetchError || !comment) {
+    console.error('[Forum] Error fetching created comment:', fetchError)
+    return serverErrorResponse('Comment created but failed to fetch details')
+  }
+
+  return successResponse({ comment: { ...comment, voteScore: 0, userVote: 0 } }, 201)
 }
