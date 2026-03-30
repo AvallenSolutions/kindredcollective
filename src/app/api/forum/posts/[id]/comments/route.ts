@@ -81,7 +81,7 @@ export async function POST(
     .select(selectFields)
     .single()
 
-  if (error) {
+  if (error || !comment) {
     console.error('[Forum] Error creating comment:', error)
     return serverErrorResponse('Failed to create comment')
   }
