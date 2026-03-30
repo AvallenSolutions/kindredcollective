@@ -61,6 +61,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       serviceRating,
       valueRating,
       isVerified,
+      isAnonymous,
       createdAt,
       brand:Brand(id, name, slug, logoUrl)
     `, { count: 'exact' })
@@ -97,8 +98,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       : null,
   }
 
+  // Mask identity for anonymous reviews
+  const maskedReviews = (reviews || []).map(review => {
+    if (review.isAnonymous) {
+      return { ...review, reviewerName: 'Anonymous', reviewerCompany: null, brand: null }
+    }
+    return review
+  })
+
   return successResponse({
-    reviews,
+    reviews: maskedReviews,
     stats,
     pagination: paginationMeta(page, limit, count || 0),
   })
@@ -125,6 +134,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     wouldRecommend = true,
     serviceRating,
     valueRating,
+    isAnonymous = false,
   } = body
 
   // Validate required fields
@@ -186,6 +196,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       wouldRecommend,
       serviceRating,
       valueRating,
+      isAnonymous: !!isAnonymous,
       isVerified: false,
       isPublic: true,
       createdAt: new Date().toISOString(),

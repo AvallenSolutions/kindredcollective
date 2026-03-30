@@ -313,6 +313,7 @@ model SupplierReview {
   wouldRecommend  Boolean  @default(true)
   serviceRating   Int?     // 1-5
   valueRating     Int?     // 1-5
+  isAnonymous     Boolean  @default(false)
   isVerified      Boolean  @default(false)
   isPublic        Boolean  @default(true)
   createdAt       DateTime @default(now())

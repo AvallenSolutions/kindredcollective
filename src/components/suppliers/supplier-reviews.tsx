@@ -10,6 +10,7 @@ import {
   Send,
   MessageSquarePlus,
   X,
+  EyeOff,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -29,6 +30,7 @@ interface Review {
   serviceRating: number | null
   valueRating: number | null
   isVerified: boolean
+  isAnonymous: boolean
   createdAt: string
   brand: {
     id: string
@@ -129,6 +131,7 @@ export function SupplierReviews({ supplierSlug, supplierName }: SupplierReviewsP
     wouldRecommend: true,
     serviceRating: 0,
     valueRating: 0,
+    isAnonymous: false,
   })
 
   const fetchReviews = useCallback(async () => {
@@ -188,6 +191,7 @@ export function SupplierReviews({ supplierSlug, supplierName }: SupplierReviewsP
       if (formData.title.trim()) body.title = formData.title.trim()
       if (formData.serviceRating > 0) body.serviceRating = formData.serviceRating
       if (formData.valueRating > 0) body.valueRating = formData.valueRating
+      if (formData.isAnonymous) body.isAnonymous = true
 
       const res = await fetch(`/api/suppliers/${supplierSlug}/reviews`, {
         method: 'POST',
@@ -206,6 +210,7 @@ export function SupplierReviews({ supplierSlug, supplierName }: SupplierReviewsP
           wouldRecommend: true,
           serviceRating: 0,
           valueRating: 0,
+          isAnonymous: false,
         })
         setTimeout(() => {
           setShowForm(false)
@@ -429,6 +434,26 @@ export function SupplierReviews({ supplierSlug, supplierName }: SupplierReviewsP
                 </div>
               </div>
 
+              {/* Anonymous Toggle */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 border-2 border-gray-200">
+                <div className="flex items-center gap-2">
+                  <EyeOff className="w-4 h-4 text-gray-500" />
+                  <div>
+                    <p className="font-bold text-sm">Post anonymously</p>
+                    <p className="text-xs text-gray-500">Your name and company will be hidden from the review</p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={formData.isAnonymous}
+                    onChange={(e) => setFormData({ ...formData, isAnonymous: e.target.checked })}
+                  />
+                  <div className="w-11 h-6 bg-gray-300 peer-checked:bg-cyan border-2 border-black rounded-full peer-focus:ring-2 peer-focus:ring-cyan after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-2 after:border-black after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full"></div>
+                </label>
+              </div>
+
               {/* Submit */}
               <div className="flex gap-3 pt-2">
                 <Button
@@ -479,7 +504,14 @@ export function SupplierReviews({ supplierSlug, supplierName }: SupplierReviewsP
               <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-display font-bold text-base">{review.reviewerName}</span>
+                    {review.isAnonymous ? (
+                      <>
+                        <EyeOff className="w-4 h-4 text-gray-400" />
+                        <span className="font-display font-bold text-base text-gray-500">Anonymous</span>
+                      </>
+                    ) : (
+                      <span className="font-display font-bold text-base">{review.reviewerName}</span>
+                    )}
                     {review.isVerified && (
                       <Badge variant="cyan" className="text-[10px]">
                         <CheckCircle className="w-3 h-3 mr-1" />
@@ -487,7 +519,7 @@ export function SupplierReviews({ supplierSlug, supplierName }: SupplierReviewsP
                       </Badge>
                     )}
                   </div>
-                  {review.reviewerCompany && (
+                  {!review.isAnonymous && review.reviewerCompany && (
                     <p className="text-xs text-gray-500 font-bold uppercase tracking-wide">
                       {review.reviewerCompany}
                     </p>

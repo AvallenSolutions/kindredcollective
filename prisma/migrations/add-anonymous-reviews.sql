@@ -1,0 +1,1 @@
+ALTER TABLE "SupplierReview" ADD COLUMN IF NOT EXISTS "isAnonymous" BOOLEAN NOT NULL DEFAULT false;

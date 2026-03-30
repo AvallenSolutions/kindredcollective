@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/auth'
 import {
   successResponse,
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     return unauthorizedResponse('Admin access required')
   }
 
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { searchParams } = new URL(request.url)
 
   const { page, limit, from, to } = parsePagination(searchParams)
@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Calculate statistics
-  const { data: stats } = await supabase
+  const { data: stats } = await createAdminClient()
     .from('SupplierReview')
     .select('isPublic, isVerified')
 
