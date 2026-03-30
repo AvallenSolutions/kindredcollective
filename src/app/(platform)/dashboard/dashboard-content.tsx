@@ -235,7 +235,7 @@ export function DashboardContent({
         <section className="section-container pb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display text-lg font-bold uppercase tracking-wide">My Organisations</h2>
-            <Link href="/onboarding">
+            <Link href="/onboarding?step=company">
               <Button size="sm" variant="outline">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Organisation
@@ -427,13 +427,13 @@ export function DashboardContent({
                 Link your profile to a brand or supplier to unlock more features.
               </p>
               <div className="flex justify-center gap-3">
-                <Link href="/onboarding">
+                <Link href="/onboarding?step=company">
                   <Button size="sm">
                     <Plus className="w-4 h-4 mr-2" />
                     Add Brand
                   </Button>
                 </Link>
-                <Link href="/onboarding">
+                <Link href="/onboarding?step=company">
                   <Button size="sm" variant="outline">
                     <Plus className="w-4 h-4 mr-2" />
                     Add Supplier
