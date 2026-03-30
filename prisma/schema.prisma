@@ -204,6 +204,7 @@ model Brand {
   linkedinUrl   String?
   twitterUrl    String?
   category      DrinkCategory
+  categories    String[]       @default([])
   subcategories String[]
   yearFounded   Int?
   location      String?

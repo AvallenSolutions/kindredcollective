@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
       logoUrl,
       heroImageUrl,
       category,
+      categories,
       subcategories,
       yearFounded,
       location,
@@ -51,7 +52,8 @@ export async function GET(request: NextRequest) {
     .range(from, to)
 
   if (category) {
-    query = query.eq('category', category)
+    // Check both legacy single category and new categories array
+    query = query.or(`category.eq.${category},categories.cs.{${category}}`)
   }
 
   if (rawLocation) {

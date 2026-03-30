@@ -1,3 +1,6 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
 import { MapPin, BadgeCheck, Heart } from 'lucide-react'
 import { SUPPLIER_CATEGORY_LABELS } from '@/types/database'
@@ -18,6 +21,7 @@ interface SupplierCardProps {
     isVerified: boolean
   }
   badge?: 'top' | 'trending' | 'sale' | null
+  savedId?: string | null
 }
 
 const categoryImages: Record<string, string> = {
@@ -37,8 +41,43 @@ const categoryImages: Record<string, string> = {
   OTHER: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
 }
 
-export function SupplierCard({ supplier, badge }: SupplierCardProps) {
+export function SupplierCard({ supplier, badge, savedId: initialSavedId }: SupplierCardProps) {
   const backgroundImage = categoryImages[supplier.category] || categoryImages.OTHER
+  const [saved, setSaved] = useState(!!initialSavedId)
+  const [currentSavedId, setCurrentSavedId] = useState<string | null>(initialSavedId || null)
+  const [toggling, setToggling] = useState(false)
+
+  async function toggleSave(e: React.MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (toggling) return
+    setToggling(true)
+
+    try {
+      if (saved && currentSavedId) {
+        const res = await fetch(`/api/me/saved-suppliers/${currentSavedId}`, { method: 'DELETE' })
+        if (res.ok) {
+          setSaved(false)
+          setCurrentSavedId(null)
+        }
+      } else {
+        const res = await fetch('/api/me/saved-suppliers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ supplierId: supplier.id }),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          setSaved(true)
+          setCurrentSavedId(data.data?.id || null)
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setToggling(false)
+    }
+  }
 
   return (
     <div className="group bg-white border-2 border-black neo-shadow hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_#000] transition-all duration-200 flex flex-col">
@@ -67,8 +106,14 @@ export function SupplierCard({ supplier, badge }: SupplierCardProps) {
         {badge === 'sale' && (
           <div className="absolute top-3 left-3 bg-coral text-white border border-black px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">Offer</div>
         )}
-        <button className="absolute top-3 right-3 w-8 h-8 bg-white border border-black flex items-center justify-center hover:bg-coral hover:text-white transition-colors">
-          <Heart className="w-4 h-4" />
+        <button
+          onClick={toggleSave}
+          disabled={toggling}
+          className={`absolute top-3 right-3 w-8 h-8 border border-black flex items-center justify-center transition-colors disabled:opacity-50 ${
+            saved ? 'bg-coral text-white' : 'bg-white hover:bg-coral hover:text-white'
+          }`}
+        >
+          <Heart className={`w-4 h-4 ${saved ? 'fill-current' : ''}`} />
         </button>
       </div>
       <div className="p-5 flex-1 flex flex-col">

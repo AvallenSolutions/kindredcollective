@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const adminSupabase = createAdminClient()
 
     const body = await request.json()
-    const { name, category, description, logoUrl } = body
+    const { name, category, categories, description, logoUrl } = body
 
     if (!name || !category) {
       return NextResponse.json(
@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
         id: crypto.randomUUID(),
         name,
         slug: finalSlug,
-        category,
+        category: (categories && categories.length > 0) ? categories[0] : category,
+        categories: (categories && categories.length > 0) ? categories : [category],
         description,
         logoUrl,
         subcategories: [],

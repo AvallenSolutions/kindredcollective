@@ -38,12 +38,15 @@ type Supplier = {
   isVerified: boolean
 }
 
+type SavedEntry = { id: string; supplier: { id: string } }
+
 export default function ExplorePage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [savedMap, setSavedMap] = useState<Record<string, string>>({})
 
   const [searchInput, setSearchInput] = useState('')
   const [activeSearch, setActiveSearch] = useState('')
@@ -122,6 +125,22 @@ export default function ExplorePage() {
       setLoading(false)
       setLoadingMore(false)
     }
+  }, [])
+
+  // Fetch user's saved suppliers on mount
+  useEffect(() => {
+    fetch('/api/me/saved-suppliers')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          const map: Record<string, string> = {}
+          for (const entry of (data.data.savedSuppliers || []) as SavedEntry[]) {
+            if (entry.supplier) map[entry.supplier.id] = entry.id
+          }
+          setSavedMap(map)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   // Re-fetch from page 1 when filters change
@@ -370,11 +389,18 @@ export default function ExplorePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {suppliers.map((supplier, index) => (
+              {[...suppliers]
+                .sort((a, b) => {
+                  const aSaved = savedMap[a.id] ? 1 : 0
+                  const bSaved = savedMap[b.id] ? 1 : 0
+                  return bSaved - aSaved
+                })
+                .map((supplier) => (
                 <SupplierCard
                   key={supplier.id}
                   supplier={supplier}
                   badge={null}
+                  savedId={savedMap[supplier.id] || null}
                 />
               ))}
             </div>

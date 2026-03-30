@@ -16,6 +16,12 @@ import { DRINK_CATEGORY_LABELS } from '@/types/database'
 import type { DrinkCategory } from '@prisma/client'
 import { cn } from '@/lib/utils'
 
+// Ensure URL has a protocol so <a href> navigates correctly
+function ensureUrl(url: string): string {
+  if (/^https?:\/\//i.test(url)) return url
+  return `https://${url}`
+}
+
 // Force dynamic rendering to always fetch fresh data
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -98,9 +104,14 @@ export default async function BrandProfilePage({ params }: BrandProfilePageProps
             {/* Info */}
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-3 mb-3">
-                <Badge variant="outline" className="bg-white">
-                  {DRINK_CATEGORY_LABELS[brand.category as DrinkCategory]}
-                </Badge>
+                {((brand.categories && brand.categories.length > 0)
+                  ? brand.categories
+                  : [brand.category]
+                ).map((cat: string) => (
+                  <Badge key={cat} variant="outline" className="bg-white">
+                    {DRINK_CATEGORY_LABELS[cat as DrinkCategory] || cat}
+                  </Badge>
+                ))}
                 {brand.isVerified && (
                   <Badge className="bg-blue-500 text-white border-blue-500">
                     <CheckCircle className="w-3 h-3 mr-1" />
@@ -137,7 +148,7 @@ export default async function BrandProfilePage({ params }: BrandProfilePageProps
             {/* Social/CTA */}
             <div className="flex flex-col gap-3">
               {brand.websiteUrl && (
-                <a href={brand.websiteUrl} target="_blank" rel="noopener noreferrer">
+                <a href={ensureUrl(brand.websiteUrl)} target="_blank" rel="noopener noreferrer">
                   <Button size="lg">
                     <Globe className="w-4 h-4 mr-2" />
                     Visit Website
@@ -287,7 +298,7 @@ export default async function BrandProfilePage({ params }: BrandProfilePageProps
                 <div className="space-y-2">
                   {brand.websiteUrl && (
                     <a
-                      href={brand.websiteUrl}
+                      href={ensureUrl(brand.websiteUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 p-3 bg-gray-50 border-2 border-gray-200 hover:border-black transition-colors"

@@ -68,6 +68,7 @@ export default function OnboardingPage() {
   const [brandData, setBrandData] = useState({
     name: '',
     category: 'SPIRITS',
+    categories: ['SPIRITS'] as string[],
     description: '',
     logoUrl: '',
   })
@@ -241,7 +242,7 @@ export default function OnboardingPage() {
         role: 'OWNER',
       }])
 
-      setBrandData({ name: '', category: 'SPIRITS', description: '', logoUrl: '' })
+      setBrandData({ name: '', category: 'SPIRITS', categories: ['SPIRITS'], description: '', logoUrl: '' })
       setSubStep(null)
       setError(null)
     } catch {
@@ -519,23 +520,47 @@ export default function OnboardingPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="category" className="uppercase tracking-wide text-xs font-bold">
-                    Category *
+                  <Label className="uppercase tracking-wide text-xs font-bold">
+                    Categories *
                   </Label>
-                  <select
-                    id="category"
-                    value={brandData.category}
-                    onChange={(e) => setBrandData({ ...brandData, category: e.target.value })}
-                    className="w-full px-3 py-2 border-3 border-black focus:outline-none focus:ring-2 focus:ring-cyan"
-                  >
-                    <option value="SPIRITS">Spirits</option>
-                    <option value="BEER">Beer</option>
-                    <option value="WINE">Wine</option>
-                    <option value="RTD">RTD</option>
-                    <option value="NO_LO">No/Low Alcohol</option>
-                    <option value="CIDER">Cider</option>
-                    <option value="OTHER">Other</option>
-                  </select>
+                  <p className="text-xs text-gray-500">Select all that apply</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { value: 'SPIRITS', label: 'Spirits' },
+                      { value: 'BEER', label: 'Beer' },
+                      { value: 'WINE', label: 'Wine' },
+                      { value: 'RTD', label: 'RTD' },
+                      { value: 'NO_LO', label: 'No/Low Alcohol' },
+                      { value: 'CIDER', label: 'Cider' },
+                      { value: 'OTHER', label: 'Other' },
+                    ].map(c => {
+                      const checked = brandData.categories.includes(c.value)
+                      return (
+                        <label
+                          key={c.value}
+                          className={`flex items-center gap-2 px-3 py-2 border-2 cursor-pointer transition-colors ${
+                            checked ? 'border-black bg-cyan/20 font-bold' : 'border-gray-200 hover:border-gray-400'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              setBrandData(prev => {
+                                const cats = checked
+                                  ? prev.categories.filter(v => v !== c.value)
+                                  : [...prev.categories, c.value]
+                                if (cats.length === 0) return prev
+                                return { ...prev, categories: cats, category: cats[0] }
+                              })
+                            }}
+                            className="w-4 h-4 border-2 border-black accent-black"
+                          />
+                          <span className="text-sm">{c.label}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -567,7 +592,7 @@ export default function OnboardingPage() {
 
                 <Button
                   onClick={handleCreateBrand}
-                  disabled={loading || !brandData.name || !brandData.category}
+                  disabled={loading || !brandData.name || brandData.categories.length === 0}
                   className="w-full"
                 >
                   {loading ? 'Creating...' : 'Create Brand'}

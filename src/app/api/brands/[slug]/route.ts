@@ -29,6 +29,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       instagramUrl,
       linkedinUrl,
       category,
+      categories,
       subcategories,
       yearFounded,
       location,

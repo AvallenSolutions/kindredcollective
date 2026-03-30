@@ -19,6 +19,11 @@ import type { SupplierCategory, Certification } from '@prisma/client'
 import { ContactSupplierButton } from '@/components/suppliers/contact-supplier-button'
 import { SupplierReviews } from '@/components/suppliers/supplier-reviews'
 
+function ensureUrl(url: string): string {
+  if (/^https?:\/\//i.test(url)) return url
+  return `https://${url}`
+}
+
 // Force dynamic rendering to always fetch fresh data from Supabase
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -166,7 +171,7 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
               />
               {(supplier as any).websiteUrl && (
                 <a
-                  href={(supplier as any).websiteUrl}
+                  href={ensureUrl((supplier as any).websiteUrl)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center justify-center text-sm hover:underline"
