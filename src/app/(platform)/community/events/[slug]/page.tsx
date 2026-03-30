@@ -43,7 +43,7 @@ async function getEvent(slug: string, isAdmin: boolean = false) {
 
     let query = supabase
       .from('Event')
-      .select('*, createdBy:User!left(email, member:Member!left(firstName, lastName))')
+      .select('*')
       .eq('slug', slug)
 
     // Admins can view all statuses; everyone else only sees PUBLISHED
@@ -56,6 +56,18 @@ async function getEvent(slug: string, isAdmin: boolean = false) {
     if (error || !event) {
       return null
     }
+
+    // Fetch creator info separately (no FK relation on createdById)
+    let createdBy: { email: string; member: { firstName: string; lastName: string } | null } | null = null
+    if (event.createdById) {
+      const { data: user } = await supabase
+        .from('User')
+        .select('email, member:Member(firstName, lastName)')
+        .eq('id', event.createdById)
+        .single()
+      if (user) createdBy = { email: user.email, member: user.member }
+    }
+    ;(event as any).createdBy = createdBy
 
     // Fetch RSVP count
     const { count } = await supabase

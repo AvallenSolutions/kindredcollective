@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('Event')
-    .select('*, rsvps:EventRsvp(count), createdBy:User!left(email, member:Member!left(firstName, lastName))', { count: 'exact' })
+    .select('*, rsvps:EventRsvp(count)', { count: 'exact' })
     .order('startDate', { ascending: true })
     .range(from, to)
 
@@ -51,8 +51,30 @@ export async function GET(request: NextRequest) {
     return serverErrorResponse('Failed to fetch events')
   }
 
+  // Fetch creator info separately (no FK relation on createdById)
+  const creatorIds = [...new Set((events || []).map((e: { createdById: string | null }) => e.createdById).filter(Boolean))]
+  let creatorMap: Record<string, { email: string; member: { firstName: string; lastName: string } | null }> = {}
+
+  if (creatorIds.length > 0) {
+    const { data: users } = await supabase
+      .from('User')
+      .select('id, email, member:Member(firstName, lastName)')
+      .in('id', creatorIds)
+
+    if (users) {
+      for (const u of users) {
+        creatorMap[u.id] = { email: u.email, member: u.member }
+      }
+    }
+  }
+
+  const eventsWithCreators = (events || []).map((e: { createdById: string | null }) => ({
+    ...e,
+    createdBy: e.createdById ? creatorMap[e.createdById] || null : null,
+  }))
+
   return successResponse({
-    events,
+    events: eventsWithCreators,
     pagination: paginationMeta(page, limit, count || 0),
   })
 }
