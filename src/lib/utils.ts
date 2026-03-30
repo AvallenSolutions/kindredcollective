@@ -12,6 +12,7 @@ export function cn(...inputs: ClassValue[]) {
  * Format date for display
  */
 export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOptions): string {
+  if (!date) return ''
   const d = typeof date === 'string' ? new Date(date) : date
   return d.toLocaleDateString('en-GB', {
     day: 'numeric',
@@ -55,6 +56,7 @@ export function truncate(text: string, length: number): string {
  * Get initials from name
  */
 export function getInitials(name: string): string {
+  if (!name) return '??'
   return name
     .split(' ')
     .map((n) => n[0])
