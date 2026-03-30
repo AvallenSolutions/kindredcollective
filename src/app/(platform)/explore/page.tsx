@@ -73,8 +73,26 @@ export default function ExplorePage() {
       const res = await fetch(`/api/suppliers?${buildParams(filters, pg)}`)
       const data = await res.json()
       if (data.success) {
-        const items: Supplier[] = data.data.suppliers || []
+        let items: Supplier[] = data.data.suppliers || []
         setTotal(data.data.pagination?.total ?? 0)
+
+        // Randomise first page results and ensure Alkatera appears
+        if (!append && pg === 1) {
+          // Fisher-Yates shuffle
+          for (let i = items.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [items[i], items[j]] = [items[j], items[i]]
+          }
+          // Ensure Alkatera is in the first 12 results
+          const alkateraIndex = items.findIndex(
+            (s) => s.companyName.toLowerCase() === 'alkatera'
+          )
+          if (alkateraIndex > PAGE_SIZE - 1) {
+            const randomPos = Math.floor(Math.random() * PAGE_SIZE)
+            ;[items[randomPos], items[alkateraIndex]] = [items[alkateraIndex], items[randomPos]]
+          }
+        }
+
         setSuppliers((prev) => (append ? [...prev, ...items] : items))
         setPage(pg)
       }
@@ -336,7 +354,7 @@ export default function ExplorePage() {
                 <SupplierCard
                   key={supplier.id}
                   supplier={supplier}
-                  badge={index === 0 && page === 1 ? 'top' : index === 1 && page === 1 ? 'trending' : null}
+                  badge={null}
                 />
               ))}
             </div>

@@ -48,7 +48,7 @@ async function getPostData(postId: string, userId: string) {
   const { data: comments } = await supabase
     .from('ForumComment')
     .select(`
-      id, body, parentId, createdAt, updatedAt,
+      id, body, imageUrl, parentId, createdAt, updatedAt,
       author:User!authorId(
         id, email,
         member:Member(firstName, lastName, avatarUrl, jobTitle, company)
@@ -74,6 +74,7 @@ async function getPostData(postId: string, userId: string) {
     return {
       id: c.id,
       body: c.body,
+      imageUrl: c.imageUrl || null,
       parentId: c.parentId,
       createdAt: c.createdAt,
       voteScore: commentVoteScore,
