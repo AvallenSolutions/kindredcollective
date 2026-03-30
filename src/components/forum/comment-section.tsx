@@ -35,6 +35,7 @@ export function ForumCommentSection({ postId, comments: initialComments }: Forum
   const [replyTo, setReplyTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Image upload state for top-level comment
   const [topImage, setTopImage] = useState<File | null>(null)
@@ -84,14 +85,23 @@ export function ForumCommentSection({ postId, comments: initialComments }: Forum
     const formData = new FormData()
     formData.append('file', file)
 
-    const res = await fetch('/api/upload?bucket=forum-images&folder=comments', {
-      method: 'POST',
-      body: formData,
-    })
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 30_000)
 
-    const data = await res.json()
-    if (data.success) return data.url
-    return null
+      const res = await fetch('/api/upload?bucket=forum-images&folder=comments', {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+
+      if (!res.ok) return null
+      const data = await res.json()
+      return data.success ? data.url : null
+    } catch {
+      return null
+    }
   }
 
   async function submitComment(body: string, parentId?: string, imageFile?: File | null) {
@@ -100,16 +110,22 @@ export function ForumCommentSection({ postId, comments: initialComments }: Forum
       let imageUrl: string | null = null
       if (imageFile) {
         imageUrl = await uploadImage(imageFile)
+        if (!imageUrl) {
+          setError('Failed to upload image. Please try again.')
+          setSubmitting(false)
+          return
+        }
       }
 
       const res = await fetch(`/api/forum/posts/${postId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body, parentId: parentId || null, imageUrl }),
+        body: JSON.stringify({ body: body || ' ', parentId: parentId || null, imageUrl }),
       })
 
       const data = await res.json()
       if (data.success && data.data?.comment) {
+        setError(null)
         setComments(prev => [...prev, data.data.comment])
         setNewComment('')
         setReplyTo(null)
@@ -306,6 +322,11 @@ export function ForumCommentSection({ postId, comments: initialComments }: Forum
 
         {/* New comment form */}
         <div className="p-6 border-b-2 border-gray-200">
+          {error && (
+            <div className="mb-3 bg-red-50 border-2 border-red-300 text-red-700 px-4 py-2 text-sm">
+              {error}
+            </div>
+          )}
           <form onSubmit={handleSubmitTopLevel}>
             <textarea
               value={newComment}
