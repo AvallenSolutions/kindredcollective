@@ -115,7 +115,7 @@ export function BrandCard({ brand }: BrandCardProps) {
 
             {/* Subcategories */}
             <div className="flex flex-wrap gap-1 mb-4">
-              {brand.subcategories.slice(0, 3).map((sub) => (
+              {(brand.subcategories || []).slice(0, 3).map((sub) => (
                 <span
                   key={sub}
                   className="px-2 py-0.5 bg-gray-100 text-xs text-gray-600 border border-gray-200"
