@@ -82,64 +82,40 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to claim supplier' }, { status: 500 })
       }
 
-      // Check if Organisation already exists for this supplier
-      let organisation: Record<string, unknown> | null = null
-
-      const { data: existingOrg } = await adminSupabase
+      // Create Organisation
+      const { data: organisation, error: orgError } = await adminSupabase
         .from('Organisation')
-        .select('*')
-        .eq('supplierId', supplier.id)
+        .insert({
+          id: crypto.randomUUID(),
+          name: supplier.companyName,
+          slug: supplier.slug,
+          type: 'SUPPLIER',
+          supplierId: supplier.id,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        })
+        .select()
         .single()
 
-      if (existingOrg) {
-        organisation = existingOrg
-      } else {
-        // Create Organisation only if one doesn't exist
-        const { data: newOrg, error: orgError } = await adminSupabase
-          .from('Organisation')
-          .insert({
-            id: crypto.randomUUID(),
-            name: supplier.companyName,
-            slug: supplier.slug,
-            type: 'SUPPLIER',
-            supplierId: supplier.id,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          })
-          .select()
-          .single()
-
-        if (orgError) {
-          console.error('Error creating organisation:', orgError)
-          return NextResponse.json({ error: 'Failed to create organisation' }, { status: 500 })
-        }
-        organisation = newOrg
+      if (orgError) {
+        console.error('Error creating organisation:', orgError)
+        return NextResponse.json({ error: 'Failed to create organisation' }, { status: 500 })
       }
 
-      // Check if user is already a member
-      const { data: existingMember } = await adminSupabase
+      // Add user as owner
+      const { error: memberError } = await adminSupabase
         .from('OrganisationMember')
-        .select('id')
-        .eq('organisationId', (organisation as Record<string, unknown>).id)
-        .eq('userId', user.id)
-        .single()
+        .insert({
+          id: crypto.randomUUID(),
+          organisationId: organisation.id,
+          userId: user.id,
+          role: 'OWNER',
+          joinedAt: new Date().toISOString(),
+        })
 
-      if (!existingMember) {
-        // Add user as owner
-        const { error: memberError } = await adminSupabase
-          .from('OrganisationMember')
-          .insert({
-            id: crypto.randomUUID(),
-            organisationId: (organisation as Record<string, unknown>).id,
-            userId: user.id,
-            role: 'OWNER',
-            joinedAt: new Date().toISOString(),
-          })
-
-        if (memberError) {
-          console.error('Error adding organisation member:', memberError)
-          return NextResponse.json({ error: 'Failed to add user to organisation' }, { status: 500 })
-        }
+      if (memberError) {
+        console.error('Error adding organisation member:', memberError)
+        return NextResponse.json({ error: 'Failed to add user to organisation' }, { status: 500 })
       }
 
       return NextResponse.json({
