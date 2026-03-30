@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Fetch creator info separately (no FK relation on createdById)
-  const creatorIds = [...new Set((events || []).map((e: { createdById: string | null }) => e.createdById).filter(Boolean))]
+  const creatorIds = Array.from(new Set((events || []).map((e: { createdById: string | null }) => e.createdById))).filter((id): id is string => Boolean(id))
   let creatorMap: Record<string, { email: string; member: { firstName: string; lastName: string } | null }> = {}
 
   if (creatorIds.length > 0) {
