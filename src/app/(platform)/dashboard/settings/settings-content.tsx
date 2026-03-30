@@ -500,7 +500,7 @@ export function SettingsContent({ user, member, organisations }: SettingsContent
                     <div className="text-center py-8">
                       <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                       <p className="text-gray-500 mb-4">No organisations yet</p>
-                      <Link href="/onboarding">
+                      <Link href="/onboarding?step=company">
                         <Button>Add Brand or Supplier</Button>
                       </Link>
                     </div>
@@ -561,7 +561,7 @@ export function SettingsContent({ user, member, organisations }: SettingsContent
                       )}
 
                       <div className="pt-4 border-t">
-                        <Link href="/onboarding">
+                        <Link href="/onboarding?step=company">
                           <Button variant="outline">Add Another Organisation</Button>
                         </Link>
                       </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Building2,
   Store,
@@ -49,7 +49,9 @@ const STEPS: { key: Step; label: string; number: number }[] = [
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const [step, setStep] = useState<Step>('profile')
+  const searchParams = useSearchParams()
+  const startAtCompany = searchParams.get('step') === 'company'
+  const [step, setStep] = useState<Step>(startAtCompany ? 'company' : 'profile')
   const [subStep, setSubStep] = useState<SubStep>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -1038,9 +1040,18 @@ export default function OnboardingPage() {
 
           {/* Navigation */}
           <div className="flex justify-between">
-            <Button variant="outline" onClick={() => setStep('profile')}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (startAtCompany) {
+                  router.push('/dashboard')
+                } else {
+                  setStep('profile')
+                }
+              }}
+            >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
+              {startAtCompany ? 'Back to Dashboard' : 'Back'}
             </Button>
             <Button onClick={() => setStep('complete')}>
               {connectedCompanies.length > 0 ? 'Continue' : 'Skip for Now'}
@@ -1101,7 +1112,7 @@ export default function OnboardingPage() {
 
               <Button
                 onClick={() => {
-                  router.push('/dashboard?welcome=true')
+                  router.push(startAtCompany ? '/dashboard' : '/dashboard?welcome=true')
                   router.refresh()
                 }}
                 className="min-w-[200px]"
