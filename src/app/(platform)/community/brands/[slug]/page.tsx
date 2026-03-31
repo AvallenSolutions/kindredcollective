@@ -15,6 +15,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { DRINK_CATEGORY_LABELS } from '@/types/database'
 import type { DrinkCategory } from '@prisma/client'
 import { cn } from '@/lib/utils'
+import { BrandLogo } from '@/components/brands/brand-logo'
 
 // Ensure URL has a protocol so <a href> navigates correctly
 function ensureUrl(url: string): string {
@@ -88,17 +89,13 @@ export default async function BrandProfilePage({ params }: BrandProfilePageProps
           <div className="flex flex-col lg:flex-row lg:items-start gap-6">
             {/* Logo */}
             <div className="w-24 h-24 lg:w-32 lg:h-32 bg-white border-3 border-black flex items-center justify-center flex-shrink-0 overflow-hidden">
-              {brand.logoUrl ? (
-                <img
-                  src={brand.logoUrl}
-                  alt={brand.name}
-                  className="w-full h-full object-contain p-2"
-                />
-              ) : (
-                <span className="font-display text-4xl lg:text-5xl font-bold">
-                  {brand.name.charAt(0)}
-                </span>
-              )}
+              <BrandLogo
+                src={brand.logoUrl}
+                alt={brand.name}
+                fallbackLetter={brand.name.charAt(0)}
+                className="w-full h-full object-contain p-2"
+                fallbackClassName="text-4xl lg:text-5xl"
+              />
             </div>
 
             {/* Info */}

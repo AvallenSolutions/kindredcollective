@@ -5,6 +5,7 @@ import { DRINK_CATEGORY_LABELS } from '@/types/database'
 import type { DrinkCategory } from '@prisma/client'
 import { getInitials } from '@/lib/utils'
 import { NewsletterForm } from '@/components/newsletter-form'
+import { BrandLogo } from '@/components/brands/brand-logo'
 
 // Force dynamic rendering to always fetch fresh data
 export const dynamic = 'force-dynamic'
@@ -178,17 +179,13 @@ export default async function CommunityPage() {
                 <Link key={brand.id} href={`/community/brands/${brand.slug}`}>
                   <div className="group bg-white border-2 border-black neo-shadow hover:neo-shadow-lg transition-all h-full">
                     <div className="h-48 overflow-hidden border-b-2 border-black relative bg-gray-50 flex items-center justify-center">
-                      {brand.logoUrl ? (
-                        <img
-                          src={brand.logoUrl}
-                          className="max-w-full max-h-full object-contain p-6 group-hover:scale-105 transition-transform duration-500"
-                          alt={brand.name}
-                        />
-                      ) : (
-                        <span className="font-display text-6xl font-bold text-gray-200">
-                          {brand.name.charAt(0)}
-                        </span>
-                      )}
+                      <BrandLogo
+                        src={brand.logoUrl}
+                        alt={brand.name}
+                        fallbackLetter={brand.name.charAt(0)}
+                        className="max-w-full max-h-full object-contain p-6 group-hover:scale-105 transition-transform duration-500"
+                        fallbackClassName="text-6xl"
+                      />
                       {brand.isVerified && (
                         <div className="absolute top-2 right-2 bg-cyan px-2 py-0.5 border border-black text-xs font-bold uppercase z-10">
                           Verified
