@@ -4,16 +4,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '*.supabase.co',
-        pathname: '/storage/v1/object/public/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'cdn.shopify.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
+        hostname: '**',
       },
     ],
   },
@@ -30,7 +21,7 @@ const nextConfig = {
               "script-src 'self' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com data:",
-              "img-src 'self' https://*.supabase.co https://cdn.shopify.com https://images.unsplash.com data: blob:",
+              "img-src 'self' https: data: blob:",
               "connect-src 'self' https://*.supabase.co https://fonts.googleapis.com https://fonts.gstatic.com",
               "frame-src 'none'",
               "object-src 'none'",
