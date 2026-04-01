@@ -30,12 +30,6 @@ export const env = {
   // Required - Database
   DATABASE_URL: requireEnv('DATABASE_URL'),
 
-  // Optional - OAuth
-  GOOGLE_CLIENT_ID: optionalEnv('GOOGLE_CLIENT_ID'),
-  GOOGLE_CLIENT_SECRET: optionalEnv('GOOGLE_CLIENT_SECRET'),
-  LINKEDIN_CLIENT_ID: optionalEnv('LINKEDIN_CLIENT_ID'),
-  LINKEDIN_CLIENT_SECRET: optionalEnv('LINKEDIN_CLIENT_SECRET'),
-
   // Optional - AI Search
   ANTHROPIC_API_KEY: optionalEnv('ANTHROPIC_API_KEY'),
 
