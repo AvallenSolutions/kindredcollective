@@ -157,6 +157,7 @@ model User {
   forumPosts      ForumPost[]
   forumComments   ForumComment[]
   forumVotes      ForumVote[]
+  resources       Resource[]
 
   @@index([email])
   @@index([role])
@@ -761,6 +762,67 @@ model ForumVote {
   @@unique([userId, commentId])
   @@index([postId])
   @@index([commentId])
+}
+
+// ============= RESOURCES =============
+
+enum ResourceType {
+  FILE
+  VIDEO
+  LINK
+}
+
+enum ResourceStatus {
+  PUBLISHED
+  REMOVED
+}
+
+model ResourceCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  color       String   @default("#00D9FF")
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  resources Resource[]
+
+  @@index([slug])
+  @@index([order])
+}
+
+model Resource {
+  id            String         @id @default(cuid())
+  title         String
+  description   String         @db.Text
+  type          ResourceType
+  status        ResourceStatus @default(PUBLISHED)
+
+  fileUrl       String?
+  filePath      String?
+  fileName      String?
+  fileSize      Int?
+  fileMime      String?
+
+  url           String?
+
+  tags          String[]       @default([])
+  categoryId    String
+  authorId      String
+  viewCount     Int            @default(0)
+  downloadCount Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  category ResourceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  author   User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([categoryId])
+  @@index([authorId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
 }
 
 // ============= GAME SCORES (404 Easter Egg) =============
