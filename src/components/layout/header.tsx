@@ -2,8 +2,8 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useState, useEffect } from 'react'
-import { Menu, X, User, LogOut, Shield } from 'lucide-react'
+import { useState } from 'react'
+import { Menu, X, LogOut, Shield } from 'lucide-react'
 import { Button } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
@@ -16,15 +16,13 @@ interface HeaderProps {
   } | null
 }
 
-const FORUM_LAST_VISIT_KEY = 'kindred_forum_last_visit'
-
 const navigation = [
   { name: 'Explore', href: '/explore' },
   { name: 'Requests', href: '/requests' },
   { name: 'Offers', href: '/offers' },
   { name: 'Events', href: '/events' },
   { name: 'News', href: '/news' },
-  { name: 'Forum', href: '/community/forum' },
+  { name: 'Resources', href: '/community/resources' },
   { name: 'Community', href: '/community' },
 ]
 
@@ -34,27 +32,7 @@ const adminNavigation = [
 
 export function Header({ user }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [forumBadge, setForumBadge] = useState<number>(0)
   const isAdmin = user?.role === 'ADMIN'
-
-  // Fetch unread forum post count
-  useEffect(() => {
-    if (!user) return
-    const since = localStorage.getItem(FORUM_LAST_VISIT_KEY)
-    if (!since) {
-      // First visit — set the timestamp, no badge
-      localStorage.setItem(FORUM_LAST_VISIT_KEY, new Date().toISOString())
-      return
-    }
-    fetch(`/api/forum/unread-count?since=${encodeURIComponent(since)}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.data.count > 0) {
-          setForumBadge(data.data.count)
-        }
-      })
-      .catch(() => {})
-  }, [user])
 
   return (
     <header className="fixed w-full z-50 top-0 bg-white border-b-2 border-black">
@@ -69,28 +47,15 @@ export function Header({ user }: HeaderProps) {
 
         {/* Desktop Menu */}
         <div className="hidden md:flex items-center gap-8">
-          {navigation.map((item) => {
-            const badge = item.name === 'Forum' && forumBadge > 0 ? forumBadge : null
-            const handleClick = item.name === 'Forum' ? () => {
-              localStorage.setItem(FORUM_LAST_VISIT_KEY, new Date().toISOString())
-              setForumBadge(0)
-            } : undefined
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                onClick={handleClick}
-                className="text-sm font-bold uppercase tracking-wide hover:underline decoration-2 underline-offset-4 flex items-center gap-1"
-              >
-                {item.name}
-                {badge && (
-                  <span className="bg-coral text-white text-[10px] px-1.5 py-0.5 border border-black leading-none rounded-full min-w-[18px] text-center">
-                    {badge > 99 ? '99+' : badge}
-                  </span>
-                )}
-              </Link>
-            )
-          })}
+          {navigation.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className="text-sm font-bold uppercase tracking-wide hover:underline decoration-2 underline-offset-4 flex items-center gap-1"
+            >
+              {item.name}
+            </Link>
+          ))}
           {isAdmin && adminNavigation.map((item) => (
             <Link
               key={item.name}
@@ -146,30 +111,16 @@ export function Header({ user }: HeaderProps) {
         )}
       >
         <div className="px-6 py-4 space-y-2">
-          {navigation.map((item) => {
-            const badge = item.name === 'Forum' && forumBadge > 0 ? forumBadge : null
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="block py-3 px-4 font-display text-base font-bold uppercase tracking-wide text-black hover:bg-cyan transition-colors border-2 border-black"
-                onClick={() => {
-                  setMobileMenuOpen(false)
-                  if (item.name === 'Forum') {
-                    localStorage.setItem(FORUM_LAST_VISIT_KEY, new Date().toISOString())
-                    setForumBadge(0)
-                  }
-                }}
-              >
-                {item.name}
-                {badge && (
-                  <span className="ml-2 bg-coral text-white text-[10px] px-1.5 py-0.5 border border-black leading-none rounded-full">
-                    {badge > 99 ? '99+' : badge}
-                  </span>
-                )}
-              </Link>
-            )
-          })}
+          {navigation.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className="block py-3 px-4 font-display text-base font-bold uppercase tracking-wide text-black hover:bg-cyan transition-colors border-2 border-black"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              {item.name}
+            </Link>
+          ))}
           {isAdmin && adminNavigation.map((item) => (
             <Link
               key={item.name}

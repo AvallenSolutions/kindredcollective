@@ -167,14 +167,14 @@ export function MembersDirectory({ members }: MembersDirectoryProps) {
       <section className="bg-lime border-y-4 border-black py-12">
         <div className="section-container text-center">
           <h2 className="font-display text-2xl lg:text-3xl font-bold mb-4">
-            Join the Conversation
+            Share What You Know
           </h2>
           <p className="text-gray-700 mb-6 max-w-xl mx-auto">
-            Head over to the forum to share ideas, ask questions, and connect with fellow drinks industry professionals.
+            Members lift each other up. Drop a useful document, video, or link in Resources and help the rest of the collective.
           </p>
-          <Link href="/community/forum">
+          <Link href="/community/resources">
             <Button size="lg" className="bg-black text-white hover:bg-gray-800">
-              Visit the Forum
+              Browse Resources
             </Button>
           </Link>
         </div>
