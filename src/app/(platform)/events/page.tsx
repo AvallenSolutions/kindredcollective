@@ -1,35 +1,12 @@
 import Link from 'next/link'
-import { Star, MapPin, Video, Calendar, Users, Clock, CalendarPlus, Ticket, ArrowRight, Mail } from 'lucide-react'
+import { Star, MapPin, Clock, CalendarPlus, Ticket, ArrowRight, Mail, Users } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { EventType } from '@prisma/client'
 import { NewsletterForm } from '@/components/newsletter-form'
 import { CalendarButtons } from '@/components/events/calendar-buttons'
-import { EventRsvpBox } from '@/components/events/event-rsvp-box'
+import { EventsDirectory } from '@/components/events/events-directory'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
-const eventTypeLabels: Record<EventType, string> = {
-  TRADE_SHOW: 'Trade Show',
-  MEETUP: 'Meetup',
-  WORKSHOP: 'Workshop',
-  WEBINAR: 'Webinar',
-  NETWORKING: 'Networking',
-  LAUNCH: 'Launch',
-  PARTY: 'Party',
-  OTHER: 'Event',
-}
-
-const eventTypeHoverColors: Record<EventType, string> = {
-  TRADE_SHOW: 'group-hover:text-blue-500',
-  WEBINAR: 'group-hover:text-coral',
-  NETWORKING: 'group-hover:text-cyan',
-  WORKSHOP: 'group-hover:text-lime',
-  MEETUP: 'group-hover:text-yellow-500',
-  LAUNCH: 'group-hover:text-purple-500',
-  PARTY: 'group-hover:text-coral',
-  OTHER: 'group-hover:text-gray-600',
-}
 
 const FALLBACK_PAST_IMAGE = 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80'
 
@@ -37,15 +14,14 @@ async function getEvents() {
   const supabase = createAdminClient()
   const now = new Date().toISOString()
 
-  const [upcomingResult, pastResult] = await Promise.all([
+  const [allResult, pastStripResult] = await Promise.all([
     supabase
       .from('Event')
-      .select('id, title, slug, description, type, startDate, isVirtual, city, country, imageUrl, isFeatured, capacity, rsvps:EventRsvp(status)')
+      .select(
+        'id, title, slug, description, type, status, startDate, endDate, isVirtual, venueName, city, country, capacity, isFree, price, imageUrl, isFeatured',
+      )
       .eq('status', 'PUBLISHED')
-      .gte('startDate', now)
-      .order('isFeatured', { ascending: false })
-      .order('startDate', { ascending: true })
-      .limit(11),
+      .order('startDate', { ascending: true }),
     supabase
       .from('Event')
       .select('id, title, slug, startDate, city, country, imageUrl, rsvps:EventRsvp(status)')
@@ -55,7 +31,10 @@ async function getEvents() {
       .limit(3),
   ])
 
-  const upcoming = (upcomingResult.data || []).map((e) => {
+  const all = allResult.data || []
+  const upcoming = all.filter((e) => e.startDate >= now)
+
+  const pastStrip = (pastStripResult.data || []).map((e) => {
     const rsvps = (e.rsvps || []) as { status: string }[]
     return {
       ...e,
@@ -64,32 +43,13 @@ async function getEvents() {
     }
   })
 
-  const past = (pastResult.data || []).map((e) => {
-    const rsvps = (e.rsvps || []) as { status: string }[]
-    return {
-      ...e,
-      rsvps: undefined,
-      attendees: rsvps.filter((r) => r.status === 'GOING').length,
-    }
-  })
-
-  return { upcoming, past }
+  return { all, upcoming, pastStrip }
 }
 
-// Event type filters for the filter bar
-const eventTypes = [
-  { key: 'all', label: 'All Events' },
-  { key: 'TRADE_SHOW', label: 'Trade Shows' },
-  { key: 'NETWORKING', label: 'Networking' },
-  { key: 'WORKSHOP', label: 'Workshops' },
-  { key: 'WEBINAR', label: 'Webinars' },
-]
-
 export default async function EventsPage() {
-  const { upcoming, past } = await getEvents()
+  const { all, upcoming, pastStrip } = await getEvents()
 
   const featuredEvent = upcoming.find((e) => e.isFeatured) || upcoming[0] || null
-  const upcomingEvents = upcoming.filter((e) => e !== featuredEvent).slice(0, 5)
 
   return (
     <div className="min-h-screen bg-white text-black">
@@ -125,15 +85,13 @@ export default async function EventsPage() {
         </div>
       </section>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-12 space-y-20">
-
-        {/* FEATURED EVENT */}
-        {featuredEvent && (() => {
-          const date = new Date(featuredEvent.startDate)
-          const dateLabel = date.toLocaleString('en-GB', { day: 'numeric', month: 'short' })
-          const location = featuredEvent.isVirtual ? 'Online' : [featuredEvent.city, featuredEvent.country].filter(Boolean).join(', ') || 'TBC'
-          return (
+      {/* FEATURED EVENT */}
+      {featuredEvent && (() => {
+        const date = new Date(featuredEvent.startDate)
+        const dateLabel = date.toLocaleString('en-GB', { day: 'numeric', month: 'short' })
+        const location = featuredEvent.isVirtual ? 'Online' : [featuredEvent.city, featuredEvent.country].filter(Boolean).join(', ') || 'TBC'
+        return (
+          <div className="max-w-7xl mx-auto px-6 pt-12">
             <section className="relative">
               <div className="absolute -top-6 -left-2 bg-black text-cyan px-3 py-1 font-bold font-display uppercase text-lg border-2 border-black transform -rotate-2 z-20">
                 Featured Event
@@ -179,106 +137,14 @@ export default async function EventsPage() {
                 </div>
               </Link>
             </section>
-          )
-        })()}
+          </div>
+        )
+      })()}
 
-        {/* No events state */}
-        {upcoming.length === 0 && (
-          <section className="text-center py-16 bg-gray-50 border-2 border-black">
-            <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <h2 className="font-display text-3xl font-bold uppercase mb-2">No Upcoming Events</h2>
-            <p className="text-gray-600 mb-6">Check back soon — new events are added regularly.</p>
-            <Link href="/settings/events" className="px-8 py-3 bg-black text-white border-2 border-black font-bold uppercase hover:bg-cyan hover:text-black transition-colors">
-              Submit an Event
-            </Link>
-          </section>
-        )}
+      {/* DIRECTORY: filters + month-grouped grid (replaces the broken limited list) */}
+      <EventsDirectory events={all as never} />
 
-        {/* EVENT TYPE FILTERS */}
-        {upcomingEvents.length > 0 && (
-          <section>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-              <h2 className="text-4xl font-display font-bold uppercase">Upcoming Events</h2>
-              <div className="flex flex-wrap gap-2">
-                {eventTypes.map((type) => (
-                  <button
-                    key={type.key}
-                    className={`px-4 py-2 border-2 border-black font-bold uppercase text-xs transition-colors ${
-                      type.key === 'all'
-                        ? 'bg-black text-white hover:bg-cyan hover:text-black'
-                        : 'bg-white text-black hover:bg-cyan'
-                    }`}
-                  >
-                    {type.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* UPCOMING EVENTS LIST */}
-            <div className="space-y-4">
-              {upcomingEvents.map((event) => {
-                const date = new Date(event.startDate)
-                const month = date.toLocaleString('en-GB', { month: 'short' }).toUpperCase()
-                const day = date.getDate().toString().padStart(2, '0')
-                const location = event.isVirtual ? 'Online' : event.city || event.country || 'TBC'
-                const typeLabel = eventTypeLabels[event.type as EventType] || 'Event'
-                const hoverColor = eventTypeHoverColors[event.type as EventType] || 'group-hover:text-cyan'
-                return (
-                  <Link
-                    key={event.id}
-                    href={`/community/events/${event.slug}`}
-                    className="group bg-white border-2 border-black p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center gap-6 hover:bg-gray-50 transition-colors neo-shadow-hover cursor-pointer"
-                  >
-                    <div className="shrink-0 flex flex-row md:flex-col items-center border-2 border-black">
-                      <span className="px-4 py-1 bg-black text-white text-xs font-bold uppercase w-full text-center">
-                        {month}
-                      </span>
-                      <span className="px-4 py-2 bg-white text-xl font-display font-bold">{day}</span>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-bold uppercase text-gray-400 bg-gray-100 px-2 py-0.5 border border-gray-200">
-                          {typeLabel}
-                        </span>
-                      </div>
-                      <h3 className={`font-display font-bold text-2xl uppercase mb-1 ${hoverColor} transition-colors`}>
-                        {event.title}
-                      </h3>
-                      {event.description && (
-                        <p className="text-gray-600 text-sm font-medium line-clamp-2">{event.description}</p>
-                      )}
-                      <EventRsvpBox eventId={event.id} eventSlug={event.slug} compact />
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full md:w-auto">
-                      <div className="flex items-center gap-3">
-                        <span className="flex items-center gap-1 text-xs font-bold uppercase bg-gray-100 px-2 py-1 border border-black">
-                          {event.isVirtual ? (
-                            <>
-                              <Video className="w-3 h-3" /> {location}
-                            </>
-                          ) : (
-                            <>
-                              <MapPin className="w-3 h-3" /> {location}
-                            </>
-                          )}
-                        </span>
-                        <span className="flex items-center gap-1 text-xs font-bold text-gray-500">
-                          <Users className="w-3 h-3" /> {event.attendees}
-                        </span>
-                      </div>
-                      <span
-                        className="px-4 py-2 bg-cyan text-black border-2 border-black font-bold uppercase text-xs hover:bg-black hover:text-cyan transition-colors whitespace-nowrap"
-                      >
-                        RSVP
-                      </span>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          </section>
-        )}
+      <div className="max-w-7xl mx-auto px-6 pb-12 space-y-20">
 
         {/* ADD TO CALENDAR CTA */}
         <section className="bg-black text-white p-8 md:p-12 border-2 border-black neo-shadow-lg relative overflow-hidden">
@@ -298,7 +164,7 @@ export default async function EventsPage() {
         </section>
 
         {/* PAST EVENTS */}
-        {past.length > 0 && (
+        {pastStrip.length > 0 && (
           <section>
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
               <h2 className="text-3xl sm:text-4xl font-display font-bold uppercase">Past Events</h2>
@@ -306,7 +172,7 @@ export default async function EventsPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {past.map((event) => {
+              {pastStrip.map((event) => {
                 const date = new Date(event.startDate)
                 const dateLabel = date.toLocaleString('en-GB', { month: 'short', year: 'numeric' })
                 const location = event.city || event.country || 'TBC'
