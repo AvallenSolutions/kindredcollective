@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Run with:
+// Trigger from GitHub: Actions tab → "Seed BCB London 2026 events" → Run workflow.
+// Or run locally:
 //   set -a && source .env.local && set +a
 //   npx tsx scripts/seed-bcb-events.ts
 // Requires NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
