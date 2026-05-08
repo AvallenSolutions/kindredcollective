@@ -390,7 +390,7 @@ export default async function CommunityPage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
             <h2 className="text-3xl sm:text-4xl font-display font-bold uppercase">Upcoming Events</h2>
             <Link
-              href="/community/events"
+              href="/events"
               className="text-sm font-bold uppercase border-b-2 border-black hover:bg-cyan hover:text-black transition-colors px-2 whitespace-nowrap"
             >
               View Calendar
