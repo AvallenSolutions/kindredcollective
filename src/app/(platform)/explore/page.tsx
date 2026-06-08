@@ -36,6 +36,7 @@ type Supplier = {
   location: string | null
   country: string | null
   isVerified: boolean
+  mentionCount?: number
 }
 
 type SavedEntry = { id: string; supplier: { id: string } }

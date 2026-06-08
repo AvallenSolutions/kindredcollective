@@ -90,6 +90,25 @@ export async function GET(request: NextRequest) {
     return serverErrorResponse('Failed to fetch suppliers')
   }
 
+  // Attach community endorsement counts (published only) for this page of
+  // suppliers via a single bounded query — avoids a fragile embedded inner-join.
+  const supplierIds = (suppliers || []).map((s: any) => s.id)
+  const mentionBySupplier: Record<string, number> = {}
+  if (supplierIds.length > 0) {
+    const { data: endorsements } = await supabase
+      .from('SupplierEndorsement')
+      .select('supplierId')
+      .eq('isPublished', true)
+      .in('supplierId', supplierIds)
+    for (const row of endorsements || []) {
+      if (row.supplierId) mentionBySupplier[row.supplierId] = (mentionBySupplier[row.supplierId] || 0) + 1
+    }
+  }
+  const suppliersWithMentions = (suppliers || []).map((s: any) => ({
+    ...s,
+    mentionCount: mentionBySupplier[s.id] || 0,
+  }))
+
   // Get unique categories for filter options
   const { data: categoriesData } = await supabase
     .from('Supplier')
@@ -99,7 +118,7 @@ export async function GET(request: NextRequest) {
   const availableCategories = Array.from(new Set(categoriesData?.map(s => s.category) || []))
 
   return successResponse({
-    suppliers,
+    suppliers: suppliersWithMentions,
     pagination: paginationMeta(page, limit, count || 0),
     filters: {
       categories: availableCategories,
