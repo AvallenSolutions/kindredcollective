@@ -18,6 +18,7 @@ import { SUPPLIER_CATEGORY_LABELS, CERTIFICATION_LABELS } from '@/types/database
 import type { SupplierCategory, Certification } from '@prisma/client'
 import { ContactSupplierButton } from '@/components/suppliers/contact-supplier-button'
 import { SupplierReviews } from '@/components/suppliers/supplier-reviews'
+import { CommunityEndorsements } from '@/components/suppliers/community-endorsements'
 
 function ensureUrl(url: string): string {
   if (/^https?:\/\//i.test(url)) return url
@@ -274,6 +275,9 @@ export default async function SupplierProfilePage({ params }: SupplierProfilePag
                 </CardContent>
               </Card>
             )}
+
+            {/* Community endorsements mined from the WhatsApp archive */}
+            <CommunityEndorsements supplierId={supplier.id} />
 
             {/* Reviews */}
             <SupplierReviews

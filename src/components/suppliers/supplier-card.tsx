@@ -19,6 +19,7 @@ interface SupplierCardProps {
     location: string | null
     country: string | null
     isVerified: boolean
+    mentionCount?: number
   }
   badge?: 'top' | 'trending' | 'sale' | null
   savedId?: string | null
@@ -130,6 +131,13 @@ export function SupplierCard({ supplier, badge, savedId: initialSavedId }: Suppl
         <p className="text-sm text-gray-600 mb-4 line-clamp-2">
           {supplier.tagline || supplier.description || SUPPLIER_CATEGORY_LABELS[supplier.category]}
         </p>
+
+        {!!supplier.mentionCount && supplier.mentionCount > 0 && (
+          <p className="text-[10px] font-bold uppercase tracking-wide text-coral mb-3 flex items-center gap-1">
+            <BadgeCheck className="w-3 h-3" />
+            Recommended by the Collective · {supplier.mentionCount}
+          </p>
+        )}
 
         <div className="mt-auto">
           <div className="flex flex-wrap gap-1.5 mb-4">

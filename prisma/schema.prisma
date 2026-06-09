@@ -281,6 +281,7 @@ model Supplier {
   organisation    Organisation?
   workRelationships WorkRelationship[]
   rfpResponses    RFPResponse[]
+  endorsements    SupplierEndorsement[]
 
   @@index([slug])
   @@index([category])
@@ -823,6 +824,79 @@ model Resource {
   @@index([status])
   @@index([type])
   @@index([createdAt])
+}
+
+// ============= KNOWLEDGE BASE ("Ask the Collective") =============
+
+enum KnowledgeStatus {
+  DRAFT
+  PUBLISHED
+  REMOVED
+}
+
+model KnowledgeCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  color       String   @default("#00D9FF")
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  entries KnowledgeEntry[]
+
+  @@index([slug])
+  @@index([order])
+}
+
+model KnowledgeEntry {
+  id           String          @id @default(cuid())
+  question     String // canonical, anonymised question
+  answer       String          @db.Text // synthesised, anonymised answer
+  slug         String          @unique
+  topicTags    String[]        @default([])
+  categoryId   String
+  status       KnowledgeStatus @default(DRAFT)
+  isPublished  Boolean         @default(false)
+  sourceCount  Int             @default(0) // how many source discussions backed it
+  sourceHash   String          @unique // idempotency key for re-runs
+  confidence   Float? // model confidence, for admin triage
+  viewCount    Int             @default(0)
+  helpfulCount Int             @default(0)
+  importedAt   DateTime? // null = manually authored
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  category KnowledgeCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([slug])
+  @@index([categoryId])
+  @@index([status])
+  @@index([isPublished])
+  @@index([createdAt])
+}
+
+// ============= COMMUNITY RECOMMENDATIONS (Supplier enrichment) =============
+
+model SupplierEndorsement {
+  id                String           @id @default(cuid())
+  supplierId        String? // null = unmatched mention, pending admin review
+  rawSupplierName   String // as mentioned in chat, pre-normalisation
+  category          SupplierCategory
+  quoteSnippet      String           @db.Text // anonymised quote
+  sentiment         String? // positive | neutral | mixed
+  sourceMessageHash String // idempotency key
+  isPublished       Boolean          @default(false)
+  importedAt        DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+
+  @@unique([supplierId, sourceMessageHash])
+  @@index([supplierId])
+  @@index([category])
+  @@index([isPublished])
 }
 
 // ============= GAME SCORES (404 Easter Egg) =============
