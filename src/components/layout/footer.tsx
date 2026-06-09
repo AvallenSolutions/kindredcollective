@@ -5,6 +5,7 @@ import { GingerbittersBadge } from '@/components/gingerbitters-logo'
 const footerNavigation = {
   community: [
     { name: 'About', href: '/about' },
+    { name: 'Ask the Collective', href: '/knowledge' },
     { name: 'Join', href: '/join' },
     { name: 'Login', href: '/login' },
   ],

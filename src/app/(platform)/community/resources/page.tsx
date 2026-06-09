@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { FileText, Video, Link2, Plus, Filter, Eye, Download, Search } from 'lucide-react'
+import { FileText, Video, Link2, Plus, Filter, Eye, Download, Search, HelpCircle, ArrowRight } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
 import { redirect } from 'next/navigation'
@@ -154,6 +154,26 @@ export default async function ResourcesPage({
           </div>
         </div>
       </section>
+
+      <div className="max-w-7xl mx-auto px-6 pt-8">
+        <Link
+          href="/knowledge"
+          className="group flex items-center justify-between gap-4 bg-black text-white border-2 border-black p-5 neo-shadow hover:bg-coral hover:text-black transition-colors"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-coral text-black border-2 border-white group-hover:border-black flex items-center justify-center shrink-0">
+              <HelpCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="font-display text-xl font-bold uppercase leading-tight">Ask the Collective</p>
+              <p className="text-sm opacity-80">
+                Searchable answers to the questions drinks founders ask most — distilled from the community.
+              </p>
+            </div>
+          </div>
+          <ArrowRight className="w-6 h-6 shrink-0" />
+        </Link>
+      </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex flex-col lg:flex-row gap-8">
