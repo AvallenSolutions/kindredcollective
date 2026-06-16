@@ -9,13 +9,14 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "typecheck:scripts": "tsc -p tsconfig.scripts.json",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
-    "seed:knowledge": "npx ts-node --transpile-only --compiler-options {\"module\":\"CommonJS\"} prisma/seed-knowledge.ts",
-    "import:whatsapp": "npx ts-node --transpile-only --compiler-options {\"module\":\"CommonJS\"} scripts/whatsapp-import/index.ts"
+    "seed:knowledge": "npx ts-node --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' prisma/seed-knowledge.ts",
+    "import:whatsapp": "npx ts-node --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' scripts/whatsapp-import/index.ts"
   },
   "prisma": {
     "seed": "npx ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"

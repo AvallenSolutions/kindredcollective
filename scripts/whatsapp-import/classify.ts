@@ -1,6 +1,11 @@
 import { extractStructured } from './anthropic'
-import { MODELS, SUPPLIER_CATEGORIES } from './config'
-import { ChunkClassificationSchema, type ChunkClassification, type MessageChunk } from './types'
+import { MODELS } from './config'
+import {
+  ChunkClassificationSchema,
+  SUPPLIER_CATEGORIES,
+  type ChunkClassification,
+  type MessageChunk,
+} from './types'
 
 /**
  * Stage 2b — bulk classification pass (cheap model). For each chunk of
