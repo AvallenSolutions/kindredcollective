@@ -119,53 +119,57 @@ export async function persistEndorsements(
   prisma: PrismaClient,
   endorsements: PreparedEndorsement[]
 ): Promise<{ created: number; skipped: number }> {
-  let created = 0
-  let skipped = 0
-  for (const en of endorsements) {
-    if (en.supplierId) {
-      // Compound-unique upsert prevents double-counting on re-run.
-      const before = await prisma.supplierEndorsement.findUnique({
-        where: { supplierId_sourceMessageHash: { supplierId: en.supplierId, sourceMessageHash: en.sourceMessageHash } },
-      })
-      await prisma.supplierEndorsement.upsert({
-        where: { supplierId_sourceMessageHash: { supplierId: en.supplierId, sourceMessageHash: en.sourceMessageHash } },
-        update: { quoteSnippet: en.quoteSnippet, sentiment: en.sentiment, category: en.category },
-        create: {
-          supplierId: en.supplierId,
-          rawSupplierName: en.rawSupplierName,
-          category: en.category,
-          quoteSnippet: en.quoteSnippet,
-          sentiment: en.sentiment,
-          sourceMessageHash: en.sourceMessageHash,
-          isPublished: false,
-        },
-      })
-      before ? skipped++ : created++
-    } else {
-      // Unmatched mention: Postgres treats NULL as distinct in the unique
-      // index, so guard manually on (rawSupplierName, sourceMessageHash).
-      const existing = await prisma.supplierEndorsement.findFirst({
-        where: { supplierId: null, rawSupplierName: en.rawSupplierName, sourceMessageHash: en.sourceMessageHash },
-      })
-      if (existing) {
-        skipped++
-        continue
-      }
-      await prisma.supplierEndorsement.create({
-        data: {
-          supplierId: null,
-          rawSupplierName: en.rawSupplierName,
-          category: en.category,
-          quoteSnippet: en.quoteSnippet,
-          sentiment: en.sentiment,
-          sourceMessageHash: en.sourceMessageHash,
-          isPublished: false,
-        },
-      })
-      created++
-    }
+  if (endorsements.length === 0) return { created: 0, skipped: 0 }
+
+  // De-dupe within this batch on (supplierId | rawName) + sourceMessageHash.
+  const keyOf = (e: PreparedEndorsement) =>
+    e.supplierId ? `${e.supplierId}|${e.sourceMessageHash}` : `raw:${e.rawSupplierName}|${e.sourceMessageHash}`
+  const seen = new Set<string>()
+  const deduped = endorsements.filter((e) => {
+    const k = keyOf(e)
+    if (seen.has(k)) return false
+    seen.add(k)
+    return true
+  })
+
+  // One read to find what already exists (idempotent re-runs), then bulk insert.
+  const existing = new Set<string>()
+  const supplierIds = Array.from(new Set(deduped.map((e) => e.supplierId).filter(Boolean))) as string[]
+  if (supplierIds.length > 0) {
+    const rows = await prisma.supplierEndorsement.findMany({
+      where: { supplierId: { in: supplierIds } },
+      select: { supplierId: true, sourceMessageHash: true },
+    })
+    rows.forEach((r) => existing.add(`${r.supplierId}|${r.sourceMessageHash}`))
   }
-  return { created, skipped }
+  const rawRows = await prisma.supplierEndorsement.findMany({
+    where: { supplierId: null },
+    select: { rawSupplierName: true, sourceMessageHash: true },
+  })
+  rawRows.forEach((r) => existing.add(`raw:${r.rawSupplierName}|${r.sourceMessageHash}`))
+
+  const toInsert = deduped
+    .filter((e) => !existing.has(keyOf(e)))
+    .map((e) => ({
+      supplierId: e.supplierId,
+      rawSupplierName: e.rawSupplierName,
+      category: e.category,
+      quoteSnippet: e.quoteSnippet,
+      sentiment: e.sentiment,
+      sourceMessageHash: e.sourceMessageHash,
+      isPublished: false,
+    }))
+
+  let created = 0
+  const BATCH = 500
+  for (let i = 0; i < toInsert.length; i += BATCH) {
+    const res = await prisma.supplierEndorsement.createMany({
+      data: toInsert.slice(i, i + BATCH),
+      skipDuplicates: true,
+    })
+    created += res.count
+  }
+  return { created, skipped: deduped.length - created }
 }
 
 export async function persistLinks(
@@ -173,29 +177,42 @@ export async function persistLinks(
   ctx: { systemUserId: string; linkCategoryId: string },
   links: PreparedLink[]
 ): Promise<{ created: number; skipped: number }> {
+  if (links.length === 0) return { created: 0, skipped: 0 }
+
+  // De-dupe within batch by URL.
+  const seen = new Set<string>()
+  const deduped = links.filter((l) => {
+    if (seen.has(l.url)) return false
+    seen.add(l.url)
+    return true
+  })
+
+  // One read for existing imported links (Resource.url isn't unique), then bulk insert.
+  const urls = deduped.map((l) => l.url)
+  const existingRows = await prisma.resource.findMany({
+    where: { type: 'LINK', url: { in: urls } },
+    select: { url: true },
+  })
+  const existing = new Set(existingRows.map((r) => r.url))
+
+  const toInsert = deduped
+    .filter((l) => !existing.has(l.url))
+    .map((l) => ({
+      title: l.title.slice(0, 200),
+      description: l.description || l.url,
+      type: 'LINK' as const,
+      status: 'PUBLISHED' as const,
+      url: l.url,
+      tags: Array.from(new Set(['imported', ...l.tags])).slice(0, 8),
+      categoryId: ctx.linkCategoryId,
+      authorId: ctx.systemUserId,
+    }))
+
   let created = 0
-  let skipped = 0
-  for (const l of links) {
-    // Resource.url is nullable/non-unique (FILE/VIDEO rows have url=null), so
-    // dedup with a findFirst guard rather than a DB constraint.
-    const existing = await prisma.resource.findFirst({ where: { url: l.url, type: 'LINK' } })
-    if (existing) {
-      skipped++
-      continue
-    }
-    await prisma.resource.create({
-      data: {
-        title: l.title.slice(0, 200),
-        description: l.description || l.url,
-        type: 'LINK',
-        status: 'PUBLISHED',
-        url: l.url,
-        tags: Array.from(new Set(['imported', ...l.tags])).slice(0, 8),
-        categoryId: ctx.linkCategoryId,
-        authorId: ctx.systemUserId,
-      },
-    })
-    created++
+  const BATCH = 500
+  for (let i = 0; i < toInsert.length; i += BATCH) {
+    const res = await prisma.resource.createMany({ data: toInsert.slice(i, i + BATCH), skipDuplicates: true })
+    created += res.count
   }
-  return { created, skipped }
+  return { created, skipped: deduped.length - created }
 }

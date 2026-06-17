@@ -153,9 +153,16 @@ async function main() {
     links.push({ url, title: l.contextTitle, description: l.contextTitle, tags: [l.suggestedCategorySlug] })
   }
 
-  const e = await persistEndorsements(prisma!, endorsements)
-  const ln = await persistLinks(prisma!, ctx, links)
-  console.log(`Saved endorsements: ${e.created} new / ${e.skipped} existing · links: ${ln.created} new / ${ln.skipped} existing`)
+  console.log(`Saving ${endorsements.length} endorsements and ${links.length} links…`)
+  let e = { created: 0, skipped: 0 }
+  let ln = { created: 0, skipped: 0 }
+  try {
+    e = await persistEndorsements(prisma!, endorsements)
+    ln = await persistLinks(prisma!, ctx, links)
+    console.log(`Saved endorsements: ${e.created} new / ${e.skipped} existing · links: ${ln.created} new / ${ln.skipped} existing`)
+  } catch (err) {
+    console.warn(`  ! endorsement/link save error (continuing to knowledge): ${(err as Error).message.split('\n')[0]}`)
+  }
 
   // Stage 2c: synthesise answers per cluster and SAVE each immediately, so
   // stopping the run never discards completed work.
