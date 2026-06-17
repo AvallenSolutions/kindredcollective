@@ -62,7 +62,7 @@ export type SupplierCategory = (typeof SUPPLIER_CATEGORIES)[number]
 export const RecommendationSchema = z.object({
   rawSupplierName: z.string().describe('Company/service name exactly as mentioned in the chat'),
   category: z.enum(SUPPLIER_CATEGORIES),
-  sentiment: z.enum(['positive', 'neutral', 'mixed']),
+  sentiment: z.enum(['positive', 'neutral', 'mixed', 'negative']),
   quoteSnippet: z
     .string()
     .describe('A short, anonymised paraphrase of what was said about them. NO personal names.'),

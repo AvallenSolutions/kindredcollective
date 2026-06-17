@@ -91,10 +91,17 @@ async function main() {
   const chunks = chunkMessages(anonymised)
   console.log(`Classifying ${chunks.length} chunks (${args.dryRun ? 'DRY RUN' : 'full'})…`)
   const classifications: ChunkClassification[] = []
+  let failedChunks = 0
   for (let i = 0; i < chunks.length; i++) {
-    classifications.push(await classifyChunk(chunks[i]))
+    try {
+      classifications.push(await classifyChunk(chunks[i]))
+    } catch (err) {
+      failedChunks++
+      console.warn(`  ! chunk ${i + 1} skipped (extraction error): ${(err as Error).message.split('\n')[0]}`)
+    }
     if ((i + 1) % 10 === 0) console.log(`  …${i + 1}/${chunks.length} chunks ($${getSpend().toFixed(2)})`)
   }
+  if (failedChunks > 0) console.log(`  (${failedChunks} chunk(s) skipped due to extraction errors)`)
   const agg = aggregate(classifications)
   console.log(
     `Extracted: ${agg.recommendations.length} recommendations, ${agg.linkMentions.length} links, ${agg.questionCandidates.length} question candidates`
@@ -123,9 +130,19 @@ async function main() {
 
   // Stage 2c: synthesise answers (strong model) per cluster.
   const knowledge: PreparedKnowledge[] = []
+  let synthDone = 0
+  let synthFailed = 0
   for (const cluster of clusters) {
     if (cluster.questions.length === 0) continue
-    const synth = await synthesiseCluster(cluster)
+    let synth
+    try {
+      synth = await synthesiseCluster(cluster)
+    } catch (err) {
+      synthFailed++
+      console.warn(`  ! cluster skipped (synthesis error): ${(err as Error).message.split('\n')[0]}`)
+      continue
+    }
+    if ((++synthDone) % 25 === 0) console.log(`  …synthesised ${synthDone}/${clusters.length} ($${getSpend().toFixed(2)})`)
     if (synth.confidence < 0.4) continue // drop low-confidence entries
     // Post-filter: drop anything that still leaks PII.
     if (containsPII(synth.canonicalQuestion, nameSet) || containsPII(synth.synthesisedAnswer, nameSet)) {
@@ -143,6 +160,8 @@ async function main() {
       confidence: synth.confidence,
     })
   }
+
+  if (synthFailed > 0) console.log(`  (${synthFailed} cluster(s) skipped due to synthesis errors)`)
 
   // Prepare endorsements (match to existing suppliers; else unmatched mention).
   const endorsements: PreparedEndorsement[] = agg.recommendations

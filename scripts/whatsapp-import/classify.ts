@@ -20,7 +20,7 @@ From each batch of messages, extract three things:
 1. recommendations — when someone recommends, endorses or warns about a SUPPLIER or SERVICE PROVIDER (e.g. a co-packer, importer, label printer, PR agency, distributor, law firm, designer). For each:
    - rawSupplierName: the company/service name exactly as written
    - category: one of ${SUPPLIER_CATEGORIES.join(', ')}
-   - sentiment: positive | neutral | mixed
+   - sentiment: positive | neutral | mixed | negative
    - quoteSnippet: a SHORT anonymised paraphrase of what was said. Never include personal names.
    - sourceMessageHashes: the hashes of the source messages
 
