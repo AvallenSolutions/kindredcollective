@@ -32,6 +32,8 @@ interface Args {
   dryRun: boolean
   limit?: number
   since?: Date
+  maxClusters?: number
+  resetKnowledge?: boolean
 }
 
 function parseArgs(argv: string[]): Args {
@@ -41,10 +43,12 @@ function parseArgs(argv: string[]): Args {
     if (a === '--input') args.input = argv[++i]
     else if (a === '--dry-run') args.dryRun = true
     else if (a === '--limit') args.limit = Number(argv[++i])
+    else if (a === '--max-clusters') args.maxClusters = Number(argv[++i])
+    else if (a === '--reset-knowledge') args.resetKnowledge = true
     else if (a === '--since') args.since = new Date(argv[++i])
   }
   if (!args.input) {
-    throw new Error('Usage: import:whatsapp -- --input <file> [--dry-run] [--limit N] [--since ISO]')
+    throw new Error('Usage: import:whatsapp -- --input <file> [--dry-run] [--limit N] [--max-clusters N] [--since ISO]')
   }
   return args as Args
 }
@@ -55,6 +59,42 @@ function aggregate(results: ChunkClassification[]): ChunkClassification {
     linkMentions: results.flatMap((r) => r.linkMentions),
     questionCandidates: results.flatMap((r) => r.questionCandidates),
   }
+}
+
+/**
+ * Gather the real discussion for a cluster: the messages the classifier linked
+ * to the question(s) plus a short following window (the replies/answers). Uses
+ * RAW message bodies (members-only output, so specifics are preserved).
+ * Returns the concatenated text and how many messages it contains.
+ */
+function gatherDiscussion(
+  cluster: { sourceMessageHashes: string[] },
+  messages: StructuredMessage[],
+  hashToIndex: Map<string, number>,
+  opts: { window?: number; maxMessages?: number; maxChars?: number } = {}
+): { text: string; count: number } {
+  const window = opts.window ?? 8
+  const maxMessages = opts.maxMessages ?? 50
+  const maxChars = opts.maxChars ?? 8000
+
+  const idxs = new Set<number>()
+  for (const h of cluster.sourceMessageHashes) {
+    const i = hashToIndex.get(h)
+    if (i == null) continue
+    for (let j = i; j < Math.min(i + window, messages.length); j++) idxs.add(j)
+  }
+  const ordered = Array.from(idxs).sort((a, b) => a - b).slice(0, maxMessages)
+
+  const lines: string[] = []
+  let chars = 0
+  for (const j of ordered) {
+    const body = messages[j].body.trim()
+    if (!body) continue
+    if (chars + body.length > maxChars) break
+    lines.push(`- ${body}`)
+    chars += body.length
+  }
+  return { text: lines.join('\n'), count: lines.length }
 }
 
 async function main() {
@@ -85,10 +125,12 @@ async function main() {
   }
 
   const nameSet = buildNameSet(senders, extraNames)
+  // Classification runs on anonymised text (and its cache is keyed by that text).
   const anonymised = anonymiseMessages(messages, nameSet)
-  // Conservative set for the post-AI safety net (full names only) — avoids
-  // dropping clean answers that merely contain a common word that is also a
-  // member's name (e.g. "Will", "May", "Bond").
+  // Knowledge synthesis is grounded in the RAW discussion (members-only output),
+  // so map each hash to its position in the original message timeline.
+  const hashToIndex = new Map(messages.map((m, i) => [m.sourceMessageHash, i]))
+  // Conservative set (full names only) for scrubbing endorsement quotes.
   const strongNameSet = fullNamesOnly(nameSet)
 
   // Stage 2a/2b: chunk + classify
@@ -168,31 +210,48 @@ async function main() {
     console.warn(`  ! endorsement/link save error (continuing to knowledge): ${(err as Error).message.split('\n')[0]}`)
   }
 
-  // Stage 2c: synthesise answers per cluster and SAVE each immediately, so
-  // stopping the run never discards completed work.
+  if (args.resetKnowledge) {
+    const d = await prisma!.knowledgeEntry.deleteMany({})
+    console.log(`Reset: deleted ${d.count} existing knowledge entries before rebuild`)
+  }
+
+  // Stage 2c: synthesise grounded answers and SAVE each immediately. Only
+  // clusters whose discussion actually contains replies are synthesised (so we
+  // spend on topics that have a real community answer, not unanswered questions).
+  // Process the most-discussed topics first so an early stop keeps the best.
+  const MIN_DISCUSSION_MESSAGES = Number(process.env.MIN_DISCUSSION_MESSAGES || 3)
+  const ranked = [...clusters].sort((a, b) => b.sourceMessageHashes.length - a.sourceMessageHashes.length)
+
   let synthDone = 0
   let synthFailed = 0
+  let synthThin = 0
   let kCreated = 0
   let kUpdated = 0
-  for (const cluster of clusters) {
+  for (const cluster of ranked) {
     if (cluster.questions.length === 0) continue
+    if (args.maxClusters && synthDone >= args.maxClusters) break
+
+    const discussion = gatherDiscussion(cluster, messages, hashToIndex)
+    if (discussion.count < MIN_DISCUSSION_MESSAGES) {
+      synthThin++
+      continue // not enough real discussion to ground a specific answer
+    }
+
     let synth
     try {
-      synth = await synthesiseCluster(cluster)
+      synth = await synthesiseCluster(cluster, discussion.text)
     } catch (err) {
       synthFailed++
       console.warn(`  ! cluster skipped (synthesis error): ${(err as Error).message.split('\n')[0]}`)
       continue
     }
     synthDone++
-    if (synth.confidence < 0.4) continue // drop low-confidence entries
-    if (containsPII(synth.canonicalQuestion, strongNameSet) || containsPII(synth.synthesisedAnswer, strongNameSet)) {
-      console.warn(`Dropped a synthesised entry that contained residual PII (topic: ${cluster.topic})`)
-      continue
-    }
+    if (synth.confidence < 0.4) continue // model judged it had no real answer
+    // Members-only output: keep the specifics the community shared (names,
+    // companies, contacts, tactics) — no PII scrubbing here.
     const entry: PreparedKnowledge = {
-      question: scrubOutput(synth.canonicalQuestion, strongNameSet),
-      answer: scrubOutput(synth.synthesisedAnswer, strongNameSet),
+      question: synth.canonicalQuestion,
+      answer: synth.synthesisedAnswer,
       slug: slugify(synth.canonicalQuestion),
       topicTags: synth.topicTags.map((t) => t.toLowerCase()).slice(0, 8),
       categorySlug: synth.categorySlug,
@@ -204,9 +263,10 @@ async function main() {
     kCreated += r.created
     kUpdated += r.updated
     if (synthDone % 25 === 0) {
-      console.log(`  …synthesised ${synthDone}/${clusters.length}, saved ${kCreated + kUpdated} entries ($${getSpend().toFixed(2)})`)
+      console.log(`  …synthesised ${synthDone}, saved ${kCreated + kUpdated} entries ($${getSpend().toFixed(2)})`)
     }
   }
+  if (synthThin > 0) console.log(`  (${synthThin} topic(s) skipped — too little discussion to ground an answer)`)
   if (synthFailed > 0) console.log(`  (${synthFailed} cluster(s) skipped due to synthesis errors)`)
 
   console.log('\n=== IMPORT COMPLETE ===')

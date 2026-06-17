@@ -26,6 +26,7 @@ const PROTECTED_PATHS = [
   '/admin',
   '/community',
   '/explore',
+  '/knowledge',
   '/events',
   '/offers',
   '/news',

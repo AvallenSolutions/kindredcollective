@@ -8,10 +8,10 @@ import {
 } from './types'
 
 /**
- * Stage 2c — answer synthesis pass (strong model). Runs only on CLUSTERED
- * question candidates (a few hundred), turning a messy set of related questions
- * into one clean, anonymised Q&A entry. Adaptive thinking is enabled because
- * synthesising a good answer from fragmentary chat is a non-trivial task.
+ * Stage 2c — answer synthesis pass. For each topic cluster, the model is given
+ * the questions AND excerpts of the community's ACTUAL discussion, and writes a
+ * specific answer grounded in what members really shared. Output is members-only,
+ * so naming real suppliers/companies/contacts/tactics is wanted.
  */
 
 export interface QuestionCluster {
@@ -20,37 +20,49 @@ export interface QuestionCluster {
   sourceMessageHashes: string[]
 }
 
-const SYNTH_SYSTEM = `You write entries for "Ask the Collective", a public knowledge base distilled from years of a UK drinks-industry founders' community. You are given a cluster of related questions that members have asked over time (already anonymised).
+const SYNTH_SYSTEM = `You write internal, MEMBERS-ONLY knowledge-base entries for the Kindred Collective, a private community of UK drinks-industry founders.
 
-Produce ONE canonical knowledge entry:
-- canonicalQuestion: a single clear question capturing what people want to know
-- synthesisedAnswer: a genuinely helpful, practical answer aimed at a UK drinks founder. Write 2–5 short paragraphs or a tight bulleted list. Base it on widely-understood industry practice; do not invent specific figures, prices or named individuals. If the topic is genuinely ambiguous or you cannot give a useful general answer, say so briefly and set a low confidence.
+You are given (a) the questions members asked on a topic and (b) excerpts from the community's ACTUAL WhatsApp discussions about it. Write the specific, practical answer the community actually gave.
+
+Rules:
+- GROUND the answer in the provided discussion excerpts. Preserve the specifics members shared: named suppliers, companies, products, tools, services, prices, lead times, contacts and concrete tactics. These specifics are the whole point — do NOT replace them with generic advice.
+- Write as collective knowledge ("Members recommend…", "The usual route is…", "Several people warned…"). Don't attribute statements to a specific named member, and don't invent details that the excerpts don't support.
+- The excerpts may contain unrelated chatter (group chats interleave topics). Use only what's relevant; ignore the rest.
+- If the excerpts don't actually contain a useful answer, write a short honest note and set a LOW confidence (< 0.4) so it can be filtered out.
+- This is internal to paying members, so being specific and naming names/companies is expected.
+
+Output:
+- canonicalQuestion: one clear question
+- synthesisedAnswer: 2–5 short paragraphs or tight bullets, grounded in the excerpts
 - topicTags: 2–5 lowercase tags
 - categorySlug: exactly one of: ${KNOWLEDGE_CATEGORY_SLUGS.join(', ')}
-- confidence: 0–1, how confident you are this is an accurate, useful, evergreen entry
-
-NEVER include any personal name. The answer is public-facing, so keep it professional and free of private details.`
+- confidence: 0–1`
 
 export function clusterIdHash(cluster: QuestionCluster): string {
   const basis = [...cluster.sourceMessageHashes].sort().join('|')
   return createHash('sha256').update(basis).digest('hex').slice(0, 32)
 }
 
-export async function synthesiseCluster(cluster: QuestionCluster): Promise<KnowledgeSynthesis> {
-  const user = `Topic: ${cluster.topic}\n\nQuestions asked by members:\n${cluster.questions
-    .map((q, i) => `${i + 1}. ${q}`)
-    .join('\n')}`
+export async function synthesiseCluster(
+  cluster: QuestionCluster,
+  discussion: string
+): Promise<KnowledgeSynthesis> {
+  const user = `TOPIC: ${cluster.topic}
+
+QUESTIONS MEMBERS ASKED:
+${cluster.questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
+
+ACTUAL COMMUNITY DISCUSSION (excerpts):
+${discussion || '(no discussion captured)'}`
 
   // SYNTH_MODEL lets you trade quality for cost (e.g. claude-haiku-4-5).
-  // Defaults to the high-quality Opus model. Adaptive thinking is only used on
-  // models that support it (not Haiku).
   const model = process.env.SYNTH_MODEL || MODELS.SYNTHESISE
   const adaptiveThinking = !/haiku/i.test(model)
 
   const { data } = await extractStructured<KnowledgeSynthesis>({
-    // Key intentionally omits the model so a resume reuses already-paid cached
-    // answers regardless of SYNTH_MODEL (uncached clusters use the chosen model).
-    key: `synth-${clusterIdHash(cluster)}`,
+    // "synth2" key: grounded-answer rework — intentionally busts the old
+    // generic-answer cache. Omits the model so resumes reuse paid answers.
+    key: `synth2-${clusterIdHash(cluster)}`,
     model,
     system: SYNTH_SYSTEM,
     user,
