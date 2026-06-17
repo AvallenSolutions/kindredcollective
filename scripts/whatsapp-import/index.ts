@@ -128,42 +128,11 @@ async function main() {
     return
   }
 
-  // Stage 2c: synthesise answers (strong model) per cluster.
-  const knowledge: PreparedKnowledge[] = []
-  let synthDone = 0
-  let synthFailed = 0
-  for (const cluster of clusters) {
-    if (cluster.questions.length === 0) continue
-    let synth
-    try {
-      synth = await synthesiseCluster(cluster)
-    } catch (err) {
-      synthFailed++
-      console.warn(`  ! cluster skipped (synthesis error): ${(err as Error).message.split('\n')[0]}`)
-      continue
-    }
-    if ((++synthDone) % 25 === 0) console.log(`  …synthesised ${synthDone}/${clusters.length} ($${getSpend().toFixed(2)})`)
-    if (synth.confidence < 0.4) continue // drop low-confidence entries
-    // Post-filter: drop anything that still leaks PII.
-    if (containsPII(synth.canonicalQuestion, nameSet) || containsPII(synth.synthesisedAnswer, nameSet)) {
-      console.warn(`Dropped a synthesised entry that contained residual PII (topic: ${cluster.topic})`)
-      continue
-    }
-    knowledge.push({
-      question: scrubOutput(synth.canonicalQuestion, nameSet),
-      answer: scrubOutput(synth.synthesisedAnswer, nameSet),
-      slug: slugify(synth.canonicalQuestion),
-      topicTags: synth.topicTags.map((t) => t.toLowerCase()).slice(0, 8),
-      categorySlug: synth.categorySlug,
-      sourceHash: clusterIdHash(cluster),
-      sourceCount: cluster.sourceMessageHashes.length,
-      confidence: synth.confidence,
-    })
-  }
+  // Load persistence prerequisites up front.
+  const ctx = await loadPersistContext(prisma!)
 
-  if (synthFailed > 0) console.log(`  (${synthFailed} cluster(s) skipped due to synthesis errors)`)
-
-  // Prepare endorsements (match to existing suppliers; else unmatched mention).
+  // Persist endorsements + links FIRST (derived from classification). These are
+  // saved before the long synthesis pass so an interruption never loses them.
   const endorsements: PreparedEndorsement[] = agg.recommendations
     .filter((r) => !containsPII(r.quoteSnippet, nameSet))
     .map((r) => ({
@@ -175,7 +144,6 @@ async function main() {
       sourceMessageHash: r.sourceMessageHashes[0] ?? clusterIdHash({ topic: r.rawSupplierName, questions: [], sourceMessageHashes: r.sourceMessageHashes }),
     }))
 
-  // Prepare links (canonicalise + dedup within batch).
   const seenUrls = new Set<string>()
   const links: PreparedLink[] = []
   for (const l of agg.linkMentions) {
@@ -185,18 +153,57 @@ async function main() {
     links.push({ url, title: l.contextTitle, description: l.contextTitle, tags: [l.suggestedCategorySlug] })
   }
 
-  // Stage 4: persist
-  const ctx = await loadPersistContext(prisma!)
-  const k = await persistKnowledge(prisma!, ctx, knowledge)
   const e = await persistEndorsements(prisma!, endorsements)
   const ln = await persistLinks(prisma!, ctx, links)
+  console.log(`Saved endorsements: ${e.created} new / ${e.skipped} existing · links: ${ln.created} new / ${ln.skipped} existing`)
+
+  // Stage 2c: synthesise answers per cluster and SAVE each immediately, so
+  // stopping the run never discards completed work.
+  let synthDone = 0
+  let synthFailed = 0
+  let kCreated = 0
+  let kUpdated = 0
+  for (const cluster of clusters) {
+    if (cluster.questions.length === 0) continue
+    let synth
+    try {
+      synth = await synthesiseCluster(cluster)
+    } catch (err) {
+      synthFailed++
+      console.warn(`  ! cluster skipped (synthesis error): ${(err as Error).message.split('\n')[0]}`)
+      continue
+    }
+    synthDone++
+    if (synth.confidence < 0.4) continue // drop low-confidence entries
+    if (containsPII(synth.canonicalQuestion, nameSet) || containsPII(synth.synthesisedAnswer, nameSet)) {
+      console.warn(`Dropped a synthesised entry that contained residual PII (topic: ${cluster.topic})`)
+      continue
+    }
+    const entry: PreparedKnowledge = {
+      question: scrubOutput(synth.canonicalQuestion, nameSet),
+      answer: scrubOutput(synth.synthesisedAnswer, nameSet),
+      slug: slugify(synth.canonicalQuestion),
+      topicTags: synth.topicTags.map((t) => t.toLowerCase()).slice(0, 8),
+      categorySlug: synth.categorySlug,
+      sourceHash: clusterIdHash(cluster),
+      sourceCount: cluster.sourceMessageHashes.length,
+      confidence: synth.confidence,
+    }
+    const r = await persistKnowledge(prisma!, ctx, [entry])
+    kCreated += r.created
+    kUpdated += r.updated
+    if (synthDone % 25 === 0) {
+      console.log(`  …synthesised ${synthDone}/${clusters.length}, saved ${kCreated + kUpdated} entries ($${getSpend().toFixed(2)})`)
+    }
+  }
+  if (synthFailed > 0) console.log(`  (${synthFailed} cluster(s) skipped due to synthesis errors)`)
 
   console.log('\n=== IMPORT COMPLETE ===')
-  console.log(`Knowledge entries:   ${k.created} created, ${k.updated} updated`)
+  console.log(`Knowledge entries:   ${kCreated} created, ${kUpdated} updated`)
   console.log(`Endorsements:        ${e.created} created, ${e.skipped} skipped (dupes)`)
   console.log(`Links:               ${ln.created} created, ${ln.skipped} skipped (dupes)`)
   console.log(`Estimated spend:     $${getSpend().toFixed(2)}`)
-  console.log('All imported records are UNPUBLISHED — review and publish in the admin area.')
+  console.log('All imported records are UNPUBLISHED — run `npm run publish:knowledge` to make them live.')
 
   await prisma!.$disconnect()
 }

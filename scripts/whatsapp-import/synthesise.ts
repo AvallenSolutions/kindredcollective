@@ -41,15 +41,23 @@ export async function synthesiseCluster(cluster: QuestionCluster): Promise<Knowl
     .map((q, i) => `${i + 1}. ${q}`)
     .join('\n')}`
 
+  // SYNTH_MODEL lets you trade quality for cost (e.g. claude-haiku-4-5).
+  // Defaults to the high-quality Opus model. Adaptive thinking is only used on
+  // models that support it (not Haiku).
+  const model = process.env.SYNTH_MODEL || MODELS.SYNTHESISE
+  const adaptiveThinking = !/haiku/i.test(model)
+
   const { data } = await extractStructured<KnowledgeSynthesis>({
+    // Key intentionally omits the model so a resume reuses already-paid cached
+    // answers regardless of SYNTH_MODEL (uncached clusters use the chosen model).
     key: `synth-${clusterIdHash(cluster)}`,
-    model: MODELS.SYNTHESISE,
+    model,
     system: SYNTH_SYSTEM,
     user,
     schema: KnowledgeSynthesisSchema,
     schemaName: 'knowledge_synthesis',
     maxTokens: 16000,
-    adaptiveThinking: true,
+    adaptiveThinking,
   })
 
   // Defend the category against an off-list value from the model.
