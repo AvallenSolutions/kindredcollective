@@ -16,6 +16,7 @@
     "db:studio": "prisma studio",
     "db:seed": "prisma db seed",
     "seed:knowledge": "npx ts-node --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' prisma/seed-knowledge.ts",
+    "publish:knowledge": "npx ts-node --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' prisma/publish-knowledge.ts",
     "import:whatsapp": "npx ts-node --transpile-only --compiler-options '{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' scripts/whatsapp-import/index.ts"
   },
   "prisma": {
