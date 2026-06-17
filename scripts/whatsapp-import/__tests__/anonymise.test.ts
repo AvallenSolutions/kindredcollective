@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { anonymiseMessages, buildNameSet, containsPII, scrubOutput } from '../anonymise'
+import { anonymiseMessages, buildNameSet, containsPII, fullNamesOnly, scrubOutput } from '../anonymise'
 import { parseExport } from '../parse'
 
 describe('anonymise', () => {
@@ -39,5 +39,16 @@ describe('anonymise', () => {
 
   it('scrubOutput redacts residual PII', () => {
     expect(scrubOutput('Bob recommends them', nameSet)).toContain('[member]')
+  })
+
+  it('fullNamesOnly avoids false positives on common-word names but catches full names', () => {
+    // Add a member whose name is a common English word.
+    const set = buildNameSet(['Will May', 'Jane Doe'])
+    const strong = fullNamesOnly(set)
+    // Clean answer containing the common words "will"/"may" must NOT be flagged.
+    expect(containsPII('You will need a licence and may apply in May', strong)).toBe(false)
+    // A genuine full-name leak IS still caught.
+    expect(containsPII('This was recommended by Will May at the meetup', strong)).toBe(true)
+    expect(containsPII('Jane Doe can help', strong)).toBe(true)
   })
 })

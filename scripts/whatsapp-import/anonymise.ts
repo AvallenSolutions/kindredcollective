@@ -98,3 +98,16 @@ export function containsPII(text: string, nameSet: Set<string>): boolean {
 export function scrubOutput(text: string, nameSet: Set<string>): string {
   return redactBody(text, buildNameRegex(nameSet))
 }
+
+/**
+ * A conservative subset of the name set containing only full, multi-word names
+ * (e.g. "Geo Frost"). Single-token names are excluded because many are ordinary
+ * English words ("Will", "May", "Bond", "Frost") that cause false positives.
+ *
+ * Used for the post-AI safety net: the model only ever saw anonymised input, so
+ * a real leak would manifest as a full name, an email, or a phone number — not a
+ * lone common word. This avoids mass false-positive drops of clean answers.
+ */
+export function fullNamesOnly(nameSet: Set<string>): Set<string> {
+  return new Set(Array.from(nameSet).filter((n) => n.trim().includes(' ')))
+}

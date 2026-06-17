@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs'
 import { PrismaClient } from '@prisma/client'
 import { parseExport } from './parse'
-import { anonymiseMessages, buildNameSet, containsPII, scrubOutput } from './anonymise'
+import { anonymiseMessages, buildNameSet, containsPII, fullNamesOnly, scrubOutput } from './anonymise'
 import { chunkMessages } from './chunk'
 import { classifyChunk } from './classify'
 import { clusterQuestions, matchSupplier, slugify, canonicaliseUrl, type SupplierRef } from './normalise'
@@ -86,6 +86,10 @@ async function main() {
 
   const nameSet = buildNameSet(senders, extraNames)
   const anonymised = anonymiseMessages(messages, nameSet)
+  // Conservative set for the post-AI safety net (full names only) — avoids
+  // dropping clean answers that merely contain a common word that is also a
+  // member's name (e.g. "Will", "May", "Bond").
+  const strongNameSet = fullNamesOnly(nameSet)
 
   // Stage 2a/2b: chunk + classify
   const chunks = chunkMessages(anonymised)
@@ -134,12 +138,12 @@ async function main() {
   // Persist endorsements + links FIRST (derived from classification). These are
   // saved before the long synthesis pass so an interruption never loses them.
   const endorsements: PreparedEndorsement[] = agg.recommendations
-    .filter((r) => !containsPII(r.quoteSnippet, nameSet))
+    .filter((r) => !containsPII(r.quoteSnippet, strongNameSet))
     .map((r) => ({
       supplierId: matchSupplier(r.rawSupplierName, suppliers),
       rawSupplierName: r.rawSupplierName.slice(0, 200),
       category: r.category as SupplierCategory,
-      quoteSnippet: scrubOutput(r.quoteSnippet, nameSet),
+      quoteSnippet: scrubOutput(r.quoteSnippet, strongNameSet),
       sentiment: r.sentiment,
       sourceMessageHash: r.sourceMessageHashes[0] ?? clusterIdHash({ topic: r.rawSupplierName, questions: [], sourceMessageHashes: r.sourceMessageHashes }),
     }))
@@ -182,13 +186,13 @@ async function main() {
     }
     synthDone++
     if (synth.confidence < 0.4) continue // drop low-confidence entries
-    if (containsPII(synth.canonicalQuestion, nameSet) || containsPII(synth.synthesisedAnswer, nameSet)) {
+    if (containsPII(synth.canonicalQuestion, strongNameSet) || containsPII(synth.synthesisedAnswer, strongNameSet)) {
       console.warn(`Dropped a synthesised entry that contained residual PII (topic: ${cluster.topic})`)
       continue
     }
     const entry: PreparedKnowledge = {
-      question: scrubOutput(synth.canonicalQuestion, nameSet),
-      answer: scrubOutput(synth.synthesisedAnswer, nameSet),
+      question: scrubOutput(synth.canonicalQuestion, strongNameSet),
+      answer: scrubOutput(synth.synthesisedAnswer, strongNameSet),
       slug: slugify(synth.canonicalQuestion),
       topicTags: synth.topicTags.map((t) => t.toLowerCase()).slice(0, 8),
       categorySlug: synth.categorySlug,
