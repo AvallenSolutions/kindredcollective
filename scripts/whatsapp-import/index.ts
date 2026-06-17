@@ -221,6 +221,7 @@ async function main() {
   // Process the most-discussed topics first so an early stop keeps the best.
   const MIN_DISCUSSION_MESSAGES = Number(process.env.MIN_DISCUSSION_MESSAGES || 3)
   const ranked = [...clusters].sort((a, b) => b.sourceMessageHashes.length - a.sourceMessageHashes.length)
+  console.log('Synthesising grounded answers (most-discussed topics first)…')
 
   let synthDone = 0
   let synthFailed = 0
@@ -262,7 +263,7 @@ async function main() {
     const r = await persistKnowledge(prisma!, ctx, [entry])
     kCreated += r.created
     kUpdated += r.updated
-    if (synthDone % 25 === 0) {
+    if (synthDone % 5 === 0) {
       console.log(`  …synthesised ${synthDone}, saved ${kCreated + kUpdated} entries ($${getSpend().toFixed(2)})`)
     }
   }

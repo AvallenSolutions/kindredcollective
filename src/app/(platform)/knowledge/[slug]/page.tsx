@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { ArrowLeft, MessageSquare } from 'lucide-react'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { HelpfulButton } from '@/components/knowledge/helpful-button'
+import { MarkdownLite } from '@/components/knowledge/markdown'
 import { truncate } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
@@ -60,9 +61,6 @@ export default async function KnowledgeEntryPage({
     .eq('id', entry.id)
     .then(() => undefined)
 
-  // Render answer paragraphs.
-  const paragraphs = entry.answer.split(/\n{2,}/).filter(Boolean)
-
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'QAPage',
@@ -109,12 +107,8 @@ export default async function KnowledgeEntryPage({
           {entry.question}
         </h1>
 
-        <div className="prose prose-lg max-w-none space-y-4 text-gray-800">
-          {paragraphs.map((p: string, i: number) => (
-            <p key={i} className="text-lg leading-relaxed whitespace-pre-line">
-              {p}
-            </p>
-          ))}
+        <div className="max-w-none text-gray-800">
+          <MarkdownLite text={entry.answer} />
         </div>
 
         {tags.length > 0 && (

@@ -33,7 +33,7 @@ Rules:
 
 Output:
 - canonicalQuestion: one clear question
-- synthesisedAnswer: 2–5 short paragraphs or tight bullets, grounded in the excerpts
+- synthesisedAnswer: Markdown, formatted to be scannable. Start with a 1–2 sentence summary, then a bulleted list ("- " per line) of the specific options/recommendations, **bolding** the supplier/tool/tactic name at the start of each bullet (e.g. "- **Starling** — praised for ease of setup and Xero integration"). Finish with any caveats or warnings members raised. Ground everything in the excerpts.
 - topicTags: 2–5 lowercase tags
 - categorySlug: exactly one of: ${KNOWLEDGE_CATEGORY_SLUGS.join(', ')}
 - confidence: 0–1`
