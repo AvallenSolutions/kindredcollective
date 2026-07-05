@@ -1,59 +1,75 @@
-# Todo: WhatsApp Mining → Website Tools
+# Todo: Build the Karpathy LLM Wiki (per Nate Herk video + Karpathy gist)
 
-Plan: `/root/.claude/plans/root-claude-uploads-4faf6148-7b2c-5372-stateless-frog.md`
-Branch: `claude/hopeful-meitner-am26gf`
+Branch: `claude/quirky-hopper-q6at5s`
+References:
+- Karpathy's gist: https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
+- Video: https://www.youtube.com/watch?v=hQvwMj7IJe4 (Nate Herk — Obsidian vault + Claude Code as wiki maintainer)
 
-## Phase 0 — Pipeline + schema (foundation)
-- [ ] Add `@anthropic-ai/sdk` dep + `import:whatsapp` script to package.json
-- [ ] Exclude `scripts/` from app tsconfig; add `scripts/**` to vitest include
-- [ ] Prisma schema: `KnowledgeCategory`, `KnowledgeEntry`, `SupplierEndorsement`, `KnowledgeStatus` enum, `Supplier.endorsements` back-relation
-- [ ] `scripts/whatsapp-import/`: types, config, parse, anonymise, chunk, anthropic, classify, synthesise, normalise, persist, index
-- [ ] `prisma/seed-knowledge.ts` (system User + KnowledgeCategory + "Community Links" ResourceCategory)
-- [ ] Unit tests: parse, anonymise, normalise (+ idempotency persist test)
-- [ ] gitignore the AI disk cache
+## What we're building
 
-## Phase 1 — "Ask the Collective" Knowledge Base
-- [ ] `/api/knowledge` route (mirror suppliers route)
-- [ ] `/knowledge` public list page
-- [ ] `/knowledge/[slug]` detail page (JSON-LD, helpful control)
-- [ ] `/api/knowledge/[slug]/helpful` POST
-- [ ] `KnowledgeCard` component + nav link
+A self-maintaining knowledge base with three layers:
+1. **`raw/`** — immutable source documents (PDFs, transcripts, articles). Claude reads, never edits.
+2. **`wiki/`** — Claude-owned markdown pages: one summary page per source, plus entity/concept
+   pages synthesised *across* sources, all cross-linked with `[[wikilinks]]`, catalogued in
+   `index.md`, with every operation appended to `log.md`.
+3. **Schema (`CLAUDE.md` in the vault)** — the rules that turn Claude into a disciplined wiki
+   maintainer: page types, frontmatter, naming, and the ingest / query / lint workflows.
 
-## Phase 2 — Community Recommendations
-- [ ] Extend `/api/suppliers` select with endorsement count
-- [ ] `community-endorsements.tsx` + supplier card badge + detail section
+Obsidian is the front end (graph view + backlinks); the vault is just a folder of markdown,
+so it stays tool-agnostic.
 
-## Phase 3 — Resource / link library
-- [ ] Extract `resource-card.tsx`; imported links surface in existing resources page
+## Decisions (confirm before build)
 
-## Verification
-- [ ] `npm test` green (parse/anonymise/normalise/idempotency)
-- [ ] `npx tsc --noEmit` / `next build` clean
-- [ ] `--dry-run` writes nothing; manual QA checklist
+- [ ] **Vault location**: proposed `llm-wiki/` at the repo root (version-controlled; user opens
+      that folder as an Obsidian vault locally after pulling). Alternative: standalone desktop
+      vault as in the video — but then it can't be built from this session.
+- [ ] **First ingest sources**: proposed (a) `Kindred-Collective-PRD.docx` already in the repo,
+      (b) one URL article of the user's choice — mirroring the video's PDF + URL demo.
+- [ ] **Wiki topic/scope**: Kindred Collective business knowledge (PRD, plans, articles) vs.
+      general research topics. Structure conventions depend on this.
+
+## Phase 1 — Vault scaffold + schema
+
+- [ ] Create `llm-wiki/` with `raw/` and `wiki/` folders
+- [ ] Write `llm-wiki/CLAUDE.md` schema:
+  - Page types: `summary` (one per source), `entity` (people/orgs/products/tools),
+    `concept` (cross-source ideas/techniques), `overview`
+  - YAML frontmatter: `type, title, description, tags, timestamp, sources`
+  - Cross-linking: Obsidian `[[wikilinks]]`; every page must have inbound + outbound links
+  - Naming: kebab-case filenames; folders `wiki/sources/`, `wiki/entities/`, `wiki/concepts/`
+    (start near-flat; let structure evolve as data demands — per the video, flat beats deep
+    until the content justifies subfolders)
+  - Workflows: **ingest** (read raw → summary page → split into 5–15 entity/concept pages →
+    cross-link → update index → append log), **query** (index-first routing, cite pages,
+    file high-value answers back as pages), **lint** (contradictions, orphans, stale claims,
+    missing links)
+- [ ] Create `wiki/index.md` (content-oriented catalog, one line + link per page, grouped by category)
+- [ ] Create `wiki/log.md` (append-only, `## [YYYY-MM-DD] <operation> | <title>` format)
+- [ ] Ingest Karpathy's gist itself as the first raw doc (as the video does) — proves the loop works
+
+## Phase 2 — First real ingests (PDF/docx + URL, as demonstrated)
+
+- [ ] Convert/copy `Kindred-Collective-PRD.docx` into `llm-wiki/raw/` and ingest it:
+      summary page + entity pages (Kindred Collective, suppliers, members…) + concept pages
+      (community knowledge base, endorsements…), all cross-linked
+- [ ] Ingest one URL article (user to supply, or default to a relevant industry article)
+- [ ] Update `index.md` + `log.md` for both ingests
+
+## Phase 3 — Verification (CLAUDE.md rule 4)
+
+- [ ] Every `[[wikilink]]` resolves to an existing page (scripted check, no orphan links)
+- [ ] Every wiki page appears in `index.md`; every operation has a `log.md` entry
+- [ ] Cross-source connection exists (a page linking both sources — the "worth having a wiki" test)
+- [ ] Query test: ask a question answerable only by combining sources; answer must cite wiki pages
+- [ ] User-side: open `llm-wiki/` as an Obsidian vault, confirm graph view shows the connected map
+
+## Phase 4 — Ongoing workflow (documented in the vault CLAUDE.md)
+
+- [ ] "Add a source" runbook: drop file in `raw/` (or paste URL) → prompt "ingest" → review
+- [ ] Periodic lint sweep instruction
+- [ ] Optional stretch: single-file HTML visual explorer of the wiki graph (like the video's
+      beginner-friendly clickable map)
 
 ## Review
 
-### What was built
-**Phase 0 — repeatable mining pipeline + schema**
-- `scripts/whatsapp-import/`: parse → anonymise → chunk → classify (Haiku) → cluster → synthesise (Opus) → normalise → persist. CLI with `--input/--dry-run/--limit/--since`. Idempotent (deterministic message hashes; upsert-by-sourceHash; convergent counts). Disk cache + `MAX_SPEND_USD` guard.
-- Schema (additive): `KnowledgeCategory`, `KnowledgeEntry`, `SupplierEndorsement`, `KnowledgeStatus` enum, `Supplier.endorsements` back-relation. `@anthropic-ai/sdk` added; `prisma/seed-knowledge.ts` seeds system user + categories. `scripts/` excluded from app tsc; pipeline tests added to vitest.
-
-**Phase 1 — "Ask the Collective" knowledge base (public)**
-- `/api/knowledge` + `/api/knowledge/[slug]/helpful`; public `/knowledge` list and `/knowledge/[slug]` detail (JSON-LD QAPage, SEO metadata, helpful counter). Placed under `(marketing)` so it's public (not auth-gated). `KnowledgeCard` + `HelpfulButton` + nav link.
-
-**Phase 2 — community recommendations**
-- `/api/suppliers` returns published `mentionCount` (bounded extra query, not a fragile join). `SupplierCard` badge + `CommunityEndorsements` section on supplier detail.
-
-**Phase 3 — link library**
-- Imported `LINK` resources surface automatically in the existing `/community/resources` page via the seeded "Community Links" category (no new route). Card-extraction refactor intentionally skipped (no behaviour change).
-
-### Verification done
-- 16 pipeline unit tests (parse/anonymise/normalise) + full suite **52/52 pass**.
-- `tsc --noEmit`: **no new errors** (one pre-existing error in `onboarding-page.test.tsx`, unrelated).
-- ESLint clean on new files.
-- Offline stages run on the **real archive**: 38,967 messages parsed, 243 chunks, **0 messages still flagged with PII** after anonymisation (names→[member], company names preserved).
-
-### Follow-ups for the deploying environment (need DB/API key — not available here)
-- Run `npx prisma migrate dev --name add_knowledge_and_endorsements` (additive) then `npm run seed:knowledge`.
-- Set `ANTHROPIC_API_KEY`, then `npm run import:whatsapp -- --dry-run --limit 50 --input <file>` to sanity-check before the full run.
-- Imported records default UNPUBLISHED — review & publish in admin before they appear publicly.
+_(to be filled in after implementation)_
