@@ -22,9 +22,16 @@ Group-chat knowledge is high-value and unretrievable: the same questions ("who d
 
 The two are complementary: the wiki is the internal, connected, queryable brain; the pipeline extracts polished public artefacts. Both depend on the same raw exports.
 
-## Status
+## Status — first full ingest complete (2026-07-13)
 
-Awaiting the first WhatsApp export ingest (see `raw/whatsapp/README.md` for the export procedure). This page should be substantially rewritten after that ingest, with links to the topic pages it produces.
+Both archives are ingested: [[whatsapp-kindred-spirits]] (2018–2025, ~37,500 messages) and [[whatsapp-kc-general]] (2025–2026, ~6,000 messages). The knowledge now lives in:
+
+- [[supplier-intelligence]] — the consensus/warning layer, with category depth in [[glass-supply]], [[fulfilment-and-3pl]], [[rtd-canning]], [[route-to-market]] and [[scam-warnings]]
+- [[uk-drinks-legislation-and-tax]] — regulation as lived: [[alcohol-duty]], [[extended-producer-responsibility]], [[deposit-return-scheme]], [[hmrc-compliance]]
+- [[finance-and-ops-benchmarks]] — the numbers founders share only with each other
+- [[kindred-collective]] — the community's own history, including the 2025 conversion to a paid collective
+
+Future exports overlap these date ranges — the ingest workflow dedupes by checking the covered ranges in the source pages before processing.
 
 ## Connections
 

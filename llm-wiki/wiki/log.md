@@ -43,3 +43,11 @@ Append-only. Entry prefix format: `## [YYYY-MM-DD] operation | Title`
 - Verification query run by a fresh-context agent following the schema's query workflow
 - Routing: index → [[uk-drinks-legislation-and-tax]] → [[alcohol-duty]], [[no-lo-alcohol]], [[extended-producer-responsibility]] → source pages for exact figures; index alone was sufficient to route
 - Answer filed back as [[no-lo-launch-compliance]]; gaps confirmed as already on the wish-list (labelling descriptors, DRS)
+
+## [2026-07-13] ingest | WhatsApp archives — Kindred Spirits (2018–2025) + KC General (2025–2026)
+
+- Raw: `raw/whatsapp/kindred-spirits-2018-05-to-2025-04.txt` (~37,500 msgs) and `raw/whatsapp/kc-general-2025-03-to-2026-06.txt` (~6,000 msgs)
+- Method: 16 chunked extraction passes (date-aligned, ~410KB each), anonymised at extraction (members → roles; company names kept; sensitive personal matters omitted), then synthesised
+- Created 14 pages: sources [[whatsapp-kindred-spirits]], [[whatsapp-kc-general]]; hub [[supplier-intelligence]]; concepts [[glass-supply]], [[fulfilment-and-3pl]], [[rtd-canning]], [[route-to-market]], [[scam-warnings]], [[hmrc-compliance]], [[deposit-return-scheme]], [[finance-and-ops-benchmarks]]; entities [[albatrans]], [[law-distribution]], [[enotria]]
+- Updated 7 pages: [[alcohol-duty]] (community timeline; Feb 2026 rates corroborate gov.uk capture), [[extended-producer-responsibility]] (glass-tonnage analysis VALIDATED by members; passthrough disputes), [[uk-drinks-legislation-and-tax]] (DRS + licensing gaps now covered), [[kindred-collective]] (full 2018→2026 history), [[avallen-solutions]], [[community-knowledge-base]] (status: ingest complete), [[supplier-marketplace]]
+- Coverage boundary: nothing after 2026-06-08 — future exports dedupe from there

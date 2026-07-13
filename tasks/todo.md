@@ -46,7 +46,10 @@ References:
 - [x] "Add a source" runbooks documented in `llm-wiki/CLAUDE.md` (files + URLs + WhatsApp)
 - [x] Lint cadence documented (every ~5 ingests); root `CLAUDE.md` routes business questions
       to the wiki index; `.obsidian/` gitignored
-- [ ] First WhatsApp export ingest (blocked on user upload to `llm-wiki/raw/whatsapp/`)
+- [x] First WhatsApp ingest DONE (2026-07-13): both archives (Kindred Spirits 2018–25,
+      ~37.5k msgs + KC General 2025–26, ~6k msgs) via 16 anonymised extraction passes →
+      14 new pages + 7 updated; wiki now 29 pages, lint green, zero personal names in wiki
+      layer (grep-verified); coverage boundary 2026-06-08 recorded for future dedupe
 - [ ] Optional stretch: single-file HTML visual explorer of the wiki graph
 
 ## Review
