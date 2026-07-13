@@ -55,3 +55,6 @@ Thumbs.db
 
 # Obsidian per-machine UI state for the LLM wiki vault
 /llm-wiki/.obsidian/
+
+# generated wiki explorer output
+/llm-wiki/tools/*.html
