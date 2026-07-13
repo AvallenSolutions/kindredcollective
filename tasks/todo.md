@@ -50,7 +50,8 @@ References:
       ~37.5k msgs + KC General 2025–26, ~6k msgs) via 16 anonymised extraction passes →
       14 new pages + 7 updated; wiki now 29 pages, lint green, zero personal names in wiki
       layer (grep-verified); coverage boundary 2026-06-08 recorded for future dedupe
-- [ ] Optional stretch: single-file HTML visual explorer of the wiki graph
+- [x] HTML visual explorer: `llm-wiki/tools/build-explorer.py` (connected map, neo-brutalist; merged in PR #109)
+- [x] News wish-list ingests (2026-07-13): no/lo labelling descriptors + Scotland MUP — both former gaps closed; wiki at 30 content pages
 
 ## Review
 
