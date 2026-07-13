@@ -1,35 +1,36 @@
 ---
 type: entity
 title: Kindred Collective
-description: UK marketplace and community connecting independent drinks brands with suppliers
+description: UK marketplace and community connecting independent drinks brands with suppliers — grown from the 2018 Kindred Spirits WhatsApp group
 tags: [organisation, platform]
-updated: 2026-07-05
-sources: [raw/kindred-collective-prd.md]
+updated: 2026-07-13
+sources: [raw/kindred-collective-prd.md, raw/whatsapp/kindred-spirits-2018-05-to-2025-04.txt, raw/whatsapp/kc-general-2025-03-to-2026-06.txt]
 ---
 
 # Kindred Collective
 
-**What this is:** the UK's leading marketplace platform connecting independent drinks brands with suppliers, manufacturers and service providers — "The Independent Drinks Ecosystem" (kindredcollective.co.uk). Operated by [[avallen-solutions]].
+**What this is:** the UK's leading marketplace platform and community connecting independent drinks brands with suppliers, manufacturers and service providers — "The Independent Drinks Ecosystem" (kindredcollective.co.uk). Operated with [[avallen-solutions]]. It grew out of a WhatsApp group, and that origin still defines it.
 
-## The business
+## History (from the archives)
 
-Two-sided platform plus community:
+- **2018** — "Kindred Spirits" founded (21 May) by the founder of The Duppy Share as a ~15-person circle: *"share our collective failings so make success quicker to come by."*
+- **2021** — bulk-add to ~150 members; becomes a daily Q&A firehose through the post-Covid supply crisis. First sub-groups (Finance, Marketing, Sales, Founders) and benchmarking surveys.
+- **2022–23** — 200→350+ members; collective muscle emerges: a supplier reversed a botched-order decision under threat of group exposure ("Kindred Union" moment); open-letter campaign against the Scottish DRS; first Christmas party and **Kindred Spirits Awards** (2023).
+- **2024** — ~450–500 members; professionalisation: **CGA by NIQ quarterly insights survey** partnership (membership tied to participation, including a ~200-member cull of non-respondents), Awards Show at 21Soho (~300 attendees), member-created **Drink It In Festival** (50+ indie brands, Peckham), golf society, daily member-spotlight series.
+- **2025** — conversion to a business (24 March): paid **Kindred Collective** membership at £8.99–£9/month (Nas.io), capped ~350 in year one; survey said 208/250 would pay. Old group closed 11 April 2025 (~210 migrated; final message: *"The Kind' is dead. Long live the Kind'"*). Group-buying tenders launched (9 categories: digital, PR, insurance, glass, closures…), supplier-review website beta, win-back campaign (3 months free).
+- **2026** — full **kindredcollective.co.uk rebuild** (launched ~30 March: Explore directory, Requests, Offers, Events, News, Community, anonymous supplier reviews — built with Claude Code); **Annual Awards** at Red Bull Arches (Feb, ~130 capacity); member-founded **DrinksBox** marketplace launches ([[route-to-market]]).
 
-- **Brands** — independent producers across spirits, beer, wine, RTD and [[no-lo-alcohol]].
-- **Suppliers** — packaging, ingredients, logistics, co-packing and creative services, surfaced through the [[supplier-marketplace]] with verification badges and member-exclusive offers.
-- **Community** — member directory, events/meetups, and the WhatsApp group whose accumulated Q&A feeds the [[community-knowledge-base]] (and is the primary source stream for this wiki).
+## The business model that emerged
 
-The January 2026 rebuild PRD ([[prd-website-rebuild]]) targets 3,000+ verified suppliers, 1,000+ brands and 5,000+ monthly active users within six months of launch, with AI-powered natural-language search as a flagship capability.
+Community first, then monetised infrastructure around it: paid membership → data (CGA/IWSR insights members can use in pitch decks) → collective bargaining (group-buying tenders, joint responses like the [[law-distribution]] warehousing tender) → platform ([[supplier-marketplace]] with community-evidence reviews → [[supplier-intelligence]]) → events (Awards, festival tie-ins). The [[prd-website-rebuild]] formalises the platform layer.
 
 ## Regulatory exposure of the membership
 
-Because members are UK drinks producers and their suppliers, the community's shared knowledge needs cluster around [[uk-drinks-legislation-and-tax]]:
-
-- [[alcohol-duty]] — every brand's largest product-level tax; Small Producer Relief targets exactly this membership.
-- [[extended-producer-responsibility]] — bites brands supplying packaged goods under their own name, at thresholds (£1m/25t) that growing independents cross early because drinks packaging is heavy.
+Members are UK drinks producers and their suppliers, so shared knowledge clusters around [[uk-drinks-legislation-and-tax]]: [[alcohol-duty]] (no relief for full-strength spirits — the community's longest-running grievance), [[extended-producer-responsibility]] (the top pain point of 2024–25), [[deposit-return-scheme]], and [[hmrc-compliance]] (APPA transition, R&D credit clawbacks).
 
 ## Connections
 
-- [[prd-website-rebuild]] — the platform's requirements document
-- [[supplier-marketplace]], [[community-knowledge-base]], [[no-lo-alcohol]]
-- [[uk-drinks-legislation-and-tax]] — regulatory theme hub for the membership
+- [[whatsapp-kindred-spirits]], [[whatsapp-kc-general]] — the community's own archives
+- [[prd-website-rebuild]] — platform requirements; [[avallen-solutions]] — operator
+- [[supplier-marketplace]], [[supplier-intelligence]], [[community-knowledge-base]]
+- [[uk-drinks-legislation-and-tax]] — regulatory theme hub

@@ -23,7 +23,7 @@ sources: [raw/kindred-collective-prd.md, raw/uk-packaging-epr-guidance.md]
 
 ## Community as the trust layer
 
-Supplier discovery already happens informally in the WhatsApp group — recommendations, warnings, "who did your labels?" threads. The [[community-knowledge-base]] captures that stream; repeated member endorsements should accrete onto supplier entity pages here, giving the marketplace's verified badges a community-evidence counterpart. (The parent repo already mines endorsements from WhatsApp into the website — `scripts/whatsapp-import/`.)
+Supplier discovery already happens informally in the WhatsApp group — recommendations, warnings, "who did your labels?" threads. That stream is now captured: [[supplier-intelligence]] holds the cross-year consensus picks and repeated warnings from ~43,000 archived messages, with entity pages for the strongest signals ([[albatrans]], [[law-distribution]], [[enotria]]). This is the evidence base behind the marketplace's verified badges and the website's anonymous supplier reviews — and the parent repo separately mines endorsements into public site features (`scripts/whatsapp-import/`). See [[community-knowledge-base]] for the capture mechanism.
 
 ## Connections
 
