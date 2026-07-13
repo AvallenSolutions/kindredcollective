@@ -17,19 +17,20 @@ sources: [raw/uk-alcohol-duty-rates-2026.md, raw/uk-packaging-epr-guidance.md, r
 - **[[extended-producer-responsibility]]** — packaging waste costs on brand owners; £1m/25t thresholds validated against member experience (~10–12p/bottle). Regulator: [[defra]]. Guidance in [[gov-uk-packaging-epr]].
 - **[[deposit-return-scheme]]** — the Scottish collapse, national divergence (Wales includes glass), Oct 2027 obligations, low-volume exemption.
 - **[[hmrc-compliance]]** — AWRS, WOWGR→APPA, duty stamps wind-down (May 2025), bonded mechanics (W1/W5/EMCS), licensing in practice, and the R&D tax credit clawback campaign.
-- **[[no-lo-alcohol]]** — where duty structure meets category strategy.
+- **[[no-lo-alcohol]]** — where duty structure meets category strategy, including the descriptor thresholds ("alcohol-free" ≤0.05% only) from [[gov-uk-no-lo-labelling]].
+- **[[minimum-unit-pricing]]** — Scotland's 65p/unit and Wales's 50p/unit retail floor prices. Source: [[gov-scot-minimum-unit-pricing]].
 
 ## Partially covered (in concept pages, no dedicated source yet)
 
-- **Labelling** — prescribed bottle sizes, ABV/volume same-field-of-vision rules, spirit-drink vs "vodka"/"spiced rum" descriptors, sulphites, UK-address requirement, EU importer-address and pregnancy-logo rules (scattered across [[hmrc-compliance]], [[glass-supply]], [[rtd-canning]]). The "alcohol-free" 0.5% descriptor threshold remains genuinely uncovered.
+- **Labelling** — prescribed bottle sizes, ABV/volume same-field-of-vision rules, spirit-drink vs "vodka"/"spiced rum" descriptors, sulphites, UK-address requirement, EU importer-address and pregnancy-logo rules (scattered across [[hmrc-compliance]], [[glass-supply]], [[rtd-canning]]); no/lo descriptors now have a primary source.
 - **Marketing codes** — Portman Group's free advisory (48h) and 2025 proactive audit; TikTok "promotion vs advertising" distinction ([[supplier-intelligence]], [[finance-and-ops-benchmarks]]).
 - **Export regimes** — US tariffs and COLA/importer-of-record, UK–India FTA staged duty cuts, France's RTD sugar tax, per-market DRS logos ([[route-to-market]], [[rtd-canning]], [[deposit-return-scheme]]).
 
 ## Remaining gaps (source wish-list)
 
-- "Alcohol-free" labelling descriptor consultation (the 0.5% threshold question) — still no primary source.
-- Scotland Minimum Unit Pricing (current level post-2024 rise).
 - The eventual UK DRS statutory instruments as Oct 2027 approaches.
+- The promised DHSC re-consultation on no/lo descriptors (expected from 2025; no outcome at Jul 2026).
+- Defra's final EPR modulated-fee figures when published.
 
 ## Maintenance note
 

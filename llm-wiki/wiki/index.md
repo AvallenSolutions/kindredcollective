@@ -18,6 +18,7 @@ Format: `[[page]] — description` (descriptions mirror each page's frontmatter)
 - [[fulfilment-and-3pl]] — The logistics landscape for indie drinks brands — bonded warehouses, D2C fulfilment, couriers, and real cost benchmarks
 - [[glass-supply]] — The 2021–23 glass crisis, the supplier landscape, China sourcing trade-offs and packaging cost history
 - [[hmrc-compliance]] — Living with HMRC — AWRS, WOWGR→APPA, duty stamps wind-down, bonded mechanics, licensing, and the R&D tax credit crackdown
+- [[minimum-unit-pricing]] — Scotland's 65p/unit (and Wales's 50p/unit) retail floor price — what it does to pricing and promotions
 - [[no-lo-alcohol]] — The no- and low-alcohol category — a first-class Kindred brand type with a structural duty advantage
 - [[no-lo-launch-compliance]] — What a member launching a 0.5% ABV drink in glass needs to know — filed from a query answer
 - [[route-to-market]] — Distributors, wholesalers, listing fees, retail margins and the consolidation squeezing independents
@@ -38,7 +39,9 @@ Format: `[[page]] — description` (descriptions mirror each page's frontmatter)
 ## Sources (one per ingested document)
 
 - [[gov-uk-alcohol-duty-rates]] — Current duty rates per litre of pure alcohol by ABV band, plus Draught and Small Producer Relief *(gov.uk, captured 2026-07-05)*
+- [[gov-uk-no-lo-labelling]] — Current descriptor thresholds (alcohol-free ≤0.05%) and the stalled proposal to raise them to 0.5% *(gov.uk, captured 2026-07-13)*
 - [[gov-uk-packaging-epr]] — Who is obligated under Extended Producer Responsibility, thresholds, reporting duties and fees *(gov.uk, captured 2026-07-05)*
+- [[gov-scot-minimum-unit-pricing]] — Scotland's 65p-per-unit floor price — calculation, legal basis and the 2024 uprating *(gov.scot, captured 2026-07-13)*
 - [[llm-wiki-pattern]] — The founding idea file — how an LLM incrementally builds and maintains this wiki *(Karpathy gist)*
 - [[prd-website-rebuild]] — Product requirements for the kindredcollective.co.uk rebuild — users, features, metrics *(internal, Jan 2026)*
 - [[whatsapp-kindred-spirits]] — The original community group — 37,500 messages of supplier intel, Q&A and regulation threads over 7 years *(WhatsApp export, 2018-05 → 2025-04, ingested 2026-07-13)*
