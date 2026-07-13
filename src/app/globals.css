@@ -203,4 +203,126 @@
     background: #000;
     border: 2px solid #f1f1f1;
   }
+
+  /* Wiki body prose */
+  .wiki-body {
+    line-height: 1.75;
+    color: #111;
+    font-size: 1rem;
+  }
+
+  .wiki-body h1 {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #000;
+  }
+
+  .wiki-body h2 {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    margin-top: 2.5rem;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 2px solid #000;
+  }
+
+  .wiki-body h3 {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-top: 1.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .wiki-body p {
+    margin-bottom: 1rem;
+  }
+
+  .wiki-body ul {
+    margin-bottom: 1rem;
+    padding-left: 0;
+    list-style: none;
+  }
+
+  .wiki-body li {
+    padding: 0.2rem 0 0.2rem 1.5rem;
+    position: relative;
+  }
+
+  .wiki-body li::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: #00D9FF;
+    font-weight: 700;
+  }
+
+  .wiki-body hr {
+    border: none;
+    border-top: 2px solid #000;
+    margin: 2rem 0;
+  }
+
+  .wiki-body code {
+    font-family: monospace;
+    font-size: 0.875em;
+    background: #f3f4f6;
+    padding: 0.1rem 0.35rem;
+    border: 1px solid #e5e7eb;
+  }
+
+  .wiki-body pre {
+    background: #f3f4f6;
+    border: 2px solid #000;
+    padding: 1rem;
+    overflow-x: auto;
+    margin-bottom: 1rem;
+  }
+
+  .wiki-body pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 0.875rem;
+  }
+
+  .wiki-body strong {
+    font-weight: 700;
+  }
+
+  .wiki-body em {
+    font-style: italic;
+  }
+
+  .wiki-body .wiki-link {
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 2px;
+    color: #000;
+  }
+
+  .wiki-body .wiki-link:hover {
+    color: #FF5D5D;
+  }
+
+  .wiki-body .external-link {
+    color: #1d4ed8;
+    text-decoration: underline;
+  }
+
+  .wiki-body .external-link:hover {
+    color: #FF5D5D;
+  }
 }

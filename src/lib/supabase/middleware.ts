@@ -31,6 +31,7 @@ const PROTECTED_PATHS = [
   '/news',
   '/search',
   '/onboarding',
+  '/wiki',
 ]
 
 function isProtectedRoute(pathname: string): boolean {

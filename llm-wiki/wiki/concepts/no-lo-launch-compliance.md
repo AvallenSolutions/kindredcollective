@@ -21,10 +21,14 @@ Of [[extended-producer-responsibility]]'s three tests, this scenario passes two 
 
 If obligated at £1.5m turnover you land in the **small producer** band: data collection and reporting duties, not fees. The heavy regime (6-monthly reports, disposal fees, PRNs) starts at £2m+ AND 50t+ — worth knowing where the cliff is as you grow. Glass choice also matters prospectively: fees are modulated by recyclability ([[gov-uk-packaging-epr]]).
 
-## Known unknowns (wiki gaps as of Jul 2026)
+## Labelling: you cannot call it "alcohol-free" (resolved)
 
-- **Labelling descriptors** — whether you may call 0.5% "alcohol-free" is exactly the unresolved threshold question flagged in [[no-lo-alcohol]]; no source ingested yet.
-- **Deposit Return Scheme** — glass container scope not yet covered; see wish-list in [[uk-drinks-legislation-and-tax]].
+Per [[gov-uk-no-lo-labelling]]: at 0.5% ABV the product must be described as **"de-alcoholised"** (if made by removing alcohol) or **"low alcohol"** — "alcohol-free" is reserved for ≤0.05% ABV under current UK guidance, despite the £0 duty. Front-label ABV display applies. Watch the promised re-consultation: a move to 0.5% would allow relabelling.
+
+## Remaining unknowns
+
+- **Deposit Return Scheme** — the Oct 2027 scheme excludes glass in England/NI but Wales intends to include it; a glass-bottled product sold UK-wide needs a Wales plan. Low-volume exemption (<5,000 units/year/line) still requires registration. See [[deposit-return-scheme]].
+- **Scottish retail floor**: a 0.5% product's MUP floor is negligible, but any full-strength siblings in the range hit Scotland's 65p/unit floor — see [[minimum-unit-pricing]].
 
 ## Connections
 

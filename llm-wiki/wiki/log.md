@@ -51,3 +51,17 @@ Append-only. Entry prefix format: `## [YYYY-MM-DD] operation | Title`
 - Created 14 pages: sources [[whatsapp-kindred-spirits]], [[whatsapp-kc-general]]; hub [[supplier-intelligence]]; concepts [[glass-supply]], [[fulfilment-and-3pl]], [[rtd-canning]], [[route-to-market]], [[scam-warnings]], [[hmrc-compliance]], [[deposit-return-scheme]], [[finance-and-ops-benchmarks]]; entities [[albatrans]], [[law-distribution]], [[enotria]]
 - Updated 7 pages: [[alcohol-duty]] (community timeline; Feb 2026 rates corroborate gov.uk capture), [[extended-producer-responsibility]] (glass-tonnage analysis VALIDATED by members; passthrough disputes), [[uk-drinks-legislation-and-tax]] (DRS + licensing gaps now covered), [[kindred-collective]] (full 2018→2026 history), [[avallen-solutions]], [[community-knowledge-base]] (status: ingest complete), [[supplier-marketplace]]
 - Coverage boundary: nothing after 2026-06-08 — future exports dedupe from there
+
+## [2026-07-13] ingest | DHSC no/lo labelling consultation (gov.uk)
+
+- Raw: `raw/uk-no-lo-labelling-consultation.md` (captured from gov.uk)
+- Created: [[gov-uk-no-lo-labelling]]; resolved the wiki's longest-standing gap — "alcohol-free" is ≤0.05% ABV only; 0.5% products label "de-alcoholised"/"low alcohol"; 0.5%-threshold reform stalled at the 2024 election
+- Updated: [[no-lo-alcohol]] (tax/labelling mismatch section), [[no-lo-launch-compliance]] (unknown → answered), [[uk-drinks-legislation-and-tax]]
+- Watch: promised DHSC re-consultation (2025+) — relabelling opportunity if 0.5% lands
+
+## [2026-07-13] ingest | Scotland Minimum Unit Pricing (gov.scot)
+
+- Raw: `raw/scotland-minimum-unit-pricing.md` (captured from gov.scot)
+- Created: [[gov-scot-minimum-unit-pricing]], [[minimum-unit-pricing]] (incl. Wales 50p, promo-floor analysis)
+- Cross-source connection: archive members' Feb 2024 "~30% rise" expectation matches the confirmed 50p→65p change exactly
+- Updated: [[uk-drinks-legislation-and-tax]] (gap closed; wish-list now DRS SIs, DHSC re-consultation, EPR final fees)

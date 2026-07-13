@@ -24,6 +24,7 @@ const navigation = [
   { name: 'News', href: '/news' },
   { name: 'Resources', href: '/community/resources' },
   { name: 'Community', href: '/community' },
+  { name: 'Wiki', href: '/wiki' },
 ]
 
 const adminNavigation = [

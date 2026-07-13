@@ -24,10 +24,13 @@ sources: [raw/kindred-collective-prd.md, raw/uk-alcohol-duty-rates-2026.md]
 
 So the [[alcohol-duty]] regime deliberately rewards exactly the products this category makes — a cost advantage that compounds with excise-free export/retail handling.
 
+## The labelling catch (resolved 2026-07-13)
+
+The tax and labelling regimes **don't line up**, per [[gov-uk-no-lo-labelling]]: a 0.5% ABV product pays £0 duty and isn't "alcohol" under licensing law, yet current UK guidance only allows **"alcohol-free" at ≤0.05% ABV** — 0.06–0.5% products label as "de-alcoholised" (if made by alcohol removal) or "low alcohol" (≤1.2%). The proposal to raise the threshold to 0.5% (as in most of the EU) stalled at the 2024 election, with a further consultation promised for 2025 and no outcome at capture. Practical upshot: UK-market labels for 0.5% products need the non-"alcohol-free" descriptors, while identical EU imports may say "alcohol-free" — a live trading-standards trap and relabelling opportunity if reform lands.
+
 ## Open questions (data gaps for future ingests)
 
-- UK labelling rules for "alcohol-free" vs "low-alcohol" descriptors (and the long-running consultation on moving the alcohol-free threshold to 0.5%) — not yet covered by any ingested source.
-- What no/lo-specific supplier needs (de-alcoholisation, flavour houses, preservation) show up in the WhatsApp group — check on first export ingest.
+- What no/lo-specific supplier needs (de-alcoholisation, flavour houses, preservation) show up in the WhatsApp group beyond the general canning/co-packing intel in [[rtd-canning]].
 
 ## Connections
 
