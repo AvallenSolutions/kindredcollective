@@ -52,3 +52,6 @@ Thumbs.db
 
 # WhatsApp import pipeline AI response cache
 /scripts/whatsapp-import/cache
+
+# Obsidian per-machine UI state for the LLM wiki vault
+/llm-wiki/.obsidian/

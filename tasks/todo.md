@@ -1,59 +1,74 @@
-# Todo: WhatsApp Mining → Website Tools
+# Todo: Build the Karpathy LLM Wiki (per Nate Herk video + Karpathy gist)
 
-Plan: `/root/.claude/plans/root-claude-uploads-4faf6148-7b2c-5372-stateless-frog.md`
-Branch: `claude/hopeful-meitner-am26gf`
+Branch: `claude/quirky-hopper-q6at5s`
+References:
+- Karpathy's gist: https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f
+- Video: https://www.youtube.com/watch?v=hQvwMj7IJe4 (Nate Herk — Obsidian vault + Claude Code as wiki maintainer)
 
-## Phase 0 — Pipeline + schema (foundation)
-- [ ] Add `@anthropic-ai/sdk` dep + `import:whatsapp` script to package.json
-- [ ] Exclude `scripts/` from app tsconfig; add `scripts/**` to vitest include
-- [ ] Prisma schema: `KnowledgeCategory`, `KnowledgeEntry`, `SupplierEndorsement`, `KnowledgeStatus` enum, `Supplier.endorsements` back-relation
-- [ ] `scripts/whatsapp-import/`: types, config, parse, anonymise, chunk, anthropic, classify, synthesise, normalise, persist, index
-- [ ] `prisma/seed-knowledge.ts` (system User + KnowledgeCategory + "Community Links" ResourceCategory)
-- [ ] Unit tests: parse, anonymise, normalise (+ idempotency persist test)
-- [ ] gitignore the AI disk cache
+## Decisions (confirmed by user 2026-07-05)
 
-## Phase 1 — "Ask the Collective" Knowledge Base
-- [ ] `/api/knowledge` route (mirror suppliers route)
-- [ ] `/knowledge` public list page
-- [ ] `/knowledge/[slug]` detail page (JSON-LD, helpful control)
-- [ ] `/api/knowledge/[slug]/helpful` POST
-- [ ] `KnowledgeCard` component + nav link
+- [x] **Vault location**: `llm-wiki/` at the repo root; user opens it as an Obsidian vault locally
+- [x] **Sources**: WhatsApp group exports are the main stream (user will upload); plus industry
+      news — UK legislation, tax, business
+- [x] **Scope**: Kindred Collective business knowledge (WhatsApp group + wider internet)
 
-## Phase 2 — Community Recommendations
-- [ ] Extend `/api/suppliers` select with endorsement count
-- [ ] `community-endorsements.tsx` + supplier card badge + detail section
+## Phase 1 — Vault scaffold + schema
 
-## Phase 3 — Resource / link library
-- [ ] Extract `resource-card.tsx`; imported links surface in existing resources page
+- [x] Create `llm-wiki/` with `raw/` (incl. `raw/whatsapp/` + export how-to README) and `wiki/`
+- [x] Write `llm-wiki/CLAUDE.md` schema: page types + frontmatter, wikilink rules, near-flat
+      folder conventions, ingest/query/lint workflows, WhatsApp anonymisation + dedupe rules,
+      index/log formats, British English style
+- [x] Create `wiki/index.md` and `wiki/log.md`
+- [x] Ingest Karpathy's gist (verbatim raw capture + source page)
 
-## Verification
-- [ ] `npm test` green (parse/anonymise/normalise/idempotency)
-- [ ] `npx tsc --noEmit` / `next build` clean
-- [ ] `--dry-run` writes nothing; manual QA checklist
+## Phase 2 — First real ingests
+
+- [x] PRD: extracted `Kindred-Collective-PRD.docx` → `raw/`, ingested into 5 pages
+      (source, Kindred Collective, Avallen Solutions, supplier marketplace, community knowledge base)
+- [x] Industry news #1: gov.uk alcohol duty rates → alcohol-duty concept, HMRC entity
+- [x] Industry news #2: gov.uk packaging EPR guidance → EPR concept, Defra entity
+- [x] Cross-source connection pages: no-lo-alcohol (PRD × duty bands),
+      EPR × supplier marketplace, uk-drinks-legislation-and-tax topic hub with gap wish-list
+- [x] index.md + log.md updated for every ingest
+
+## Phase 3 — Verification
+
+- [x] `llm-wiki/tools/lint.py` written and green: 15 pages, all wikilinks resolve, no orphans,
+      all indexed, frontmatter complete (also caught+fixed a false positive on code-span links)
+- [x] `grep "^## \[" wiki/log.md | tail -5` parses correctly
+- [x] Query test: fresh-context agent, index-first routing, answered a cross-source question
+      (0.5% ABV beer in glass at £1.5m turnover) citing 6 wiki pages; gaps matched the wish-list
+- [x] Answer filed back as [[no-lo-launch-compliance]] — full ingest→query→compound loop shown
+- [ ] User-side: open `llm-wiki/` as an Obsidian vault, confirm graph view (needs local Obsidian)
+
+## Phase 4 — Ongoing workflow
+
+- [x] "Add a source" runbooks documented in `llm-wiki/CLAUDE.md` (files + URLs + WhatsApp)
+- [x] Lint cadence documented (every ~5 ingests); root `CLAUDE.md` routes business questions
+      to the wiki index; `.obsidian/` gitignored
+- [ ] First WhatsApp export ingest (blocked on user upload to `llm-wiki/raw/whatsapp/`)
+- [ ] Optional stretch: single-file HTML visual explorer of the wiki graph
 
 ## Review
 
 ### What was built
-**Phase 0 — repeatable mining pipeline + schema**
-- `scripts/whatsapp-import/`: parse → anonymise → chunk → classify (Haiku) → cluster → synthesise (Opus) → normalise → persist. CLI with `--input/--dry-run/--limit/--since`. Idempotent (deterministic message hashes; upsert-by-sourceHash; convergent counts). Disk cache + `MAX_SPEND_USD` guard.
-- Schema (additive): `KnowledgeCategory`, `KnowledgeEntry`, `SupplierEndorsement`, `KnowledgeStatus` enum, `Supplier.endorsements` back-relation. `@anthropic-ai/sdk` added; `prisma/seed-knowledge.ts` seeds system user + categories. `scripts/` excluded from app tsc; pipeline tests added to vitest.
-
-**Phase 1 — "Ask the Collective" knowledge base (public)**
-- `/api/knowledge` + `/api/knowledge/[slug]/helpful`; public `/knowledge` list and `/knowledge/[slug]` detail (JSON-LD QAPage, SEO metadata, helpful counter). Placed under `(marketing)` so it's public (not auth-gated). `KnowledgeCard` + `HelpfulButton` + nav link.
-
-**Phase 2 — community recommendations**
-- `/api/suppliers` returns published `mentionCount` (bounded extra query, not a fragile join). `SupplierCard` badge + `CommunityEndorsements` section on supplier detail.
-
-**Phase 3 — link library**
-- Imported `LINK` resources surface automatically in the existing `/community/resources` page via the seeded "Community Links" category (no new route). Card-extraction refactor intentionally skipped (no behaviour change).
+A working Karpathy-pattern LLM wiki at `llm-wiki/`: immutable `raw/` layer (gist, PRD text,
+two gov.uk captures, WhatsApp drop-folder), Claude-owned `wiki/` layer (15 pages: 5 sources,
+4 entities, 6 concepts incl. one filed query answer, 1 topic hub, index, log), a vault-local
+`CLAUDE.md` schema (ingest/query/lint, WhatsApp anonymisation), and `tools/lint.py`.
 
 ### Verification done
-- 16 pipeline unit tests (parse/anonymise/normalise) + full suite **52/52 pass**.
-- `tsc --noEmit`: **no new errors** (one pre-existing error in `onboarding-page.test.tsx`, unrelated).
-- ESLint clean on new files.
-- Offline stages run on the **real archive**: 38,967 messages parsed, 243 chunks, **0 messages still flagged with PII** after anonymisation (names→[member], company names preserved).
+Lint green (all links resolve, no orphans, all indexed, frontmatter complete). Independent
+fresh-context query agent successfully routed via the index and synthesised a correct
+cross-source answer with citations; its identified gaps exactly matched the wiki's own
+self-flagged gaps. Log format greps cleanly.
 
-### Follow-ups for the deploying environment (need DB/API key — not available here)
-- Run `npx prisma migrate dev --name add_knowledge_and_endorsements` (additive) then `npm run seed:knowledge`.
-- Set `ANTHROPIC_API_KEY`, then `npm run import:whatsapp -- --dry-run --limit 50 --input <file>` to sanity-check before the full run.
-- Imported records default UNPUBLISHED — review & publish in admin before they appear publicly.
+### Deliberate choices
+- Wiki filenames kept globally unique (Obsidian resolves links by basename, ignoring folders).
+- Raw WhatsApp exports will be committed (private repo; needed for cross-session durability) —
+  but wiki pages are anonymised, and `raw/whatsapp/README.md` flags gitignoring if ever public.
+- gov.uk figures are date-stamped everywhere; lint workflow prompts re-capture after Budgets.
+
+### Next
+User drops a WhatsApp export into `llm-wiki/raw/whatsapp/` and says "ingest" — the schema's
+WhatsApp rules (anonymise, cluster by topic, date-stamp, dedupe) take it from there.

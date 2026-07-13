@@ -47,6 +47,12 @@
 5. **Document Results**: Add review section to tasks/todo.md
 6. **Capture Lessons**: Update tasks/lessons.md after corrections
 
+## LLM Wiki (business knowledge base)
+
+- `llm-wiki/` is the Kindred Collective knowledge base (Karpathy LLM-wiki pattern; Obsidian vault)
+- For questions about the business, members, suppliers, or UK drinks legislation/tax: read `llm-wiki/wiki/index.md` first and route from there
+- When working inside `llm-wiki/`, follow its own `llm-wiki/CLAUDE.md` schema (ingest/query/lint rules)
+
 ## Core Principles
 
 - **Simplicity First**: Make every change as simple as possible. Impact minimal code.
