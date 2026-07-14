@@ -22,7 +22,7 @@ const features = [
     title: 'Events',
     color: 'bg-lime',
     description:
-      'Industry meetups, tastings, trade shows and Kindred-organised events. Stay across what's happening and connect face to face with the people in your feed.',
+      "Industry meetups, tastings, trade shows and Kindred-organised events. Stay across what's happening and connect face to face with the people in your feed.",
   },
   {
     Icon: Newspaper,
