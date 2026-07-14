@@ -16,33 +16,43 @@ interface HeaderProps {
   } | null
 }
 
+type NavChild = {
+  name: string
+  href: string
+  publicHref: string
+}
+
 type NavGroup = {
   name: string
-  children: { name: string; href: string }[]
+  publicHref: string
+  children: NavChild[]
 }
 
 const navigation: NavGroup[] = [
   {
     name: 'Marketplace',
+    publicHref: '/members/marketplace',
     children: [
-      { name: 'Explore', href: '/explore' },
-      { name: 'Requests', href: '/requests' },
-      { name: 'Offers', href: '/offers' },
+      { name: 'Explore', href: '/explore', publicHref: '/members/marketplace' },
+      { name: 'Requests', href: '/requests', publicHref: '/members/marketplace' },
+      { name: 'Offers', href: '/offers', publicHref: '/members/marketplace' },
     ],
   },
   {
     name: 'Community',
+    publicHref: '/members/community',
     children: [
-      { name: 'Forum', href: '/community' },
-      { name: 'Events', href: '/events' },
-      { name: 'News', href: '/news' },
+      { name: 'Forum', href: '/community', publicHref: '/members/community' },
+      { name: 'Events', href: '/events', publicHref: '/members/community' },
+      { name: 'News', href: '/news', publicHref: '/members/community' },
     ],
   },
   {
     name: 'Knowledge',
+    publicHref: '/members/knowledge',
     children: [
-      { name: 'Wiki', href: '/wiki' },
-      { name: 'Resources', href: '/community/resources' },
+      { name: 'Wiki', href: '/wiki', publicHref: '/members/knowledge' },
+      { name: 'Resources', href: '/community/resources', publicHref: '/members/knowledge' },
     ],
   },
 ]
@@ -77,33 +87,27 @@ export function Header({ user }: HeaderProps) {
           <span className="font-display font-bold text-lg sm:text-2xl tracking-tighter uppercase">Kindred Collective</span>
         </Link>
 
-        {/* Desktop nav */}
-        <div ref={navRef} className="hidden md:flex items-center gap-8">
+        {/* Desktop Menu */}
+        <div ref={navRef} className="hidden md:flex items-center gap-6">
           {navigation.map((group) => (
             <div key={group.name} className="relative">
               <button
+                onClick={() => setOpenDropdown(openDropdown === group.name ? null : group.name)}
                 className="flex items-center gap-1 text-sm font-bold uppercase tracking-wide hover:underline decoration-2 underline-offset-4"
-                onClick={() =>
-                  setOpenDropdown(openDropdown === group.name ? null : group.name)
-                }
               >
                 {group.name}
                 <ChevronDown
-                  className={cn(
-                    'w-3.5 h-3.5 transition-transform duration-200',
-                    openDropdown === group.name && 'rotate-180'
-                  )}
+                  className={cn('w-4 h-4 transition-transform duration-200', openDropdown === group.name && 'rotate-180')}
                 />
               </button>
-
               {openDropdown === group.name && (
-                <div className="absolute top-full left-0 mt-3 bg-white border-2 border-black shadow-brutal min-w-[160px] z-50">
+                <div className="absolute top-full left-0 mt-2 w-44 bg-white border-2 border-black neo-shadow">
                   {group.children.map((item) => (
                     <Link
-                      key={item.href}
-                      href={item.href}
-                      className="block px-5 py-3 text-sm font-bold uppercase tracking-wide hover:bg-cyan transition-colors border-b border-gray-100 last:border-b-0"
+                      key={item.name}
+                      href={user ? item.href : item.publicHref}
                       onClick={() => setOpenDropdown(null)}
+                      className="block px-4 py-3 text-sm font-bold uppercase tracking-wide hover:bg-cyan border-b-2 border-black last:border-b-0 transition-colors"
                     >
                       {item.name}
                     </Link>
@@ -112,28 +116,23 @@ export function Header({ user }: HeaderProps) {
               )}
             </div>
           ))}
-
-          {isAdmin &&
-            adminNavigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="text-sm font-bold uppercase tracking-wide hover:underline decoration-2 underline-offset-4 flex items-center gap-1 text-magenta"
-              >
-                <Shield className="w-4 h-4" />
-                {item.name}
-              </Link>
-            ))}
+          {isAdmin && adminNavigation.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className="text-sm font-bold uppercase tracking-wide hover:underline decoration-2 underline-offset-4 flex items-center gap-1 text-magenta"
+            >
+              <Shield className="w-4 h-4" />
+              {item.name}
+            </Link>
+          ))}
         </div>
 
         {/* Actions */}
         <div className="flex items-center gap-4">
           {user ? (
             <>
-              <Link
-                href="/dashboard"
-                className="hidden md:block text-sm font-bold uppercase hover:underline decoration-2 underline-offset-4"
-              >
+              <Link href="/dashboard" className="hidden md:block text-sm font-bold uppercase hover:underline decoration-2 underline-offset-4">
                 Dashboard
               </Link>
               <form action="/api/auth/signout" method="post">
@@ -144,10 +143,7 @@ export function Header({ user }: HeaderProps) {
             </>
           ) : (
             <>
-              <Link
-                href="/login"
-                className="hidden md:block text-sm font-bold uppercase hover:underline decoration-2 underline-offset-4"
-              >
+              <Link href="/login" className="hidden md:block text-sm font-bold uppercase hover:underline decoration-2 underline-offset-4">
                 Log in
               </Link>
               <Link
@@ -174,33 +170,26 @@ export function Header({ user }: HeaderProps) {
           mobileMenuOpen ? 'max-h-[600px]' : 'max-h-0 border-b-0'
         )}
       >
-        <div className="px-6 py-4 space-y-2">
+        <div className="px-6 py-4 space-y-1">
           {navigation.map((group) => (
             <div key={group.name}>
               <button
+                onClick={() => setOpenMobileSection(openMobileSection === group.name ? null : group.name)}
                 className="w-full flex items-center justify-between py-3 px-4 font-display text-base font-bold uppercase tracking-wide text-black border-2 border-black hover:bg-gray-50 transition-colors"
-                onClick={() =>
-                  setOpenMobileSection(
-                    openMobileSection === group.name ? null : group.name
-                  )
-                }
               >
                 {group.name}
                 <ChevronDown
-                  className={cn(
-                    'w-4 h-4 transition-transform duration-200',
-                    openMobileSection === group.name && 'rotate-180'
-                  )}
+                  className={cn('w-4 h-4 transition-transform duration-200', openMobileSection === group.name && 'rotate-180')}
                 />
               </button>
               {openMobileSection === group.name && (
-                <div className="border-l-2 border-cyan ml-4 pl-4 mt-1 space-y-1">
+                <div className="border-l-2 border-cyan ml-4">
                   {group.children.map((item) => (
                     <Link
-                      key={item.href}
-                      href={item.href}
-                      className="block py-2.5 px-2 text-sm font-bold uppercase tracking-wide hover:text-coral transition-colors"
+                      key={item.name}
+                      href={user ? item.href : item.publicHref}
                       onClick={() => setMobileMenuOpen(false)}
+                      className="block py-2.5 px-4 text-sm font-bold uppercase tracking-wide hover:bg-cyan transition-colors border-b border-black/10 last:border-b-0"
                     >
                       {item.name}
                     </Link>
@@ -209,20 +198,17 @@ export function Header({ user }: HeaderProps) {
               )}
             </div>
           ))}
-
-          {isAdmin &&
-            adminNavigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="block py-3 px-4 font-display text-base font-bold uppercase tracking-wide text-magenta hover:bg-magenta hover:text-white transition-colors border-2 border-magenta"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Shield className="w-4 h-4 inline mr-2" />
-                {item.name}
-              </Link>
-            ))}
-
+          {isAdmin && adminNavigation.map((item) => (
+            <Link
+              key={item.name}
+              href={item.href}
+              className="block py-3 px-4 font-display text-base font-bold uppercase tracking-wide text-magenta hover:bg-magenta hover:text-white transition-colors border-2 border-magenta"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <Shield className="w-4 h-4 inline mr-2" />
+              {item.name}
+            </Link>
+          ))}
           <div className="pt-4 space-y-2">
             {user ? (
               <>
@@ -232,12 +218,7 @@ export function Header({ user }: HeaderProps) {
                   </Button>
                 </Link>
                 <form action="/api/auth/signout" method="post">
-                  <Button
-                    variant="ghost"
-                    size="md"
-                    type="submit"
-                    className="w-full flex items-center justify-center gap-2"
-                  >
+                  <Button variant="ghost" size="md" type="submit" className="w-full flex items-center justify-center gap-2">
                     <LogOut className="w-4 h-4" />
                     Log out
                   </Button>
