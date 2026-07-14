@@ -76,7 +76,7 @@ export default function KnowledgePage() {
       <section className="py-16 px-6 border-b-2 border-black">
         <div className="max-w-4xl mx-auto">
           <h2 className="font-display text-2xl font-bold uppercase tracking-tight mb-10 text-center">
-            What's inside
+            What&apos;s inside
           </h2>
           <div className="grid md:grid-cols-2 gap-6">
             {features.map(({ Icon, title, color, description }) => (
@@ -100,7 +100,7 @@ export default function KnowledgePage() {
               Request Access
             </h2>
             <p className="text-gray-600">
-              Membership is by invitation. Tell us about yourself and we'll be in touch within 48 hours.
+              Membership is by invitation. Tell us about yourself and we&apos;ll be in touch within 48 hours.
             </p>
           </div>
           <RequestAccessForm />

@@ -45,7 +45,7 @@ export function RequestAccessForm() {
         <CheckCircle className="w-16 h-16 text-cyan mx-auto mb-4" />
         <h3 className="font-display text-2xl font-bold uppercase mb-2">Request Received</h3>
         <p className="text-gray-600">
-          Thanks for your interest in Kindred Collective. We'll review your request and get back to you within 48 hours.
+          Thanks for your interest in Kindred Collective. We&apos;ll review your request and get back to you within 48 hours.
         </p>
       </div>
     )
