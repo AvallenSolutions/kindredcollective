@@ -145,6 +145,7 @@ model User {
   // Relations
   member          Member?
   eventRsvps      EventRsvp[]
+  eventMessages   EventMessage[]
   savedSuppliers  SavedSupplier[]
   savedBrands     SavedBrand[]
   offerClaims     OfferClaim[]
@@ -423,7 +424,8 @@ model Event {
   updatedAt       DateTime    @updatedAt
   createdById     String?
 
-  rsvps EventRsvp[]
+  rsvps    EventRsvp[]
+  messages EventMessage[]
 
   @@index([startDate])
   @@index([status])
@@ -442,6 +444,27 @@ model EventRsvp {
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, userId])
+}
+
+model EventMessage {
+  id             String   @id @default(cuid())
+  eventId        String
+  authorId       String
+  body           String   @db.Text
+  standNumber    String?
+  attendingDates String?
+  parentId       String?  // Replies to a top-level message
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  event   Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  author  User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent  EventMessage?  @relation("EventMessageReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies EventMessage[] @relation("EventMessageReplies")
+
+  @@index([eventId])
+  @@index([authorId])
+  @@index([parentId])
 }
 
 // ============= SAVED/BOOKMARKS =============

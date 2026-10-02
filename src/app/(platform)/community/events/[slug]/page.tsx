@@ -18,6 +18,8 @@ import { EVENT_TYPE_LABELS } from '@/types/database'
 import type { EventType } from '@prisma/client'
 import { cn, formatDate } from '@/lib/utils'
 import { EventRsvpButton } from '@/components/events/event-rsvp-button'
+import { EventMessageBoard } from '@/components/events/event-message-board'
+import { EVENT_MESSAGE_SELECT, toEventMessage } from '@/lib/events/messages'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -115,10 +117,17 @@ async function getEvent(slug: string, isAdmin: boolean = false) {
       }))
     }
 
+    const { data: messages } = await supabase
+      .from('EventMessage')
+      .select(EVENT_MESSAGE_SELECT)
+      .eq('eventId', event.id)
+      .order('createdAt', { ascending: true })
+
     return {
       ...event,
       attendeeCount: count || 0,
       attendees,
+      messages: (messages || []).map(toEventMessage),
     }
   } catch {
     return null
@@ -311,6 +320,16 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
                 )}
               </CardContent>
             </Card>
+
+            {/* Message Board */}
+            {!isDraft && (
+              <EventMessageBoard
+                eventSlug={event.slug}
+                initialMessages={event.messages}
+                currentUserId={session.user?.id ?? null}
+                isAdmin={isAdmin}
+              />
+            )}
           </div>
 
           {/* Sidebar */}

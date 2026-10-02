@@ -116,14 +116,14 @@ describe('OnboardingPage', () => {
 
   it('redirects to login when not authenticated', async () => {
     const mockPush = vi.fn()
-    vi.mocked(await import('next/navigation')).useRouter = () => ({
+    vi.mocked(await import('next/navigation')).useRouter = vi.fn(() => ({
       push: mockPush,
       refresh: vi.fn(),
       back: vi.fn(),
       forward: vi.fn(),
       replace: vi.fn(),
       prefetch: vi.fn(),
-    })
+    }))
 
     mockFetch.mockResolvedValue({
       json: () => Promise.resolve({ success: false }),

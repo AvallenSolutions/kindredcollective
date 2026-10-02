@@ -76,3 +76,26 @@ self-flagged gaps. Log format greps cleanly.
 ### Next
 User drops a WhatsApp export into `llm-wiki/raw/whatsapp/` and says "ingest" — the schema's
 WhatsApp rules (anonymise, cluster by topic, date-stamp, dedupe) take it from there.
+
+---
+
+# Todo: Event message board
+
+Branch: `claude/loving-tesla-nga40b`
+
+- [x] `EventMessage` Prisma model (body, optional stand number, optional "when you're there",
+      single-level replies) + migration `20261002120000_add_event_messages` (RLS on, server-only access)
+- [x] `POST /api/events/[slug]/messages` (auth, published events only, replies only to top-level
+      messages on the same event) and `DELETE /api/events/[slug]/messages/[id]` (author or admin)
+- [x] `EventMessageBoard` component on `/community/events/[slug]` (post, reply, delete, LinkedIn/email
+      contact links; email only for public profiles, as in the members directory)
+- [x] Tests: validation, mapping, both API routes, component behaviour (73/73 pass); production build compiles
+- [x] Apply the migration to the Supabase database (KindredCollective project, 2026-10-02; table, keys and RLS verified)
+- [ ] Check the board on a real event page once deployed
+
+## Review
+
+- [x] Fixed pre-existing build breakers: ESLint `react/no-unescaped-entities` in
+      `(marketing)/members/{community,knowledge,marketplace}/page.tsx` and `join/request-access-form.tsx`;
+      `tsc` error in `src/__tests__/onboarding-page.test.tsx` (router mock now a `vi.fn`).
+      `npm run build` passes with lint and type checks.
