@@ -90,11 +90,12 @@ Branch: `claude/loving-tesla-nga40b`
 - [x] `EventMessageBoard` component on `/community/events/[slug]` (post, reply, delete, LinkedIn/email
       contact links; email only for public profiles, as in the members directory)
 - [x] Tests: validation, mapping, both API routes, component behaviour (73/73 pass); production build compiles
-- [ ] Apply the migration to the Supabase database
+- [x] Apply the migration to the Supabase database (KindredCollective project, 2026-10-02; table, keys and RLS verified)
 - [ ] Check the board on a real event page once deployed
 
 ## Review
 
-Pre-existing, not in scope: `next build` fails ESLint `react/no-unescaped-entities` in
-`(marketing)/members/{community,knowledge,marketplace}/page.tsx` and `join/request-access-form.tsx`;
-`tsc` error in `src/__tests__/onboarding-page.test.tsx`.
+- [x] Fixed pre-existing build breakers: ESLint `react/no-unescaped-entities` in
+      `(marketing)/members/{community,knowledge,marketplace}/page.tsx` and `join/request-access-form.tsx`;
+      `tsc` error in `src/__tests__/onboarding-page.test.tsx` (router mock now a `vi.fn`).
+      `npm run build` passes with lint and type checks.
