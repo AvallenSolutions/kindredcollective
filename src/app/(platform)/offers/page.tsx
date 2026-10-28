@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import Link from 'next/link'
 import { Tag, Percent, Gift, Sparkles, Loader2 } from 'lucide-react'
 import { Badge, Button } from '@/components/ui'
 import { OfferCard } from '@/components/offers'
@@ -279,14 +280,16 @@ export default function OffersPage() {
       <section className="bg-black text-white py-12">
         <div className="section-container text-center">
           <h2 className="font-display text-2xl lg:text-3xl font-bold mb-4">
-            Are You a Supplier?
+            Are You a Supplier or Brand?
           </h2>
           <p className="text-gray-400 mb-6 max-w-xl mx-auto">
             Create exclusive offers for Kindred members and attract new customers to your business.
           </p>
-          <Button size="lg">
-            Create an Offer
-          </Button>
+          <Link href="/settings/offers">
+            <Button size="lg">
+              Create an Offer
+            </Button>
+          </Link>
         </div>
       </section>
     </div>
