@@ -58,6 +58,12 @@ export async function GET(request: NextRequest) {
         logoUrl,
         category,
         isVerified
+      ),
+      brand:Brand(
+        id,
+        name,
+        slug,
+        logoUrl
       )
     `, { count: 'exact' })
     .eq('status', 'ACTIVE')

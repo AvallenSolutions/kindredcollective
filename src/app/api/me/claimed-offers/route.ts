@@ -29,7 +29,18 @@ interface OfferData {
     slug: string
     logoUrl: string | null
     contactEmail: string | null
-  }>
+  }> | null
+  brand: {
+    id: string
+    name: string
+    slug: string
+    logoUrl: string | null
+  } | Array<{
+    id: string
+    name: string
+    slug: string
+    logoUrl: string | null
+  }> | null
 }
 
 interface ClaimData {
@@ -71,6 +82,12 @@ export async function GET() {
           slug,
           logoUrl,
           contactEmail
+        ),
+        brand:Brand(
+          id,
+          name,
+          slug,
+          logoUrl
         )
       )
     `)

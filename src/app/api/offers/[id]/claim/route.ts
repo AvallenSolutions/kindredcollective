@@ -99,7 +99,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         discountValue,
         code,
         termsConditions,
-        supplier:Supplier(id, companyName, slug, contactEmail)
+        supplier:Supplier(id, companyName, slug, contactEmail),
+        brand:Brand(id, name, slug)
       )
     `)
     .single()
