@@ -15,8 +15,9 @@ interface OfferCardProps {
     type: OfferType
     discountValue?: number | null
     code?: string | null
-    supplierName: string
-    supplierSlug: string
+    ownerName: string
+    ownerHref?: string
+    ownerType: 'SUPPLIER' | 'BRAND'
     endDate?: Date | null
     forBrandsOnly: boolean
   }
@@ -89,9 +90,9 @@ export function OfferCard({ offer }: OfferCardProps) {
             {offer.title}
           </h3>
 
-          {/* Supplier */}
+          {/* Owner */}
           <p className="text-sm text-gray-500 mb-3">
-            from <span className="font-bold text-black">{offer.supplierName}</span>
+            from <span className="font-bold text-black">{offer.ownerName}</span>
           </p>
 
           {/* Description */}
@@ -132,15 +133,17 @@ export function OfferCard({ offer }: OfferCardProps) {
           )}
 
           {/* CTA */}
-          <div className="pt-3 border-t border-gray-200">
-            <a
-              href={`/explore/${offer.supplierSlug}`}
-              className="inline-flex items-center text-xs font-display font-bold uppercase tracking-wide text-black hover:text-cyan transition-colors"
-            >
-              View Supplier
-              <ArrowRight className="w-3 h-3 ml-1" />
-            </a>
-          </div>
+          {offer.ownerHref && (
+            <div className="pt-3 border-t border-gray-200">
+              <a
+                href={offer.ownerHref}
+                className="inline-flex items-center text-xs font-display font-bold uppercase tracking-wide text-black hover:text-cyan transition-colors"
+              >
+                {offer.ownerType === 'BRAND' ? 'View Brand' : 'View Supplier'}
+                <ArrowRight className="w-3 h-3 ml-1" />
+              </a>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('Offer')
-    .select('*, supplier:Supplier(id, companyName, slug, logoUrl), claims:OfferClaim(count)', { count: 'exact' })
+    .select('*, supplier:Supplier(id, companyName, slug, logoUrl), brand:Brand(id, name, slug, logoUrl), claims:OfferClaim(count)', { count: 'exact' })
     .order('createdAt', { ascending: false })
     .range(from, to)
 

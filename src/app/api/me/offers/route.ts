@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireAuth, getUserSupplierViaOrg } from '@/lib/auth/session'
+import { requireAuth, getUserOfferOwnerViaOrg } from '@/lib/auth/session'
 import {
   successResponse,
   errorResponse,
@@ -10,7 +10,7 @@ import {
 } from '@/lib/api/response'
 import { parsePagination, paginationMeta } from '@/lib/api/pagination'
 
-// GET /api/me/offers?orgId=xxx - Get supplier's offers
+// GET /api/me/offers?orgId=xxx - Get the organisation's offers
 export async function GET(request: NextRequest) {
   let user
   try {
@@ -24,9 +24,9 @@ export async function GET(request: NextRequest) {
     return errorResponse('orgId query parameter is required')
   }
 
-  const supplier = await getUserSupplierViaOrg(user.id, orgId)
-  if (!supplier) {
-    return notFoundResponse('Supplier not found or access denied')
+  const owner = await getUserOfferOwnerViaOrg(user.id, orgId)
+  if (!owner) {
+    return notFoundResponse('Organisation not found or access denied')
   }
 
   const adminClient = createAdminClient()
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
   let query = adminClient
     .from('Offer')
     .select('*', { count: 'exact' })
-    .eq('supplierId', supplier.id)
+    .eq(owner.column, owner.id)
     .order('createdAt', { ascending: false })
     .range(from, to)
 
@@ -72,9 +72,9 @@ export async function POST(request: NextRequest) {
     return errorResponse('orgId query parameter is required')
   }
 
-  const supplier = await getUserSupplierViaOrg(user.id, orgId)
-  if (!supplier) {
-    return notFoundResponse('Supplier not found or access denied')
+  const owner = await getUserOfferOwnerViaOrg(user.id, orgId)
+  if (!owner) {
+    return notFoundResponse('Organisation not found or access denied')
   }
 
   const adminClient = createAdminClient()
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     .from('Offer')
     .insert({
       id: crypto.randomUUID(),
-      supplierId: supplier.id,
+      [owner.column]: owner.id,
       title, description, type, discountValue, code,
       termsConditions,
       status: 'DRAFT',

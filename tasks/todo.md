@@ -99,3 +99,20 @@ Branch: `claude/loving-tesla-nga40b`
       `(marketing)/members/{community,knowledge,marketplace}/page.tsx` and `join/request-access-form.tsx`;
       `tsc` error in `src/__tests__/onboarding-page.test.tsx` (router mock now a `vi.fn`).
       `npm run build` passes with lint and type checks.
+
+# Todo: Brand organisations and members can create offers
+
+Branch: `claude/friendly-archimedes-pvhrkl`
+
+- [x] Schema: `Offer.supplierId` nullable, new `Offer.brandId`, check that exactly one owner is set (`prisma/migrations/20261028120000_add_brand_offers`)
+- [x] `getUserOfferOwnerViaOrg` helper: any member of a brand or supplier organisation qualifies
+- [x] `/api/me/offers` and `/api/me/offers/[id]` use the helper (list, create, view, update, delete)
+- [x] Settings offers page: accepts brand orgs, no OWNER/ADMIN gate; Offers link in Settings and dashboard brand cards
+- [x] Show brand name/link wherever an offer's owner is shown (public offers, search, claims, dashboard, admin)
+- [x] Tests: `src/__tests__/api/me/offers.test.ts`
+- [ ] Apply the migration to the Supabase database before deploying
+
+## Review
+
+- `tsc`, `next lint` and `vitest` pass. The page itself was not exercised against a live database.
+- Brand offers on the public listing show the owner only when the brand is public (existing `Brand` RLS); otherwise the card shows "Unknown".

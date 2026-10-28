@@ -168,7 +168,6 @@ function OffersManagementContent() {
   // Organisation / auth state
   const [orgId, setOrgId] = useState<string | null>(null)
   const [orgName, setOrgName] = useState<string>('')
-  const [userRole, setUserRole] = useState<string | null>(null)
 
   // Offers state
   const [offers, setOffers] = useState<Offer[]>([])
@@ -204,27 +203,19 @@ function OffersManagementContent() {
       const data = await response.json()
 
       if (data.success && data.organisations?.length > 0) {
-        // Find supplier org matching the query param, or pick the first supplier org
-        const supplierOrgs = data.organisations.filter(
-          (org: { type: string }) => org.type === 'SUPPLIER'
-        )
+        // Find the org matching the query param, or pick the first supplier org, then the first brand org
+        const orgs: { id: string; name: string; type: string }[] = data.organisations
 
-        let targetOrg = null
-        if (queryOrgId) {
-          targetOrg = data.organisations.find(
-            (org: { id: string }) => org.id === queryOrgId
-          )
-        }
-        if (!targetOrg && supplierOrgs.length > 0) {
-          targetOrg = supplierOrgs[0]
-        }
+        const targetOrg =
+          (queryOrgId && orgs.find((org) => org.id === queryOrgId)) ||
+          orgs.find((org) => org.type === 'SUPPLIER') ||
+          orgs.find((org) => org.type === 'BRAND')
 
         if (targetOrg) {
           setOrgId(targetOrg.id)
           setOrgName(targetOrg.name)
-          setUserRole(targetOrg.userRole)
         } else {
-          setError('No supplier organisation found. Please link a supplier to your profile first.')
+          setError('No brand or supplier organisation found. Please link a brand or supplier to your profile first.')
           setLoading(false)
         }
       } else {
@@ -493,8 +484,6 @@ function OffersManagementContent() {
     )
   }
 
-  const canManage = userRole === 'OWNER' || userRole === 'ADMIN'
-
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
       {/* ---------------------------------------------------------------- */}
@@ -516,12 +505,10 @@ function OffersManagementContent() {
           </div>
         </div>
 
-        {canManage && (
-          <Button onClick={openCreateModal} size="sm">
-            <Plus className="w-4 h-4 mr-2" />
-            Create Offer
-          </Button>
-        )}
+        <Button onClick={openCreateModal} size="sm">
+          <Plus className="w-4 h-4 mr-2" />
+          Create Offer
+        </Button>
       </div>
 
       {/* ---------------------------------------------------------------- */}
@@ -617,12 +604,10 @@ function OffersManagementContent() {
             <p className="text-sm text-gray-400 mb-4">
               Create your first offer to attract more brands.
             </p>
-            {canManage && (
-              <Button onClick={openCreateModal} size="sm">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Offer
-              </Button>
-            )}
+            <Button onClick={openCreateModal} size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Offer
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -634,24 +619,22 @@ function OffersManagementContent() {
                   <CardTitle className="text-lg leading-tight line-clamp-2">
                     {offer.title}
                   </CardTitle>
-                  {canManage && (
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => openEditModal(offer)}
-                        className="p-1.5 bg-white border-2 border-black neo-shadow-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all"
-                        title="Edit offer"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => setDeletingId(offer.id)}
-                        className="p-1.5 bg-white border-2 border-black neo-shadow-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all"
-                        title="Delete offer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-coral" />
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => openEditModal(offer)}
+                      className="p-1.5 bg-white border-2 border-black neo-shadow-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all"
+                      title="Edit offer"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setDeletingId(offer.id)}
+                      className="p-1.5 bg-white border-2 border-black neo-shadow-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all"
+                      title="Delete offer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-coral" />
+                    </button>
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-2">
                   {getTypeBadge(offer.type)}
@@ -735,42 +718,40 @@ function OffersManagementContent() {
                 </div>
 
                 {/* Status action buttons */}
-                {canManage && (
-                  <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t-2 border-black">
-                    {offer.status === 'DRAFT' && (
+                <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t-2 border-black">
+                  {offer.status === 'DRAFT' && (
+                    <button
+                      onClick={() => handleStatusChange(offer, 'ACTIVE')}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-lime border-2 border-black text-xs font-bold uppercase hover:translate-x-[1px] hover:translate-y-[1px] transition-all"
+                    >
+                      <Play className="w-3 h-3" /> Activate
+                    </button>
+                  )}
+                  {offer.status === 'ACTIVE' && (
+                    <button
+                      onClick={() => handleStatusChange(offer, 'PAUSED')}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 bg-yellow-300 border-2 border-black text-xs font-bold uppercase hover:translate-x-[1px] hover:translate-y-[1px] transition-all"
+                    >
+                      <Pause className="w-3 h-3" /> Pause
+                    </button>
+                  )}
+                  {offer.status === 'PAUSED' && (
+                    <>
                       <button
                         onClick={() => handleStatusChange(offer, 'ACTIVE')}
                         className="inline-flex items-center gap-1 px-3 py-1.5 bg-lime border-2 border-black text-xs font-bold uppercase hover:translate-x-[1px] hover:translate-y-[1px] transition-all"
                       >
-                        <Play className="w-3 h-3" /> Activate
+                        <Play className="w-3 h-3" /> Reactivate
                       </button>
-                    )}
-                    {offer.status === 'ACTIVE' && (
                       <button
-                        onClick={() => handleStatusChange(offer, 'PAUSED')}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-yellow-300 border-2 border-black text-xs font-bold uppercase hover:translate-x-[1px] hover:translate-y-[1px] transition-all"
+                        onClick={() => handleStatusChange(offer, 'DRAFT')}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border-2 border-black text-xs font-bold uppercase hover:translate-x-[1px] hover:translate-y-[1px] transition-all"
                       >
-                        <Pause className="w-3 h-3" /> Pause
+                        Move to Draft
                       </button>
-                    )}
-                    {offer.status === 'PAUSED' && (
-                      <>
-                        <button
-                          onClick={() => handleStatusChange(offer, 'ACTIVE')}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-lime border-2 border-black text-xs font-bold uppercase hover:translate-x-[1px] hover:translate-y-[1px] transition-all"
-                        >
-                          <Play className="w-3 h-3" /> Reactivate
-                        </button>
-                        <button
-                          onClick={() => handleStatusChange(offer, 'DRAFT')}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border-2 border-black text-xs font-bold uppercase hover:translate-x-[1px] hover:translate-y-[1px] transition-all"
-                        >
-                          Move to Draft
-                        </button>
-                      </>
-                    )}
-                  </div>
-                )}
+                    </>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}

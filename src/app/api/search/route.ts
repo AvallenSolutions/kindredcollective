@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
 
     let offersQuery = supabase
       .from('Offer')
-      .select('id, title, description, type, discountValue, imageUrl, supplier:Supplier(companyName, slug)')
+      .select('id, title, description, type, discountValue, imageUrl, supplier:Supplier(companyName, slug), brand:Brand(name, slug)')
       .eq('status', 'ACTIVE')
       .or(`endDate.is.null,endDate.gte.${now}`)
       .or(`title.ilike.%${query}%,description.ilike.%${query}%`)

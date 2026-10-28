@@ -76,7 +76,11 @@ interface DashboardContentProps {
       supplier: {
         companyName: string
         slug: string
-      }
+      } | null
+      brand: {
+        name: string
+        slug: string
+      } | null
     }
   }>
   brands: Array<any>
@@ -258,11 +262,17 @@ export function DashboardContent({
                         <Badge variant="cyan" className="text-xs">Brand</Badge>
                         <span className="text-xs text-gray-500 capitalize">{org.memberRole.toLowerCase()}</span>
                       </div>
-                      <div className="mt-3">
+                      <div className="flex flex-wrap items-center gap-2 mt-3">
                         <Link href={`/settings/brand?orgId=${org.organisationId}`}>
                           <Button size="sm" variant="outline" className="text-xs">
                             <Pencil className="w-3 h-3 mr-1" />
                             Edit Profile
+                          </Button>
+                        </Link>
+                        <Link href={`/settings/offers?orgId=${org.organisationId}`}>
+                          <Button size="sm" variant="outline" className="text-xs">
+                            <TagIcon className="w-3 h-3 mr-1" />
+                            Manage Offers
                           </Button>
                         </Link>
                       </div>
@@ -495,7 +505,7 @@ export function DashboardContent({
                       <CardContent className="p-4">
                         <h3 className="font-bold text-sm mb-1">{claim.offer.title}</h3>
                         <p className="text-xs text-gray-500">
-                          {claim.offer.supplier.companyName}
+                          {claim.offer.supplier?.companyName ?? claim.offer.brand?.name}
                           {' - '}
                           {claim.offer.discountType === 'PERCENTAGE'
                             ? `${claim.offer.discountValue}% off`

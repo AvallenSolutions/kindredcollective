@@ -24,7 +24,7 @@ export default async function SettingsPage() {
       : []),
     { name: 'Team Management', description: 'Manage team members and roles', icon: Users, href: '/settings/team', color: 'bg-cyan' },
     { name: 'Events', description: 'Create and manage your events', icon: Calendar, href: '/settings/events', color: 'bg-green-400' },
-    ...(hasSupplier
+    ...(hasBrand || hasSupplier
       ? [{ name: 'Offers', description: 'Create and manage your offers and deals', icon: Gift, href: '/settings/offers', color: 'bg-orange-400' }]
       : []),
   ]

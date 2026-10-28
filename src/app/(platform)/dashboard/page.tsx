@@ -65,7 +65,7 @@ export default async function DashboardPage() {
   // Fetch recent offer claims
   const { data: recentOfferClaims } = await supabase
     .from('OfferClaim')
-    .select('*, offer:Offer(*, supplier:Supplier(companyName, slug))')
+    .select('*, offer:Offer(*, supplier:Supplier(companyName, slug), brand:Brand(name, slug))')
     .eq('userId', session.user.id)
     .order('createdAt', { ascending: false })
     .limit(4)

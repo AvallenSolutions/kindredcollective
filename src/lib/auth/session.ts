@@ -215,6 +215,50 @@ export async function getUserSupplierViaOrg(userId: string, orgId: string) {
 }
 
 /**
+ * Identifies who owns an offer: the Offer column to match and the owner's id
+ */
+export interface OfferOwner {
+  column: 'supplierId' | 'brandId'
+  id: string
+}
+
+/**
+ * Get the supplier or brand a user can manage offers for via organisation
+ * membership. Any member of the organisation qualifies, whatever their role.
+ */
+export async function getUserOfferOwnerViaOrg(
+  userId: string,
+  orgId: string
+): Promise<OfferOwner | null> {
+  const adminClient = createAdminClient()
+
+  const { data: membership, error: memberError } = await adminClient
+    .from('OrganisationMember')
+    .select('role')
+    .eq('organisationId', orgId)
+    .eq('userId', userId)
+    .single()
+
+  if (memberError || !membership) return null
+
+  const { data: org, error: orgError } = await adminClient
+    .from('Organisation')
+    .select('type, supplierId, brandId')
+    .eq('id', orgId)
+    .single()
+
+  if (orgError || !org) return null
+
+  if (org.type === 'SUPPLIER' && org.supplierId) {
+    return { column: 'supplierId', id: org.supplierId }
+  }
+  if (org.type === 'BRAND' && org.brandId) {
+    return { column: 'brandId', id: org.brandId }
+  }
+  return null
+}
+
+/**
  * Get ALL brands the user manages (via organisation memberships)
  */
 export async function getUserBrands(userId: string) {

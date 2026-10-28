@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
   const { data: offer, error } = await supabase
     .from('Offer')
-    .select('*, supplier:Supplier(id, companyName, slug, logoUrl), claims:OfferClaim(*, user:User(email, member:Member(firstName, lastName)))')
+    .select('*, supplier:Supplier(id, companyName, slug, logoUrl), brand:Brand(id, name, slug, logoUrl), claims:OfferClaim(*, user:User(email, member:Member(firstName, lastName)))')
     .eq('id', id)
     .single()
 

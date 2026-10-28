@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { requireAuth, getSession, getUserSupplierViaOrg } from '@/lib/auth/session'
+import { requireAuth, getSession, getUserOfferOwnerViaOrg } from '@/lib/auth/session'
 import {
   successResponse,
   errorResponse,
@@ -48,9 +48,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return errorResponse('orgId query parameter is required')
   }
 
-  const supplier = await getUserSupplierViaOrg(user.id, orgId)
-  if (!supplier) {
-    return notFoundResponse('Supplier not found or access denied')
+  const owner = await getUserOfferOwnerViaOrg(user.id, orgId)
+  if (!owner) {
+    return notFoundResponse('Organisation not found or access denied')
   }
 
   const { data: offer, error } = await adminClient
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 
   // Check ownership
-  if (offer.supplierId !== supplier.id) {
+  if (offer[owner.column] !== owner.id) {
     return forbiddenResponse('You can only view your own offers')
   }
 
@@ -88,7 +88,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   // Verify ownership (or admin)
   const { data: existing } = await adminClient
     .from('Offer')
-    .select('supplierId')
+    .select('supplierId, brandId')
     .eq('id', id)
     .single()
 
@@ -101,12 +101,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       return errorResponse('orgId query parameter is required')
     }
 
-    const supplier = await getUserSupplierViaOrg(user.id, orgId)
-    if (!supplier) {
-      return notFoundResponse('Supplier not found or access denied')
+    const owner = await getUserOfferOwnerViaOrg(user.id, orgId)
+    if (!owner) {
+      return notFoundResponse('Organisation not found or access denied')
     }
 
-    if (existing.supplierId !== supplier.id) {
+    if (existing[owner.column] !== owner.id) {
       return forbiddenResponse('You can only update your own offers')
     }
   }
@@ -170,7 +170,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   // Verify ownership (or admin)
   const { data: existing } = await adminClient
     .from('Offer')
-    .select('supplierId')
+    .select('supplierId, brandId')
     .eq('id', id)
     .single()
 
@@ -183,12 +183,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return errorResponse('orgId query parameter is required')
     }
 
-    const supplier = await getUserSupplierViaOrg(user.id, orgId)
-    if (!supplier) {
-      return notFoundResponse('Supplier not found or access denied')
+    const owner = await getUserOfferOwnerViaOrg(user.id, orgId)
+    if (!owner) {
+      return notFoundResponse('Organisation not found or access denied')
     }
 
-    if (existing.supplierId !== supplier.id) {
+    if (existing[owner.column] !== owner.id) {
       return forbiddenResponse('You can only delete your own offers')
     }
   }

@@ -24,7 +24,13 @@ interface ApiOffer {
     logoUrl: string | null
     category: SupplierCategory
     isVerified: boolean
-  }
+  } | null
+  brand: {
+    id: string
+    name: string
+    slug: string
+    logoUrl: string | null
+  } | null
 }
 
 const offerTypes = Object.entries(OFFER_TYPE_LABELS) as [OfferType, string][]
@@ -228,8 +234,13 @@ export default function OffersPage() {
                       type: offer.type,
                       discountValue: offer.discountValue,
                       code: offer.code,
-                      supplierName: offer.supplier?.companyName || 'Unknown Supplier',
-                      supplierSlug: offer.supplier?.slug || '',
+                      ownerName: offer.supplier?.companyName || offer.brand?.name || 'Unknown',
+                      ownerHref: offer.supplier
+                        ? `/explore/${offer.supplier.slug}`
+                        : offer.brand
+                        ? `/community/brands/${offer.brand.slug}`
+                        : undefined,
+                      ownerType: offer.supplier ? 'SUPPLIER' : 'BRAND',
                       endDate: offer.endDate ? new Date(offer.endDate) : null,
                       forBrandsOnly: offer.forBrandsOnly,
                     }}

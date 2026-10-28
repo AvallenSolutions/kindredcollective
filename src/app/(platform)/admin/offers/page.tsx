@@ -23,6 +23,11 @@ interface Offer {
     companyName: string
     slug: string
   } | null
+  brand: {
+    id: string
+    name: string
+    slug: string
+  } | null
 }
 
 export default function AdminOffersPage() {
@@ -159,7 +164,7 @@ export default function AdminOffersPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      {offer.supplier?.companyName || '-'}
+                      {offer.supplier?.companyName || offer.brand?.name || '-'}
                     </td>
                     <td className="px-6 py-4">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-bold bg-cyan text-black border border-black">
