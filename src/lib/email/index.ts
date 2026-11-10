@@ -70,6 +70,37 @@ export async function sendInviteEmail(
   })
 }
 
+// ── Admin-Created Account Email ─────────────────────────────────────
+
+export async function sendAccountCreatedEmail(to: string, setPasswordUrl: string) {
+  return sendEmail({
+    to,
+    subject: 'Your Kindred Collective account is ready',
+    html: `
+      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #00D9FF; padding: 24px; border: 3px solid #000;">
+          <h1 style="font-family: 'Space Grotesk', Arial, sans-serif; margin: 0; font-size: 24px;">
+            Kindred Collective
+          </h1>
+        </div>
+        <div style="padding: 32px 24px; border: 3px solid #000; border-top: 0;">
+          <h2 style="margin-top: 0;">Your account is ready</h2>
+          <p>An account has been created for you on Kindred Collective, the private community for the independent drinks industry. Set a password to get started.</p>
+          <a href="${setPasswordUrl}" style="display: inline-block; background: #00D9FF; color: #000; font-weight: bold; text-transform: uppercase; padding: 12px 32px; border: 3px solid #000; text-decoration: none; margin: 16px 0;">
+            Set Your Password
+          </a>
+          <p style="color: #666; font-size: 14px; margin-top: 24px;">
+            Or copy this link: <a href="${setPasswordUrl}">${setPasswordUrl}</a>
+          </p>
+          <p style="color: #666; font-size: 14px;">
+            If this link has expired, use &ldquo;Forgot password&rdquo; on the login page to get a new one.
+          </p>
+        </div>
+      </div>
+    `,
+  })
+}
+
 // ── Organisation Invite Email ───────────────────────────────────────
 
 export async function sendOrgInviteEmail(

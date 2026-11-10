@@ -28,7 +28,11 @@ export default function NewUserPage() {
 
     const data = await res.json()
 
-    if (data.success) {
+    if (data.success && data.data?.emailSent === false) {
+      setError(
+        'The user was created but the invitation email could not be sent. Ask them to use "Forgot password" on the login page.'
+      )
+    } else if (data.success) {
       router.push('/admin/users')
     } else {
       setError(data.error || 'Failed to create user')
