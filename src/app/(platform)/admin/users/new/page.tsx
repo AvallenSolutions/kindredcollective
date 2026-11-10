@@ -12,7 +12,7 @@ export default function NewUserPage() {
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
     email: '',
-    role: 'BRAND',
+    role: 'MEMBER',
   })
 
   async function handleSubmit(e: React.FormEvent) {
@@ -28,7 +28,11 @@ export default function NewUserPage() {
 
     const data = await res.json()
 
-    if (data.success) {
+    if (data.success && data.data?.emailSent === false) {
+      setError(
+        'The user was created but the invitation email could not be sent. Ask them to use "Forgot password" on the login page.'
+      )
+    } else if (data.success) {
       router.push('/admin/users')
     } else {
       setError(data.error || 'Failed to create user')
@@ -84,8 +88,7 @@ export default function NewUserPage() {
             onChange={(e) => setFormData({ ...formData, role: e.target.value })}
             className="w-full px-4 py-2 border-2 border-black focus:outline-none focus:ring-2 focus:ring-cyan"
           >
-            <option value="BRAND">Brand</option>
-            <option value="SUPPLIER">Supplier</option>
+            <option value="MEMBER">Member</option>
             <option value="ADMIN">Admin</option>
           </select>
         </div>

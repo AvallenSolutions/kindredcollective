@@ -7,6 +7,7 @@ import {
   unauthorizedResponse,
   serverErrorResponse,
 } from '@/lib/api/response'
+import { sendAccountCreatedEmail } from '@/lib/email'
 import { sanitizeFilterInput } from '@/lib/api/sanitize'
 import { parsePagination, paginationMeta } from '@/lib/api/pagination'
 
@@ -100,8 +101,34 @@ export async function POST(request: NextRequest) {
 
   if (dbError) {
     console.error('[AdminUsers] Error creating user record:', dbError)
+    // Remove the auth user so a retry with the same email is not blocked
+    await supabase.auth.admin.deleteUser(authData.user.id)
     return serverErrorResponse('Failed to create user record')
   }
 
-  return successResponse(user, 201)
+  // Send a branded email with a link to set a password. The link goes to
+  // /reset-password, which verifies the recovery token client-side.
+  const origin = process.env.NEXT_PUBLIC_APP_URL ||
+    `${request.nextUrl.protocol}//${request.nextUrl.host}`
+  let emailSent = false
+
+  try {
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+    })
+    const hashedToken = linkData?.properties?.hashed_token
+
+    if (linkError || !hashedToken) {
+      console.error('[AdminUsers] generateLink failed:', linkError)
+    } else {
+      const setPasswordUrl = `${origin}/reset-password?token_hash=${encodeURIComponent(hashedToken)}&type=recovery`
+      await sendAccountCreatedEmail(email, setPasswordUrl)
+      emailSent = true
+    }
+  } catch (err) {
+    console.error('[AdminUsers] Failed to send account email:', err)
+  }
+
+  return successResponse({ ...user, emailSent }, 201)
 }
