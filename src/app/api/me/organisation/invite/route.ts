@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
     return serverErrorResponse('Failed to create invite')
   }
 
-  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/invite/${token}`
+  const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/join/${token}`
 
   // Send invite email
   const orgData = membership.organisation as unknown as { name: string } | { name: string }[] | null

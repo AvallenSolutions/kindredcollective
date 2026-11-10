@@ -79,7 +79,7 @@ export async function sendOrgInviteEmail(
   inviterName: string,
   role: string
 ) {
-  const acceptUrl = `${APP_URL}/invite/${inviteToken}`
+  const acceptUrl = `${APP_URL}/join/${inviteToken}`
 
   return sendEmail({
     to,
